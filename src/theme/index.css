@@ -1,0 +1,485 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import './theme.css';
+
+/* Disable dark mode completely - override dark variant to class-based (never triggers) */
+@custom-variant dark (&:is(.dark *));
+
+/* * ============================================================
+ * HỆ THỐNG BIẾN CSS (CSS VARIABLES) - TRUST BLUE THEME
+ * ============================================================
+ * Tư duy thiết kế:
+ * - Sử dụng không gian màu HSL để dễ dàng điều chỉnh độ sáng/bão hòa.
+ * - Primary Color: #2563EB (blue-600) - Màu xanh dương tin cậy.
+ * - Accent/Info: #06B6D4 (cyan-500) - Điểm nhấn thông tin.
+ * - Background: #F8FAFC (Slate-50) - Sạch sẽ, hiện đại.
+ * - Foreground: #0F172A (Slate-900) - Dễ đọc, giảm mỏi mắt.
+ */
+
+/* ===== CSS VARIABLES ===== */
+:root {
+  /* ===== Border Radius ===== */
+  --radius: 0.625rem;
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ===== Spacing ===== */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+
+  /* ===== Typography ===== */
+  --font-sans: "Roboto Slab", "Noto Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "Fira Code", "Consolas", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* ===== Base Colors (HSL) ===== */
+  --background: 210 40% 98%; /* #F8FAFC - Slate 50 */
+  --foreground: 222 47% 11%; /* #0F172A - Slate 900 */
+
+  --card: 0 0% 100%; /* #FFFFFF */
+  --card-foreground: 222 47% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  /* --- Màu chủ đạo (Trust Blue) --- */
+  --primary: 217 91% 53%; /* #2563EB - Blue 600 */
+  --primary-foreground: 0 0% 100%;
+
+  /* --- Màu phụ trợ --- */
+  --secondary: 210 40% 96%; /* #F1F5F9 - Slate 100 */
+  --secondary-foreground: 222 47% 20%; /* Slate 800 */
+
+  /* --- Màu làm mờ/Vô hiệu hóa --- */
+  --muted: 210 40% 96%; /* Slate 100 */
+  --muted-foreground: 215 16% 47%; /* #64748B - Slate 500 */
+
+  /* --- Màu nhấn (Cyan) --- */
+  --accent: 188 94% 93%; /* cyan-50 subtle bg */
+  --accent-foreground: 188 94% 30%; /* cyan-800 */
+
+  /* --- Trạng thái hành động --- */
+  --destructive: 0 72% 51%; /* #DC2626 - Red 600 */
+  --destructive-foreground: 0 0% 98%;
+
+  --success: 142 76% 36%; /* #16A34A - Green 600 */
+  --success-foreground: 0 0% 98%;
+
+  --warning: 38 92% 50%; /* #F59E0B - Amber 500 */
+  --warning-foreground: 0 0% 98%;
+
+  --info: 188 94% 43%; /* #06B6D4 - Cyan 500 */
+  --info-foreground: 0 0% 98%;
+
+  /* --- Đường viền & Input --- */
+  --border: 214 32% 91%; /* #E2E8F0 - Slate 200 */
+  --input: 214 32% 91%;
+  --ring: 217 91% 53%; /* Focus ring = Primary */
+
+  /* ===== Chart Colors (Data Visualization) ===== */
+  --chart-1: 217 91% 53%; /* Blue 600 - Primary */
+  --chart-2: 188 94% 43%; /* Cyan 500 - Accent */
+  --chart-3: 142 76% 36%; /* Green 600 - Success */
+  --chart-4: 38 92% 50%; /* Amber 500 - Warning */
+  --chart-5: 0 72% 51%; /* Red 600 - Destructive */
+  --chart-6: 262 83% 58%; /* Violet 500 */
+  --chart-7: 173 80% 40%; /* Teal 600 */
+  --chart-8: 330 81% 60%; /* Pink 500 */
+
+  /* ===== Sidebar (Dark Command Center) ===== */
+  --sidebar-background: 222 47% 11%; /* #0F172A - Dark Navy */
+  --sidebar-foreground: 213 31% 91%; /* #CBD5E1 - Slate 300 */
+  --sidebar-primary: 217 91% 60%; /* #3B82F6 - Blue 500 (lighter for dark bg) */
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 217 33% 17%; /* #1E293B - Slate 800 */
+  --sidebar-accent-foreground: 213 31% 91%;
+  --sidebar-border: 217 33% 17%;
+  --sidebar-ring: 217 91% 53%;
+  --sidebar-width: 260px;
+  --sidebar-width-collapsed: 64px;
+}
+
+/* ===== TAILWIND THEME CONFIG ===== */
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-chart-6: hsl(var(--chart-6));
+  --color-chart-7: hsl(var(--chart-7));
+  --color-chart-8: hsl(var(--chart-8));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-background: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+}
+
+/* ===== BASE STYLES ===== */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  * {
+    @apply outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+  }
+
+  /* Headings */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold tracking-tight;
+    line-height: var(--leading-tight);
+  }
+
+  h1 {
+    font-size: var(--text-4xl);
+  }
+  h2 {
+    font-size: var(--text-3xl);
+  }
+  h3 {
+    font-size: var(--text-2xl);
+  }
+  h4 {
+    font-size: var(--text-xl);
+  }
+  h5 {
+    font-size: var(--text-lg);
+  }
+  h6 {
+    font-size: var(--text-base);
+  }
+
+  /* Links */
+  a {
+    @apply text-primary;
+    text-decoration: none;
+    transition: color var(--transition-fast) var(--ease-in-out);
+  }
+
+  a:hover {
+    @apply text-primary/80;
+  }
+
+  /* Images */
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.15);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: var(--radius-full);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: var(--radius-full);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Placeholder */
+  ::placeholder {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.7;
+  }
+
+  /* Disabled states */
+  :disabled,
+  [disabled] {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+/* ===== COMPONENT STYLES ===== */
+@layer components {
+  /* Container */
+  .container-custom {
+    width: 100%;
+    max-width: var(--container-xl);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
+  }
+
+  /* Card variants */
+  .card-elevated {
+    @apply bg-card rounded-lg;
+    box-shadow: var(--shadow-md);
+  }
+
+  .card-outlined {
+    @apply bg-card border-border rounded-lg border;
+  }
+
+  .card-interactive {
+    @apply bg-card border-border rounded-lg border;
+    transition: all var(--transition-normal) var(--ease-in-out);
+  }
+
+  .card-interactive:hover {
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+  }
+
+  /* Button base */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md font-medium;
+    padding: var(--spacing-sm) var(--spacing-md);
+    transition: all var(--transition-fast) var(--ease-in-out);
+  }
+
+  .btn:focus-visible {
+    @apply ring-ring ring-2 ring-offset-2;
+  }
+
+  /* Input base */
+  .input-base {
+    @apply border-input bg-background w-full rounded-md border px-3 py-2;
+    transition:
+      border-color var(--transition-fast) var(--ease-in-out),
+      box-shadow var(--transition-fast) var(--ease-in-out);
+  }
+
+  .input-base:focus {
+    @apply border-primary ring-primary/20 ring-2;
+    outline: none;
+  }
+
+  /* Badge variants */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .badge-secondary {
+    @apply bg-secondary text-secondary-foreground;
+  }
+
+  .badge-success {
+    background-color: var(--success-light);
+    color: hsl(var(--success));
+  }
+
+  .badge-warning {
+    background-color: var(--warning-light);
+    color: hsl(var(--warning));
+  }
+
+  .badge-destructive {
+    background-color: var(--destructive-light);
+    color: hsl(var(--destructive));
+  }
+
+  .badge-info {
+    background-color: var(--info-light);
+    color: hsl(var(--info));
+  }
+
+  /* Overlay */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-dark);
+    backdrop-filter: blur(var(--overlay-blur));
+    z-index: 50;
+  }
+
+  /* Glass effect */
+  .glass {
+    background: rgb(255 255 255 / 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgb(255 255 255 / 0.2);
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-muted rounded;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Divider */
+  .divider {
+    @apply bg-border my-4 h-px w-full;
+  }
+
+  .divider-vertical {
+    @apply bg-border mx-4 h-full w-px;
+  }
+
+  /* Avatar */
+  .avatar {
+    @apply bg-muted relative inline-flex items-center justify-center overflow-hidden rounded-full;
+  }
+
+  .avatar-sm {
+    @apply h-8 w-8 text-sm;
+  }
+  .avatar-md {
+    @apply h-10 w-10 text-base;
+  }
+  .avatar-lg {
+    @apply h-12 w-12 text-lg;
+  }
+  .avatar-xl {
+    @apply h-16 w-16 text-xl;
+  }
+}
+
+/* ===== UTILITY CLASSES ===== */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+}

@@ -1,0 +1,53 @@
+import apiClient from './common/apiClient'
+import type {
+  ApiResponse,
+  NewsComment,
+  NewsCommentListData,
+  NewsCommentAdminListParams,
+  CreatePublicCommentBody,
+  ApproveCommentBody,
+} from '@/types/api'
+import { serviceNewsPath, serviceAdminCommentsPath } from '@/constant/serviceConstant'
+
+export default {
+  /** GET /news/:newsId/comments (approved only) */
+  getByNewsId: (newsId: number | string, params?: { page?: number; limit?: number }) =>
+    apiClient.get<NewsCommentListData>(`${serviceNewsPath}/${newsId}/comments`, { params }),
+
+  /** POST /news/:newsId/comments (citizen) */
+  create: (newsId: number | string, data: CreatePublicCommentBody) =>
+    apiClient.post<NewsComment>(`${serviceNewsPath}/${newsId}/comments`, data),
+
+  /** GET /admin/comments (paginated, targetType=news) */
+  getAll: (params?: NewsCommentAdminListParams) =>
+    apiClient.get<NewsCommentListData>(serviceAdminCommentsPath, { params }),
+
+  /** PATCH /admin/comments/:commentId/approve */
+  approve: (commentId: number | string, data: ApproveCommentBody = { isApproved: true }) =>
+    apiClient.patch<NewsComment>(`${serviceAdminCommentsPath}/${commentId}/approve`, data),
+
+  /** DELETE /admin/comments/:commentId */
+  delete: (commentId: number | string) =>
+    apiClient.del<ApiResponse<{}>>(`${serviceAdminCommentsPath}/${commentId}`),
+
+  /** Backwards-compat alias */
+  adminDelete: (commentId: number | string) =>
+    apiClient.del<ApiResponse<{}>>(`${serviceAdminCommentsPath}/${commentId}`),
+
+  // ── Legacy shims (endpoints removed from Postman v2) ──
+
+  /** Legacy: getById not in Postman — derive from admin list */
+  getById: (commentId: number | string) =>
+    apiClient.get<{ comment: NewsComment }>(`${serviceAdminCommentsPath}/${commentId}`),
+
+  /** Legacy: reply — not supported anymore, no-op stub */
+  replyComment: (_data: { news_id: number; content: string; parent_comment_id?: number }) =>
+    Promise.resolve({ message: 'Chức năng trả lời bình luận đã ngừng hỗ trợ', status: 410, data: {} as NewsComment } as ApiResponse<NewsComment>),
+
+  /** Legacy count endpoints — return zero */
+  getCountByNewsId: (_newsId: number | string) =>
+    Promise.resolve({ message: '', status: 200, data: { count: 0 } } as ApiResponse<{ count: number }>),
+
+  getPendingCount: () =>
+    Promise.resolve({ message: '', status: 200, data: { count: 0 } } as ApiResponse<{ count: number }>),
+}

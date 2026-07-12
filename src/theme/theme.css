@@ -1,0 +1,115 @@
+/* ===== EXTENDED THEME COLORS (HEX) ===== */
+/* File này chứa các màu mở rộng cho Admin Dashboard - Trust Blue Theme */
+/* Primary: #2563EB (blue-600) | Accent: #06B6D4 (cyan-500) */
+
+:root {
+  /* ===== Primary Extended ===== */
+  --primary-hover: #1d4ed8; /* blue-700 */
+  --primary-active: #1e40af; /* blue-800 */
+  --primary-light: #dbeafe; /* blue-100 */
+  --primary-dark: #1e3a8a; /* blue-900 */
+
+  /* ===== Secondary Extended ===== */
+  --secondary-hover: #e2e8f0; /* slate-200 */
+  --secondary-active: #cbd5e1; /* slate-300 */
+
+  /* ===== Accent Extended (Cyan) ===== */
+  --accent-hover: #0891b2; /* cyan-600 */
+  --accent-light: #cffafe; /* cyan-100 */
+  --accent-dark: #155e75; /* cyan-800 */
+
+  /* ===== Destructive Extended ===== */
+  --destructive-hover: #b91c1c; /* red-700 */
+  --destructive-light: #fee2e2; /* red-100 */
+
+  /* ===== Success Extended ===== */
+  --success-hover: #15803d; /* green-700 */
+  --success-light: #dcfce7; /* green-100 */
+
+  /* ===== Warning Extended ===== */
+  --warning-hover: #d97706; /* amber-600 */
+  --warning-light: #fef3c7; /* amber-100 */
+
+  /* ===== Info Extended ===== */
+  --info-hover: #0891b2; /* cyan-600 */
+  --info-light: #cffafe; /* cyan-100 */
+
+  /* ===== Border Extended ===== */
+  --border-hover: #cbd5e1; /* slate-300 */
+  --border-focus: #2563eb; /* blue-600 */
+
+  /* ===== Input Extended ===== */
+  --input-focus: #2563eb; /* blue-600 */
+
+  /* ===== Ring Extended ===== */
+  --ring-offset: #ffffff;
+
+  /* ===== Foreground Extended ===== */
+  --foreground-muted: #64748b; /* slate-500 */
+
+  /* ===== Card Extended ===== */
+  --card-hover: #f8fafc; /* slate-50 */
+
+  /* ===== Error Page Colors ===== */
+  --error-400: #f87171; /* red-400 */
+  --error-401: #f59e0b; /* amber-500 */
+  --error-403: #d97706; /* amber-600 */
+  --error-404: #3b82f6; /* blue-500 */
+  --error-500: #dc2626; /* red-600 */
+  --error-503: #06b6d4; /* cyan-500 */
+
+  /* Aliases used by error page components (bg-(--error-XXX-bg-color)) */
+  --error-400-bg-color: var(--error-400);
+  --error-401-bg-color: var(--error-401);
+  --error-403-bg-color: var(--error-403);
+  --error-404-bg-color: var(--error-404);
+  --error-500-bg-color: var(--error-500);
+  --error-503-bg-color: var(--error-503);
+
+  /* ===== Shadows ===== */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  --shadow-none: 0 0 #0000;
+
+  /* ===== Transitions ===== */
+  --transition-fast: 150ms;
+  --transition-normal: 200ms;
+  --transition-slow: 300ms;
+  --transition-slower: 500ms;
+
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* ===== Breakpoints (for reference) ===== */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* ===== Container ===== */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1400px;
+
+  /* ===== Header & Footer ===== */
+  --header-height: 56px;
+  --footer-height: 48px;
+
+  /* ===== Overlay ===== */
+  --overlay-light: rgb(255 255 255 / 0.8);
+  --overlay-dark: rgb(0 0 0 / 0.5);
+  --overlay-blur: 8px;
+
+  /* ===== Loading ===== */
+  --loading-spinner: var(--primary);
+}
