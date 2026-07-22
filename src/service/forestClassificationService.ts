@@ -27,6 +27,29 @@ export default {
       data
     ),
 
+  /** POST /forest-classification/snapshots/:id/publish-raster — enqueue MinIO→GeoServer */
+  publishSnapshotRaster: (id: number | string, force?: boolean) =>
+    apiClient.post<ApiResponse<{
+      snapshotId: number
+      jobId: number
+      status: string
+      deduplicated: boolean
+      alreadyPublished?: boolean
+      geoserverLayer?: string
+    }>>(`${serviceForestClassificationPath}/snapshots/${id}/publish-raster${force ? '?force=1' : ''}`),
+
+  /** GET /map/rasters/ingest-jobs/:id — poll raster ingest progress. Cùng
+      endpoint với fire-risk (raster-ingest queue shared cho mọi resource). */
+  getIngestJob: (jobId: number | string) =>
+    apiClient.get<ApiResponse<{
+      id: number
+      status: string
+      progress: number
+      geoserver_layer?: string | null
+      minio_key?: string | null
+      error_log?: string | null
+    }>>(`/map/rasters/ingest-jobs/${jobId}`),
+
   // ── Ground truth: zones ─────────────────────────────────────────────────
   listGtZones: (params?: { page?: number; limit?: number; from?: string; to?: string; classId?: number }) =>
     apiClient.get<ApiResponse<any[]>>(
