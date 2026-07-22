@@ -52,7 +52,7 @@ export default {
 
   // ── Ground truth: zones (GeoJSON) ─────────────────────────────────────────
   listGtZones: (params?: { page?: number; limit?: number; from?: string; to?: string; severity?: number }) =>
-    apiClient.get<ApiResponse<any[]>>(`${serviceFireRiskPath}/ground-truth/zones`, { params }),
+    apiClient.get<{ items: any[] }>(`${serviceFireRiskPath}/ground-truth/zones`, { params }),
 
   createGtZone: (body: {
     name?: string; occurredAt: string; severity: number;
@@ -61,15 +61,15 @@ export default {
     apiClient.post<ApiResponse<any>>(`${serviceFireRiskPath}/ground-truth/zones`, body),
 
   bulkGtZone: (featureCollection: any) =>
-    apiClient.post<ApiResponse<{ inserted: number; ids: number[] }>>(
+    apiClient.post<{ inserted: number; ids: number[] }>(
       `${serviceFireRiskPath}/ground-truth/zones/bulk`, featureCollection),
 
   deleteGtZone: (id: number | string) =>
-    apiClient.delete<ApiResponse<any>>(`${serviceFireRiskPath}/ground-truth/zones/${id}`),
+    apiClient.del<any>(`${serviceFireRiskPath}/ground-truth/zones/${id}`),
 
   // ── Ground truth: points ──────────────────────────────────────────────────
   listGtPoints: (params?: { page?: number; limit?: number; from?: string; to?: string; severity?: number }) =>
-    apiClient.get<ApiResponse<any[]>>(`${serviceFireRiskPath}/ground-truth/points`, { params }),
+    apiClient.get<{ items: any[] }>(`${serviceFireRiskPath}/ground-truth/points`, { params }),
 
   createGtPoint: (body: {
     occurredAt: string; severity: number; lng: number; lat: number;
@@ -78,9 +78,9 @@ export default {
     apiClient.post<ApiResponse<any>>(`${serviceFireRiskPath}/ground-truth/points`, body),
 
   bulkGtPoint: (points: any[]) =>
-    apiClient.post<ApiResponse<{ inserted: number; ids: number[] }>>(
+    apiClient.post<{ inserted: number; ids: number[] }>(
       `${serviceFireRiskPath}/ground-truth/points/bulk`, { points }),
 
   deleteGtPoint: (id: number | string) =>
-    apiClient.delete<ApiResponse<any>>(`${serviceFireRiskPath}/ground-truth/points/${id}`),
+    apiClient.del<any>(`${serviceFireRiskPath}/ground-truth/points/${id}`),
 }

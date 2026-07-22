@@ -219,7 +219,7 @@ export default function FireRiskPage() {
                   biết khi nào cần config GCS/GeoServer để chuyển sang persistent. */}
               {snapshot.geoserverLayer ? (
                 <span className="text-emerald-600">GeoServer ✓ (persistent)</span>
-              ) : snapshot.geeTileUrl || snapshot.gee_tile_url ? (
+              ) : snapshot.geeTileUrl || (snapshot as any).gee_tile_url ? (
                 <span className="text-amber-600">GEE tile (fallback, TTL ~24h)</span>
               ) : (
                 <span className="text-slate-500">Chưa có raster</span>

@@ -190,7 +190,7 @@ function ZonesSection() {
 
     bulkM.mutate(parsed, {
       onSuccess: (res: any) => {
-        toast.success(`Đã thêm ${res?.data?.data?.inserted ?? '?'} vùng.`)
+        toast.success(`Đã thêm ${res?.data?.inserted ?? '?'} vùng.`)
         setGeojsonText('')
         listQ.refetch()
       },

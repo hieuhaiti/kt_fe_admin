@@ -52,7 +52,7 @@ export default {
 
   // ── Ground truth: zones ─────────────────────────────────────────────────
   listGtZones: (params?: { page?: number; limit?: number; from?: string; to?: string; classId?: number }) =>
-    apiClient.get<ApiResponse<any[]>>(
+    apiClient.get<{ items: any[] }>(
       `${serviceForestClassificationPath}/ground-truth/zones`, { params }),
 
   createGtZone: (body: {
@@ -63,16 +63,16 @@ export default {
       `${serviceForestClassificationPath}/ground-truth/zones`, body),
 
   bulkGtZone: (featureCollection: any) =>
-    apiClient.post<ApiResponse<{ inserted: number; ids: number[] }>>(
+    apiClient.post<{ inserted: number; ids: number[] }>(
       `${serviceForestClassificationPath}/ground-truth/zones/bulk`, featureCollection),
 
   deleteGtZone: (id: number | string) =>
-    apiClient.delete<ApiResponse<any>>(
+    apiClient.del<any>(
       `${serviceForestClassificationPath}/ground-truth/zones/${id}`),
 
   // ── Ground truth: points ────────────────────────────────────────────────
   listGtPoints: (params?: { page?: number; limit?: number; from?: string; to?: string; classId?: number }) =>
-    apiClient.get<ApiResponse<any[]>>(
+    apiClient.get<{ items: any[] }>(
       `${serviceForestClassificationPath}/ground-truth/points`, { params }),
 
   createGtPoint: (body: {
@@ -83,10 +83,10 @@ export default {
       `${serviceForestClassificationPath}/ground-truth/points`, body),
 
   bulkGtPoint: (points: any[]) =>
-    apiClient.post<ApiResponse<{ inserted: number; ids: number[] }>>(
+    apiClient.post<{ inserted: number; ids: number[] }>(
       `${serviceForestClassificationPath}/ground-truth/points/bulk`, { points }),
 
   deleteGtPoint: (id: number | string) =>
-    apiClient.delete<ApiResponse<any>>(
+    apiClient.del<any>(
       `${serviceForestClassificationPath}/ground-truth/points/${id}`),
 }
