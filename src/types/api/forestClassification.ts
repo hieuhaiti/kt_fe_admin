@@ -37,12 +37,19 @@ export interface ForestClassSnapshot {
   [key: string]: any
 }
 
+// Server trả nested structure trong /latest response — mỗi huyện là 1 object
+// với `classes[]` con, đã group sẵn (không phải flat rows). Client render trực
+// tiếp không cần regroup.
+export interface ForestClassDistrictClassArea {
+  classId: number
+  className?: string | null
+  areaHa: number
+}
+
 export interface ForestClassDistrictArea {
-  district_code?: string | null
-  district_name?: string | null
-  class_id: number
-  class_name?: string | null
-  area_ha: number
+  districtCode?: string | null
+  districtName?: string | null
+  classes: ForestClassDistrictClassArea[]
   [key: string]: any
 }
 

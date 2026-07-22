@@ -6,6 +6,8 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  Eye,
+  EyeOff,
   FileJson,
   Image as ImageIcon,
   Layers,
@@ -37,6 +39,7 @@ import { formatDateTime } from '@/lib/date'
 import type {
   ForestClassSnapshot,
   ForestClassDistrictArea,
+  ForestClassDistrictClassArea,
   ForestClassHistoryItem,
 } from '@/types/api'
 import ForestMap from '@/components/features/ForestMap'
@@ -234,7 +237,10 @@ export default function ForestClassificationPage() {
   }
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
+    // Layout admin (`mainLayout.tsx`) là `h-screen overflow-hidden` — mỗi
+    // page tự tạo scroll container. `flex-1 overflow-y-auto` expand full
+    // height của <main> + cho phép cuộn nội dung. Mirror pattern fire-risk.
+    <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:space-y-6 sm:p-6">
       {/* ── Header ───────────────────────────────────── */}
       <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
@@ -334,36 +340,61 @@ export default function ForestClassificationPage() {
             </p>
           ) : (
             <>
-              {/* KPI — 4 thẻ */}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Stat
-                  label="Tổng diện tích"
-                  hint="Σ theo tất cả 11 lớp"
-                  value={formatHa(totalHa)}
-                />
-                <Stat
-                  label="Diện tích rừng"
-                  hint="Σ class 1, 3-8 (rừng thực + trồng)"
-                  value={formatHa(forestHa)}
-                  sub={`${formatPct(forestPct)} tổng`}
-                  tone="success"
-                />
-                <Stat
-                  label="OOB accuracy"
-                  hint="Out-of-bag accuracy của Random Forest"
-                  value={snapshot.oobAccuracy != null ? formatPct(snapshot.oobAccuracy) : '—'}
-                />
-                <Stat
-                  label="Kappa"
-                  hint="Test set κ (0-1); >0.6 là tốt cho 11 class"
-                  value={snapshot.testKappa != null ? snapshot.testKappa.toFixed(3) : '—'}
-                />
-              </div>
+              {/* KPI — 2 thẻ diện tích + 2 thẻ accuracy (chỉ render khi có
+                  giá trị). Với `skipStats: true` ở pipeline mới, OOB/Kappa
+                  luôn null → 2 thẻ đó tự động ẩn, grid rút xuống 2 cột. */}
+              {(() => {
+                const hasOob   = snapshot.oobAccuracy != null
+                const hasKappa = snapshot.testKappa != null
+                const nCards   = 2 + (hasOob ? 1 : 0) + (hasKappa ? 1 : 0)
+                const grid = nCards >= 4
+                  ? 'sm:grid-cols-2 lg:grid-cols-4'
+                  : nCards === 3
+                    ? 'sm:grid-cols-3'
+                    : 'sm:grid-cols-2'
+                return (
+                  <div className={`grid gap-4 ${grid}`}>
+                    <Stat
+                      label="Tổng diện tích"
+                      hint="Σ theo tất cả 11 lớp"
+                      value={formatHa(totalHa)}
+                    />
+                    <Stat
+                      label="Diện tích rừng"
+                      hint="Σ class 1, 3-8 (rừng thực + trồng)"
+                      value={formatHa(forestHa)}
+                      sub={`${formatPct(forestPct)} tổng`}
+                      tone="success"
+                    />
+                    {hasOob && (
+                      <Stat
+                        label="OOB accuracy"
+                        hint="Out-of-bag accuracy của Random Forest"
+                        value={formatPct(snapshot.oobAccuracy)}
+                      />
+                    )}
+                    {hasKappa && (
+                      <Stat
+                        label="Kappa"
+                        hint="Test set κ (0-1); >0.6 là tốt cho 11 class"
+                        value={snapshot.testKappa!.toFixed(3)}
+                      />
+                    )}
+                  </div>
+                )
+              })()}
 
-              {/* Class distribution bar */}
-              <ClassDistributionBar byClass={byClass} totalHa={totalHa} />
+              {/* Class distribution bar — collapsible, mở mặc định vì đây là
+                  chỉ số quan trọng nhất (breakdown 11 lớp toàn tỉnh). */}
+              <CollapsibleSection
+                title="Phân bố diện tích 11 lớp"
+                hint={`Tổng ${formatHa(totalHa)} · Rừng ${formatHa(forestHa)} (${formatPct(forestPct)})`}
+                defaultOpen
+              >
+                <ClassDistributionBar byClass={byClass} totalHa={totalHa} />
+              </CollapsibleSection>
 
-              {/* Map + class table */}
+              {/* Map + layer control */}
               <div className="grid gap-4 lg:grid-cols-3">
                 <div className="lg:col-span-2">
                   <ForestMap
@@ -394,12 +425,24 @@ export default function ForestClassificationPage() {
                 </div>
               </div>
 
-              {/* Class-level table */}
-              <ClassAreaTable byClass={byClass} />
+              {/* Bảng chi tiết 11 lớp — collapsible, mặc định đóng vì đã có
+                  ClassDistributionBar summary ở trên. User mở khi cần số cụ thể. */}
+              <CollapsibleSection
+                title="Bảng chi tiết 11 lớp phủ"
+                hint="Diện tích (ha) + % tổng cho từng lớp"
+              >
+                <ClassAreaTable byClass={byClass} />
+              </CollapsibleSection>
 
-              {/* District table nếu có */}
+              {/* Phân bố theo huyện — collapsible, mặc định đóng vì bảng dài
+                  (9 huyện Kon Tum × class columns) và không phải use case chính. */}
               {districtAreas.length > 0 && (
-                <DistrictAreaTable rows={districtAreas} />
+                <CollapsibleSection
+                  title="Phân bố theo huyện"
+                  hint={`${districtAreas.length} huyện · dominant class + forest %`}
+                >
+                  <DistrictAreaTable rows={districtAreas} />
+                </CollapsibleSection>
               )}
             </>
           )}
@@ -417,7 +460,9 @@ export default function ForestClassificationPage() {
               </p>
             </div>
           </div>
-          <div className="overflow-x-auto">
+          {/* History table — max-h giới hạn để không đẩy pagination xa khỏi
+              tầm nhìn khi expand nhiều row detail. Scroll cả 2 chiều. */}
+          <div className="max-h-[70vh] overflow-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -550,6 +595,54 @@ function Stat({
 }
 
 /**
+ * Section header với collapse toggle — dùng cho các bảng dài (11-class, huyện)
+ * để card không phình khi user chưa quan tâm. Icon chevron ở phải, tương phản
+ * subtle bg khi expanded để phân biệt với nội dung khác.
+ *
+ * `hint` (optional): line ngắn dưới title giải thích section (VD "9 huyện").
+ * `defaultOpen`: điều khiển state ban đầu; VD ClassDist thường luôn mở.
+ */
+function CollapsibleSection({
+  title,
+  hint,
+  defaultOpen = false,
+  children,
+}: {
+  title: React.ReactNode
+  hint?: React.ReactNode
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="bg-card overflow-hidden rounded-md border">
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className={`flex h-auto w-full items-center justify-between rounded-none px-3 py-2 text-left font-normal transition-colors ${
+          open ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-muted/50'
+        }`}
+      >
+        <div className="flex min-w-0 flex-col">
+          <span className="text-sm font-semibold">{title}</span>
+          {hint && (
+            <span className="text-muted-foreground text-[11px] font-normal">{hint}</span>
+          )}
+        </div>
+        {open ? (
+          <ChevronUp size={16} className="text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronDown size={16} className="text-muted-foreground shrink-0" />
+        )}
+      </Button>
+      {open && <div className="border-t p-3">{children}</div>}
+    </div>
+  )
+}
+
+/**
  * Banner giải thích snapshot đang dùng nguồn raster nào.
  */
 function ConfigStatusBanner({ snapshot }: { snapshot: ForestClassSnapshot }) {
@@ -662,7 +755,7 @@ function ClassAreaTable({ byClass }: { byClass: Record<string, number> }) {
   })
 
   return (
-    <div className="overflow-x-auto">
+    <div className="max-h-96 overflow-auto rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -706,78 +799,75 @@ function ClassAreaTable({ byClass }: { byClass: Record<string, number> }) {
 }
 
 /**
- * District table — group by district_code, list per-class area.
- * Adapted from fire-risk district stats pattern (row-per-district).
+ * District table — mỗi row là 1 huyện. Server đã group sẵn: mỗi item có
+ * `districtCode`, `districtName`, `classes[]` (per-class areas). Client
+ * chỉ cần iterate + tính totalHa, forestHa, dominant class.
+ *
+ * (Trước đây group by district_code + flat rows — sai vì API nested sẵn.)
  */
 function DistrictAreaTable({ rows }: { rows: ForestClassDistrictArea[] }) {
-  // Group by district_code.
-  const groups: Record<string, {
-    code: string; name: string; classes: Record<number, number>; totalHa: number
-  }> = {}
-  for (const r of rows) {
-    const code = r.district_code || '(unknown)'
-    if (!groups[code]) {
-      groups[code] = { code, name: r.district_name || code, classes: {}, totalHa: 0 }
+  // Compute derived stats per row + sort desc theo totalHa.
+  const list = rows.map((r) => {
+    const classes = Array.isArray(r.classes) ? r.classes : []
+    let totalHa = 0
+    let forestHa = 0
+    let dominant: ForestClassDistrictClassArea | null = null
+    for (const c of classes) {
+      const ha = Number(c.areaHa) || 0
+      totalHa += ha
+      if (FOREST_CLASS_IDS.includes(c.classId)) forestHa += ha
+      if (!dominant || ha > (Number(dominant.areaHa) || 0)) dominant = c
     }
-    groups[code].classes[r.class_id] = r.area_ha
-    groups[code].totalHa += r.area_ha
-  }
-  const list = Object.values(groups).sort((a, b) => b.totalHa - a.totalHa)
+    const forestPct = totalHa > 0 ? (forestHa / totalHa) * 100 : 0
+    return {
+      code: r.districtCode || '(unknown)',
+      name: r.districtName || r.districtCode || '(unknown)',
+      totalHa, forestHa, forestPct,
+      dominant,
+    }
+  }).sort((a, b) => b.totalHa - a.totalHa)
+
   if (!list.length) return null
 
   return (
-    <div className="space-y-2">
-      <p className="text-muted-foreground text-xs font-semibold">
-        Diện tích lớp phủ theo huyện ({list.length})
-      </p>
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Huyện</TableHead>
-              <TableHead className="text-right">Tổng ha</TableHead>
-              <TableHead className="text-right">Rừng ha</TableHead>
-              <TableHead className="text-right">Rừng %</TableHead>
-              <TableHead>Class dominant</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {list.map((g) => {
-              const forestHa = FOREST_CLASS_IDS.reduce(
-                (sum, id) => sum + (Number(g.classes[id]) || 0), 0,
-              )
-              const forestPct = g.totalHa > 0 ? (forestHa / g.totalHa) * 100 : 0
-              // Dominant class = class có ha lớn nhất.
-              const domEntry = Object.entries(g.classes).sort(
-                (a, b) => Number(b[1]) - Number(a[1]),
-              )[0]
-              const domId = domEntry ? Number(domEntry[0]) : null
-              const dom = domId != null ? CLASS_META[domId] : null
-              return (
-                <TableRow key={g.code}>
-                  <TableCell className="font-medium">{g.name}</TableCell>
-                  <TableCell className="text-right tabular-nums">{formatHa(g.totalHa)}</TableCell>
-                  <TableCell className="text-right tabular-nums text-emerald-700">
-                    {formatHa(forestHa)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{formatPct(forestPct)}</TableCell>
-                  <TableCell>
-                    {dom ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs">
-                        <span
-                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm border"
-                          style={{ backgroundColor: dom.color }}
-                        />
-                        {dom.name}
-                      </span>
-                    ) : '—'}
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-      </div>
+    <div className="max-h-96 overflow-auto rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Huyện</TableHead>
+            <TableHead className="text-right">Tổng ha</TableHead>
+            <TableHead className="text-right">Rừng ha</TableHead>
+            <TableHead className="text-right">Rừng %</TableHead>
+            <TableHead>Class dominant</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {list.map((g) => {
+            const dom = g.dominant != null ? CLASS_META[g.dominant.classId] : null
+            return (
+              <TableRow key={g.code}>
+                <TableCell className="font-medium">{g.name}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatHa(g.totalHa)}</TableCell>
+                <TableCell className="text-right tabular-nums text-emerald-700">
+                  {formatHa(g.forestHa)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{formatPct(g.forestPct)}</TableCell>
+                <TableCell>
+                  {dom ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs">
+                      <span
+                        className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm border"
+                        style={{ backgroundColor: dom.color }}
+                      />
+                      {dom.name}
+                    </span>
+                  ) : '—'}
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
     </div>
   )
 }
@@ -838,30 +928,38 @@ function LayerManager({
       </Button>
       {open && (
         <div className="space-y-3 border-t p-3">
-          <div className={`rounded-md border p-2 ${heatVisible ? '' : 'opacity-60'}`}>
+          <div className={`rounded-md border p-2 transition-opacity ${heatVisible ? '' : 'opacity-60'}`}>
             <div className="flex items-center gap-1.5">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-orange-500" />
               <span className="min-w-0 flex-1 truncate text-xs font-medium">
                 Bản đồ phân loại 11 lớp
               </span>
+              {/* Eye toggle — dùng Lucide Eye/EyeOff icon (không phải emoji).
+                  variant=ghost khi hidden để user thấy nút disabled state. */}
               <Button
                 type="button"
-                variant={heatVisible ? 'default' : 'outline'}
+                variant="ghost"
                 size="icon-xs"
                 onClick={() => onHeatVisibleChange(!heatVisible)}
                 aria-label={heatVisible ? 'Ẩn lớp' : 'Hiển thị lớp'}
+                title={heatVisible ? 'Ẩn lớp' : 'Hiển thị lớp'}
               >
-                {heatVisible ? '👁' : '⊘'}
+                {heatVisible ? (
+                  <Eye className="h-3.5 w-3.5 text-primary" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
               </Button>
               {downloadUrl && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="icon-xs"
                   onClick={downloadRaster}
                   title={`Tải GeoTIFF (${downloadFilename})`}
+                  aria-label="Tải GeoTIFF"
                 >
-                  <ImageIcon size={12} />
+                  <ImageIcon className="h-3.5 w-3.5 text-primary" />
                 </Button>
               )}
             </div>
