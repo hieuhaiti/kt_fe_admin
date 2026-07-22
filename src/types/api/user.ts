@@ -66,6 +66,7 @@ export interface UserListParams {
   limit?: number
   roleCode?: UserRoleCode | string
   isActive?: boolean
+  q?: string
   email?: string
   sortBy?: string
   sortOrder?: 'ASC' | 'DESC'
@@ -73,7 +74,6 @@ export interface UserListParams {
   // legacy
   is_active?: boolean
   role_id?: number
-  search?: string
 }
 
 export interface CreateUserBody {

@@ -59,7 +59,7 @@ export interface MapLayerListParams {
 
   page?: number
   limit?: number
-  search?: string
+  q?: string
   sortBy?: string
   sortOrder?: 'ASC' | 'DESC'
   geometry_type?: string

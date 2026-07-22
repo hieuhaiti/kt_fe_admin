@@ -43,11 +43,11 @@ export interface CreateApiKeyBody {
 export interface ApiKeyListParams {
   page?: number
   limit?: number
+  q?: string
   is_active?: boolean
   layer_id?: number
 
   // legacy
-  search?: string
   status?: ApiKeyStatus
 }
 

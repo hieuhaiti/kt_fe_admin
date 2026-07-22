@@ -17,11 +17,6 @@ export interface SatelliteHeatMapBody {
 
 export interface SatelliteClassifiedBody extends SatelliteBaseBody {}
 
-export interface SatelliteCompareBody extends SatelliteBaseBody {
-  startDate2: string
-  endDate2: string
-}
-
 export interface SatelliteAreaStats {
   className?: string
   areaHa: number

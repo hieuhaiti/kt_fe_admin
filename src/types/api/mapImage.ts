@@ -66,7 +66,6 @@ export interface PdfMapListParams {
 
   // legacy
   is_active?: boolean
-  search?: string
 }
 
 export type MapImageListParams = PdfMapListParams

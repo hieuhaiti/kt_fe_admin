@@ -76,7 +76,7 @@ export default function User(): JSX.Element {
     limit,
     sortBy: 'id',
     sortOrder: 'ASC' as const,
-    ...(searchValue && { email: searchValue }),
+    ...(searchValue && { q: searchValue }),
     ...(roleFilter !== 'all' && { roleCode: roleFilter }),
     ...(activeFilter !== 'all' && { isActive: activeFilter === 'active' }),
   }

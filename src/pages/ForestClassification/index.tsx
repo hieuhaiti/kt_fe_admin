@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatDateTime } from '@/lib/date'
+import ForestGroundTruthCard from './ForestGroundTruthCard'
 
 export default function ForestClassificationPage() {
   const now = new Date()
@@ -41,6 +42,9 @@ export default function ForestClassificationPage() {
           Random Forest 11 lớp — chạy hàng tháng. Có thể chạy thủ công cho tháng bất kì.
         </p>
       </div>
+
+      {/* Ground truth intake — collapsible */}
+      <ForestGroundTruthCard />
 
       <Card>
         <CardContent className="space-y-3 p-6">

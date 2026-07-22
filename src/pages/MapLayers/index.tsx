@@ -76,7 +76,7 @@ export default function MapLayerPage(): JSX.Element {
     limit,
     sortBy: 'created_at',
     sortOrder: 'DESC' as const,
-    ...(searchValue && { search: searchValue }),
+    ...(searchValue && { q: searchValue }),
     ...(statusFilter !== 'all' && { is_active: statusFilter === 'true' }),
     ...(geometryFilter !== 'all' && { geometry_type: geometryFilter }),
   }

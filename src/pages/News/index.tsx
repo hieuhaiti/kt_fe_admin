@@ -61,7 +61,7 @@ export default function News(): JSX.Element {
     limit,
     sortBy: 'created_at' as const,
     sortOrder: 'DESC' as const,
-    ...(searchValue && { search: searchValue }),
+    ...(searchValue && { q: searchValue }),
     ...(statusFilter !== 'all' && { status: statusFilter }),
   }
 

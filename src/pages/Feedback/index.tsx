@@ -6,9 +6,7 @@ import type {
   CitizenFeedback,
   FeedbackStatus,
   FeedbackPriority,
-  ModerationStatus,
   UpdateFeedbackStatusBody,
-  UpdateModerationBody,
   Pagination,
 } from '@/types/api'
 import { UserCell } from '@/components/common/UserCell'
@@ -19,9 +17,6 @@ import {
   STATUS_LABEL,
   STATUS_CLASS,
   STATUS_DOT,
-  MOD_LABEL,
-  MOD_CLASS,
-  MOD_DOT,
 } from '@/constant/feedbackConstant'
 import {
   Select,
@@ -40,17 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { ClipboardEdit, Trash2, MapPin } from 'lucide-react'
+import { ClipboardEdit, MapPin } from 'lucide-react'
 import PageLayout from '@/layout/pageLayout'
 import FeedbackDetailDialog from './FeedbackDetailDialog'
 import FeedbackUpdateDialog from './FeedbackUpdateDialog'
@@ -76,24 +61,19 @@ function userNameOf(item: CitizenFeedback) {
 export default function FeedbackPage(): JSX.Element {
   const user = useAuthStore((s) => s.user)
   const canHandle = can(user, 'feedback:handle')
-  const canDelete = can(user, 'feedback:delete')
-  const showActions = canHandle || canDelete
+  const showActions = canHandle
   const [currentPage, setCurrentPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [searchValue, setSearchValue] = useState('')
   const [filterStatus, setFilterStatus] = useState<FeedbackStatus | 'all'>('all')
   const [filterPriority, setFilterPriority] = useState<FeedbackPriority | 'all'>('all')
-  const [filterModeration, setFilterModeration] = useState<ModerationStatus | 'all'>('all')
 
   const queryParams = {
     page: currentPage,
     limit,
-    sortBy: 'created_at',
-    sortOrder: 'DESC' as const,
-    ...(searchValue && { search: searchValue }),
+    ...(searchValue && { q: searchValue }),
     ...(filterStatus !== 'all' && { status: filterStatus }),
     ...(filterPriority !== 'all' && { priority: filterPriority }),
-    ...(filterModeration !== 'all' && { moderation_status: filterModeration }),
   }
 
   const dbQuery = useApiQuery(
@@ -122,8 +102,6 @@ export default function FeedbackPage(): JSX.Element {
   const [selectedFeedback, setSelectedFeedback] = useState<CitizenFeedback | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<CitizenFeedback | null>(null)
 
   const statusMutation = useApiMutation(
     (args: { id: number | string; data: UpdateFeedbackStatusBody }) =>
@@ -138,31 +116,6 @@ export default function FeedbackPage(): JSX.Element {
     true
   )
 
-  const moderationMutation = useApiMutation(
-    (args: { id: number | string; data: UpdateModerationBody }) =>
-      citizenFeedbackService.updateModeration(args.id, args.data),
-    {
-      onSuccess: () => {
-        dbQuery.refetch()
-        setUpdateDialogOpen(false)
-        setSelectedFeedback(null)
-      },
-    },
-    true
-  )
-
-  const deleteMutation = useApiMutation(
-    (id: number | string) => citizenFeedbackService.delete(id),
-    {
-      onSuccess: () => {
-        dbQuery.refetch()
-        setDeleteDialogOpen(false)
-        setItemToDelete(null)
-      },
-    },
-    true
-  )
-
   function openDetails(item: CitizenFeedback) {
     setSelectedFeedback(item)
     setDetailDialogOpen(true)
@@ -171,11 +124,6 @@ export default function FeedbackPage(): JSX.Element {
   function openUpdateDialog(item: CitizenFeedback) {
     setSelectedFeedback(item)
     setUpdateDialogOpen(true)
-  }
-
-  function openDeleteDialog(item: CitizenFeedback) {
-    setItemToDelete(item)
-    setDeleteDialogOpen(true)
   }
 
   return (
@@ -198,11 +146,10 @@ export default function FeedbackPage(): JSX.Element {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tất cả TT</SelectItem>
-                <SelectItem value="pending">Chờ xử lý</SelectItem>
+                <SelectItem value="new">Mới tiếp nhận</SelectItem>
                 <SelectItem value="in_progress">Đang xử lý</SelectItem>
                 <SelectItem value="resolved">Đã xử lý</SelectItem>
                 <SelectItem value="rejected">Từ chối</SelectItem>
-                <SelectItem value="closed">Đóng</SelectItem>
               </SelectContent>
             </Select>
 
@@ -223,25 +170,6 @@ export default function FeedbackPage(): JSX.Element {
                 <SelectItem value="normal">Bình thường</SelectItem>
                 <SelectItem value="high">Cao</SelectItem>
                 <SelectItem value="urgent">Khẩn cấp</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Filter moderation */}
-            <Select
-              value={filterModeration}
-              onValueChange={(v) => {
-                setFilterModeration(v as ModerationStatus | 'all')
-                setCurrentPage(1)
-              }}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Kiểm duyệt" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả KD</SelectItem>
-                <SelectItem value="pending">Chờ duyệt</SelectItem>
-                <SelectItem value="approved">Đã duyệt</SelectItem>
-                <SelectItem value="rejected">Từ chối</SelectItem>
               </SelectContent>
             </Select>
 
@@ -278,7 +206,6 @@ export default function FeedbackPage(): JSX.Element {
               <TableHead>Tiêu đề</TableHead>
               <TableHead className="w-24">Ưu tiên</TableHead>
               <TableHead className="w-28">Trạng thái</TableHead>
-              <TableHead className="w-24">Kiểm duyệt</TableHead>
               <TableHead className="w-36">Người gửi</TableHead>
               <TableHead className="w-32">Ngày tạo</TableHead>
               {showActions && <TableHead className="w-24 text-right">Hành động</TableHead>}
@@ -287,14 +214,13 @@ export default function FeedbackPage(): JSX.Element {
           <TableBody>
             {feedbacks.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 8 : 7} className="text-center">
+                <TableCell colSpan={showActions ? 7 : 6} className="text-center">
                   Không có dữ liệu
                 </TableCell>
               </TableRow>
             ) : (
               feedbacks.map((item: CitizenFeedback) => {
                 const locationText = locationTextOf(item)
-                const moderationStatus = item.moderation_status
                 return (
                   <TableRow
                     key={item.id}
@@ -333,24 +259,6 @@ export default function FeedbackPage(): JSX.Element {
                       />
                     </TableCell>
                     <TableCell>
-                      <StatusDotBadge
-                        label={
-                          moderationStatus ? (MOD_LABEL[moderationStatus] ?? moderationStatus) : '-'
-                        }
-                        badgeClass={
-                          moderationStatus
-                            ? (MOD_CLASS[moderationStatus] ??
-                              'bg-gray-100 text-gray-600 border-gray-200')
-                            : 'bg-slate-100 text-slate-500 border-slate-200'
-                        }
-                        dotClass={
-                          moderationStatus
-                            ? (MOD_DOT[moderationStatus] ?? 'bg-gray-400')
-                            : 'bg-slate-400'
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
                       <UserCell
                         userId={item.userId ?? item.user_id}
                         inlineUser={item.user ?? userNameOf(item)}
@@ -362,32 +270,17 @@ export default function FeedbackPage(): JSX.Element {
                     {showActions && (
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {canHandle && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                openUpdateDialog(item)
-                              }}
-                              title="Cập nhật xử lý"
-                            >
-                              <ClipboardEdit className="size-4" />
-                            </Button>
-                          )}
-                          {canDelete && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                openDeleteDialog(item)
-                              }}
-                              title="Xóa"
-                            >
-                              <Trash2 className="text-destructive size-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openUpdateDialog(item)
+                            }}
+                            title="Cập nhật xử lý"
+                          >
+                            <ClipboardEdit className="size-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     )}
@@ -411,52 +304,18 @@ export default function FeedbackPage(): JSX.Element {
         feedback={selectedFeedback}
         onUpdateStatus={(data) => {
           if (selectedFeedback) {
-            const { moderation_status, ...statusData } = data
             statusMutation.mutate({
               id: selectedFeedback.id,
               data: {
-                ...statusData,
-                toStatus: (statusData.status ?? 'in_progress') as any,
-                note: statusData.admin_response,
+                toStatus: data.status,
+                note: data.note,
               },
             })
-            if (selectedFeedback.moderation_status === 'pending') {
-              moderationMutation.mutate({
-                id: selectedFeedback.id,
-                data: { moderation_status, admin_response: data.admin_response },
-              })
-            }
           }
         }}
-        onUpdateModeration={(data) => {
-          if (selectedFeedback?.moderation_status === 'pending') {
-            moderationMutation.mutate({ id: selectedFeedback.id, data })
-          }
-        }}
-        isLoading={statusMutation.isPending || moderationMutation.isPending}
+        isLoading={statusMutation.isPending}
       />
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa phản ánh &quot;{itemToDelete?.title}&quot;? Hành động này
-              không thể hoàn tác.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => itemToDelete && deleteMutation.mutate(itemToDelete.id)}
-              disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </PageLayout>
   )
 }

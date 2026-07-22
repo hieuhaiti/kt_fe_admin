@@ -10,8 +10,6 @@ import { formatDateTime } from '@/lib/date'
 import {
   CATEGORY_CLASS,
   CATEGORY_LABEL,
-  MOD_CLASS,
-  MOD_LABEL,
   PRIORITY_CLASS,
   PRIORITY_LABEL,
   STATUS_CLASS,
@@ -78,7 +76,6 @@ export default function FeedbackDetailDialog({
   const createdAt = feedback?.createdAt ?? feedback?.created_at
   const updatedAt = feedback?.updatedAt ?? feedback?.updated_at
   const resolvedAt = feedback?.resolvedAt ?? feedback?.resolved_at
-  const moderationStatus = feedback?.moderation_status
   const locationCoordinates =
     feedback?.lng != null && feedback?.lat != null
       ? `${feedback.lat}, ${feedback.lng}`
@@ -131,13 +128,6 @@ export default function FeedbackDetailDialog({
                 {STATUS_LABEL[feedback.status] ?? feedback.status}
               </Badge>
             </Row>
-            {moderationStatus && (
-              <Row label="Kiểm duyệt">
-                <Badge variant="outline" className={MOD_CLASS[moderationStatus] ?? ''}>
-                  {MOD_LABEL[moderationStatus] ?? moderationStatus}
-                </Badge>
-              </Row>
-            )}
             {feedback.is_location_verified !== undefined && (
               <Row label="Xác minh vị trí">
                 <Badge

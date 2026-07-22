@@ -47,11 +47,11 @@ export type MapLayerApiListData = MapApiListData
 export interface MapApiListParams {
   page?: number
   limit?: number
+  q?: string
   is_active?: boolean
   layer_id?: number
 
   status?: string
-  search?: string
   sortBy?: string
   sortOrder?: 'ASC' | 'DESC'
 }

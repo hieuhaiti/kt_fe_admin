@@ -65,13 +65,6 @@ export default {
   getStatistics: (_params?: { start_date?: string; end_date?: string }) =>
     apiClient.get<any>(serviceAdminFeedbackPath, { params: { page: 1, limit: 1 } }),
 
-  /** Legacy — moderation flow removed */
-  updateModeration: (feedbackId: number | string, data: any) =>
-    apiClient.patch<CitizenFeedback>(`${serviceAdminFeedbackPath}/${feedbackId}/status`, {
-      toStatus: data?.moderation_status === 'approved' ? 'in_progress' : 'rejected',
-      note: data?.admin_response,
-    }),
-
   /** Legacy update — server no longer supports full update, only status */
   update: (feedbackId: number | string, _data: any) =>
     apiClient.get<CitizenFeedback>(`${serviceFeedbackPath}/${feedbackId}`),

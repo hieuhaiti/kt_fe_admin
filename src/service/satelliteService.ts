@@ -4,7 +4,6 @@ import type {
   SatelliteNdviBody,
   SatelliteHeatMapBody,
   SatelliteClassifiedBody,
-  SatelliteCompareBody,
   SatelliteResponse,
 } from '@/types/api'
 import { serviceSatellitePath } from '@/constant/serviceConstant'
@@ -26,11 +25,7 @@ export default {
   heatMap: (data: SatelliteHeatMapBody) =>
     apiClient.post<SatelliteResponse>(`${serviceSatellitePath}/heat-map`, data),
 
-  /** POST /satellite/classified (7-class quick classification) */
+  /** POST /satellite/classified (11-class RF, lopPhuRungFinal v3) */
   classified: (data: SatelliteClassifiedBody) =>
     apiClient.post<SatelliteResponse>(`${serviceSatellitePath}/classified`, data),
-
-  /** POST /satellite/compare */
-  compare: (data: SatelliteCompareBody) =>
-    apiClient.post<SatelliteResponse>(`${serviceSatellitePath}/compare`, data),
 }

@@ -109,6 +109,7 @@ export default function MapLayerApiListPage(): JSX.Element {
   const queryParams = {
     page: currentPage,
     limit,
+    ...(searchValue.trim() && { q: searchValue.trim() }),
     ...(activeFilter !== 'all' && { is_active: activeFilter === 'true' }),
     ...(layerFilter !== 'all' && { layer_id: Number(layerFilter) }),
   }

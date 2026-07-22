@@ -1,7 +1,6 @@
 export type FeedbackCategory = 'chay_rung' | 'vi_pham' | 'hien_trang' | string
 export type FeedbackStatus = 'new' | 'in_progress' | 'resolved' | 'rejected' | string
 export type FeedbackPriority = 'low' | 'normal' | 'high' | 'urgent'
-export type ModerationStatus = 'pending' | 'approved' | 'rejected'
 
 export interface FeedbackAttachment {
   id: number | string
@@ -61,7 +60,6 @@ export interface CitizenFeedback {
   user_id?: number
   location_coordinates?: string | null
   location_text?: string | null
-  moderation_status?: ModerationStatus
   is_location_verified?: boolean
   location_verified_at?: string | null
   location_verified_by?: number | null
@@ -105,7 +103,6 @@ export interface FeedbackStatistics {
   // legacy
   by_status?: Record<FeedbackStatus, number>
   by_priority?: Record<FeedbackPriority, number>
-  by_moderation?: Record<ModerationStatus, number>
   resolved_avg_hours?: number
 }
 
@@ -118,12 +115,6 @@ export interface UpdateFeedbackStatusBody {
   admin_response?: string
   resolution_note?: string
   is_location_verified?: boolean
-  moderation_status?: ModerationStatus
-}
-
-export interface UpdateModerationBody {
-  moderation_status: ModerationStatus
-  admin_response?: string
 }
 
 export interface FeedbackListParams {
@@ -138,13 +129,9 @@ export interface FeedbackListParams {
   bbox?: string
 
   // legacy
-  search?: string
-  moderation_status?: ModerationStatus
   user_id?: number
   start_date?: string
   end_date?: string
-  sortBy?: string
-  sortOrder?: 'ASC' | 'DESC'
 }
 
 export interface FeedbackFeatureCollection {

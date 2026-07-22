@@ -36,7 +36,26 @@ interface FeedbackBlock {
 interface FireAlertsBlock {
   available?: boolean
   note?: string
-  count?: number
+  snapshotId?: number | string
+  analysisDate?: string
+  avgLevel?: number | null
+  minLevel?: number | null
+  maxLevel?: number | null
+  riskLevelDist?: Record<string, number>
+  s2CoverageRatio?: number | null
+  hotspotDistrictCount?: number
+  hotspotMinLevel?: number
+  geoserverLayer?: string | null
+  geeDownloadUrl?: string | null
+  publishedAt?: string | null
+}
+
+const RISK_LEVEL_META: Record<number, { label: string; color: string }> = {
+  1: { label: 'Cấp I — Thấp', color: '#00a65a' },
+  2: { label: 'Cấp II — Trung bình', color: '#f6e84a' },
+  3: { label: 'Cấp III — Cao', color: '#f39c12' },
+  4: { label: 'Cấp IV — Nguy hiểm', color: '#e74c3c' },
+  5: { label: 'Cấp V — Cực kỳ nguy hiểm', color: '#7b241c' },
 }
 
 interface DashboardData {
@@ -160,21 +179,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="mb-3 flex items-center gap-2">
-              <Flame className="text-red-600 size-5" />
-              <h2 className="text-lg font-semibold">Cảnh báo cháy rừng</h2>
-            </div>
-            {fireAlerts?.available ? (
-              <p className="text-3xl font-bold text-red-600">{fireAlerts.count ?? 0}</p>
-            ) : (
-              <p className="text-muted-foreground text-sm">
-                {fireAlerts?.note ?? 'Module cảnh báo cháy chưa sẵn sàng.'}
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <FireRiskDashboardCard fireAlerts={fireAlerts} />
       </div>
 
       {/* Districts tables */}
@@ -197,6 +202,105 @@ export default function DashboardPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+/**
+ * Fire-risk card — hiển thị min/max/avg cấp cảnh báo + số huyện điểm nóng từ
+ * snapshot mới nhất. Nút "Xem chi tiết" điều hướng sang trang FireRisk để
+ * xem history + publish GeoServer.
+ */
+function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: FireAlertsBlock }) {
+  if (!fireAlerts?.available) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Flame className="text-red-600 size-5" />
+            <h2 className="text-lg font-semibold">Cảnh báo cháy rừng</h2>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            {fireAlerts?.note ?? 'Chưa có snapshot cảnh báo cháy.'}
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const maxLevel = fireAlerts.maxLevel ?? 0
+  const isHigh   = maxLevel >= 4
+  const maxColor = RISK_LEVEL_META[maxLevel]?.color || '#94a3b8'
+
+  return (
+    <Card className={isHigh ? 'border-red-400' : ''}>
+      <CardContent className="p-6">
+        <div className="mb-3 flex items-center gap-2">
+          <Flame className="text-red-600 size-5" />
+          <h2 className="text-lg font-semibold">Cảnh báo cháy rừng</h2>
+          {fireAlerts.geoserverLayer ? (
+            <span className="ml-auto rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+              GeoServer ✓
+            </span>
+          ) : fireAlerts.geeDownloadUrl ? (
+            <span className="ml-auto rounded bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+              GEE (chưa publish)
+            </span>
+          ) : null}
+        </div>
+
+        {/* Min · TB · Max — 3 số nổi bật */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-md border p-2">
+            <p className="text-muted-foreground text-[10px]">Min</p>
+            <p className="text-xl font-bold">C{fireAlerts.minLevel ?? '—'}</p>
+          </div>
+          <div className="rounded-md border p-2">
+            <p className="text-muted-foreground text-[10px]">Trung bình</p>
+            <p className="text-xl font-bold">
+              {fireAlerts.avgLevel != null ? fireAlerts.avgLevel.toFixed(2) : '—'}
+            </p>
+          </div>
+          <div className="rounded-md border p-2" style={{ borderColor: maxColor }}>
+            <p className="text-muted-foreground text-[10px]">Max</p>
+            <p className="text-xl font-bold" style={{ color: maxColor }}>
+              C{fireAlerts.maxLevel ?? '—'}
+            </p>
+          </div>
+        </div>
+
+        {/* Meta: ngày phân tích + hotspot */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <span className="text-muted-foreground">
+            Ngày phân tích:{' '}
+            <strong className="text-foreground">
+              {fireAlerts.analysisDate
+                ? new Date(fireAlerts.analysisDate).toLocaleDateString('vi-VN')
+                : '—'}
+            </strong>
+          </span>
+          <span className="text-muted-foreground">
+            Điểm nóng (huyện ≥ C{fireAlerts.hotspotMinLevel ?? 3}):{' '}
+            <strong className="text-red-600">
+              {fireAlerts.hotspotDistrictCount ?? 0}
+            </strong>
+          </span>
+          {fireAlerts.s2CoverageRatio != null && (
+            <span className="text-muted-foreground">
+              S2 phủ:{' '}
+              <strong className="text-foreground">
+                {(fireAlerts.s2CoverageRatio * 100).toFixed(1)}%
+              </strong>
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3">
+          <a href="/fire-risk" className="text-primary text-xs font-medium hover:underline">
+            Xem chi tiết & Publish GeoServer →
+          </a>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

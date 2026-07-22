@@ -84,7 +84,6 @@ export interface DocumentListParams {
   status?: DocumentStatus
   document_type?: DocumentType
   is_public?: boolean
-  search?: string
 }
 
 /** Kept for legacy dialog code */

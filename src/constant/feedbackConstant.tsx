@@ -54,20 +54,3 @@ export const CATEGORY_DOT: Record<string, string> = {
   vi_pham: 'bg-orange-500',
   hien_trang: 'bg-blue-500',
 }
-
-// ── Moderation status (legacy — kept for compat) ─────────────────
-export const MOD_LABEL: Record<string, string> = {
-  pending: 'Chờ duyệt',
-  approved: 'Đã duyệt',
-  rejected: 'Từ chối',
-}
-export const MOD_CLASS: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  approved: 'bg-green-50 text-green-700 border-green-200',
-  rejected: 'bg-red-50 text-red-700 border-red-200',
-}
-export const MOD_DOT: Record<string, string> = {
-  pending: 'bg-amber-500',
-  approved: 'bg-green-500',
-  rejected: 'bg-red-500',
-}

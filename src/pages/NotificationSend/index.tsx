@@ -100,7 +100,7 @@ export default function NotificationSendPage() {
     limit: 50,
     sortBy: 'id',
     sortOrder: 'ASC' as const,
-    ...(userSearch.trim() && { search: userSearch.trim(), email: userSearch.trim() }),
+    ...(userSearch.trim() && { q: userSearch.trim() }),
   }
 
   const usersQuery = useApiQuery(

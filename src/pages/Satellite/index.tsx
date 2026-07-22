@@ -8,24 +8,20 @@ import type {
   SatelliteNdviBody,
   SatelliteHeatMapBody,
   SatelliteClassifiedBody,
-  SatelliteCompareBody,
 } from '@/types/api'
 
-type Mode = 'rgb' | 'ndvi' | 'heat' | 'classified' | 'compare'
+type Mode = 'rgb' | 'ndvi' | 'heat' | 'classified'
 const MODES: { value: Mode; label: string; help: string }[] = [
   { value: 'rgb', label: 'RGB', help: 'Ảnh true-color Sentinel-2' },
   { value: 'ndvi', label: 'NDVI', help: 'Chỉ số thực vật' },
   { value: 'heat', label: 'Nhiệt độ bề mặt', help: 'MODIS LST' },
-  { value: 'classified', label: 'Phân loại 7 lớp', help: 'Random Forest quick' },
-  { value: 'compare', label: 'So sánh 2 giai đoạn', help: 'Delta NDVI' },
+  { value: 'classified', label: 'Phân loại 11 lớp', help: 'Random Forest v3 (Kon Tum)' },
 ]
 
 export default function SatellitePage() {
   const [mode, setMode] = useState<Mode>('rgb')
   const [start, setStart] = useState('2026-06-01')
   const [end, setEnd] = useState('2026-06-30')
-  const [start2, setStart2] = useState('2026-05-01')
-  const [end2, setEnd2] = useState('2026-05-31')
   const [cloud, setCloud] = useState('30')
   const [ndviThresh, setNdviThresh] = useState('0.4')
 
@@ -39,8 +35,6 @@ export default function SatellitePage() {
         return satelliteService.heatMap(body as SatelliteHeatMapBody) as any
       case 'classified':
         return satelliteService.classified(body as SatelliteClassifiedBody) as any
-      case 'compare':
-        return satelliteService.compare(body as SatelliteCompareBody) as any
     }
   })
 
@@ -48,10 +42,6 @@ export default function SatellitePage() {
     const base: any = { startDate: start, endDate: end, cloudCover: Number(cloud) || undefined }
     if (mode === 'ndvi') base.ndviMinThresh = Number(ndviThresh) || undefined
     if (mode === 'heat') delete base.cloudCover
-    if (mode === 'compare') {
-      base.startDate2 = start2
-      base.endDate2 = end2
-    }
     mutation.mutate(base)
   }
 
@@ -97,12 +87,6 @@ export default function SatellitePage() {
                 onChange={setNdviThresh}
                 type="number"
               />
-            )}
-            {mode === 'compare' && (
-              <>
-                <LabeledInput label="Từ ngày (2)" value={start2} onChange={setStart2} type="date" />
-                <LabeledInput label="Đến ngày (2)" value={end2} onChange={setEnd2} type="date" />
-              </>
             )}
           </div>
 

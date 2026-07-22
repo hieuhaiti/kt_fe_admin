@@ -64,13 +64,13 @@ export interface NewsListParams {
   page?: number
   limit?: number
   status?: NewsStatus
+  q?: string
   sortBy?: 'published_at' | 'created_at' | 'updated_at'
   sortOrder?: 'ASC' | 'DESC'
 
   // legacy
   is_active?: boolean
   is_featured?: boolean
-  search?: string
 }
 
 export interface CreateNewsBody {

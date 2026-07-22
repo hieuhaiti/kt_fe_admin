@@ -13,9 +13,16 @@ export interface AdministrativeUnit {
 export interface LandcoverStat {
   unitCode?: string
   unitName?: string
-  year: number
-  forestType: ForestType
-  areaHa: number
+  name?: string
+  nameEn?: string
+  year?: number
+  forestType?: ForestType
+  areaKm2?: number | null
+  population?: number | null
+  forestAreaHa?: number | null
+  areaHa?: number | null
+  coveragePct?: number | null
+  changePct?: number | null
   [key: string]: any
 }
 

@@ -65,7 +65,7 @@ export default function MapImagePage(): JSX.Element {
     limit,
     sortBy: 'id',
     sortOrder: 'DESC' as const,
-    ...(searchValue && { search: searchValue }),
+    ...(searchValue && { q: searchValue }),
     ...(themeFilter !== 'all' && { theme: themeFilter as PdfMapTheme }),
     ...(isPublicFilter !== 'all' && { isPublic: isPublicFilter === 'true' }),
     ...(yearFrom.trim() && !Number.isNaN(Number(yearFrom)) && { yearFrom: Number(yearFrom) }),
