@@ -33,6 +33,7 @@ export default {
       snapshotId: number
       jobId: number
       status: string
+      layerCode: string
       deduplicated: boolean
       alreadyPublished?: boolean
       geoserverLayer?: string

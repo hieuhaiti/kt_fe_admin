@@ -38,6 +38,7 @@ import { formatDate, formatDateTime } from '@/lib/date'
 import type { FireRiskFeature, FireRiskProvinceSummary } from '@/types/api'
 import FireRiskMap from '@/components/features/FireRiskMap'
 import LoadingInline from '@/components/common/LoadingInline'
+import { PaginationCustom } from '@/components/features/PaginationCustom'
 import GroundTruthCard from './GroundTruthCard'
 
 /**
@@ -116,6 +117,9 @@ export default function FireRiskPage() {
   const features: FireRiskFeature[] = latest?.features ?? []
   const districtStats = snapshot?.districtStats ?? []
   const history = historyQuery.data?.data?.items ?? []
+  const historyMetadata = historyQuery.data?.metadata
+  const historyTotal = Number(historyMetadata?.total) || 0
+  const historyTotalPages = Number(historyMetadata?.totalPages) || 0
 
   // API không trả sẵn maxLevel — derive từ riskLevelDist (level cao nhất có ha>0).
   const provinceMaxLevel = deriveMaxLevel(summary.riskLevelDist)
@@ -608,31 +612,18 @@ export default function FireRiskPage() {
               </TableBody>
             </Table>
           </div>
-          {/* Pagination: full-width buttons trên mobile để dễ tap. */}
-          <div className="mt-3 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
-            <span className="text-muted-foreground text-center text-xs sm:text-left">
-              Trang {page}
+          <div className="mt-3 flex flex-col items-center justify-between gap-3 sm:flex-row">
+            <span className="text-muted-foreground text-xs">
+              Tổng {historyTotal.toLocaleString('vi')} bản ghi
             </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 sm:flex-none"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Trước
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 sm:flex-none"
-                disabled={history.length < 10}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Sau
-              </Button>
-            </div>
+            <PaginationCustom
+              currentPage={page}
+              totalPages={historyTotalPages}
+              onPageChange={(nextPage) => {
+                setExpandedHistoryId(null)
+                setPage(nextPage)
+              }}
+            />
           </div>
         </CardContent>
       </Card>
