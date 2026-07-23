@@ -1,10 +1,5 @@
 ﻿import { z } from 'zod'
-import type {
-  AddPermissionBody,
-  CreateApiKeyBody,
-  CreateMapLayerApiBody,
-  UpdateMapLayerApiBody,
-} from '@/types/api'
+import type { CreateMapLayerApiBody, UpdateMapLayerApiBody } from '@/types/api'
 
 export const createMapLayerApiSchema = z.object({
   name: z.string().trim().min(3).max(150),
@@ -30,31 +25,6 @@ export const listQuerySchema = z.object({
   limit: z.number().int().min(1).max(100).default(10),
   layer_id: z.number().int().min(1).optional(),
   is_active: z.boolean().optional(),
-})
-
-export const addPermissionSchema = z.object({
-  principal_type: z.enum(['user', 'role', 'public']),
-  user_id: z.number().int().min(1).nullable().optional(),
-  role_id: z.number().int().min(1).nullable().optional(),
-  can_view: z.boolean().optional(),
-  can_edit: z.boolean().optional(),
-  can_delete: z.boolean().optional(),
-})
-
-export const createApiKeySchema = z.object({
-  name: z.string().trim().min(2).max(255),
-  expires_at: z
-    .string()
-    .datetime({ offset: true })
-    .nullable()
-    .optional(),
-  map_layer_api_ids: z.array(z.number().int().min(1)).min(1),
-})
-
-export const createShareKeySchema = createApiKeySchema
-
-export const revokeKeyParamSchema = z.object({
-  apiKeyId: z.number().int().positive(),
 })
 
 function normalizeTrimmedString(value: unknown): string {
@@ -128,18 +98,6 @@ export function validateCreatePayload(values: CreateMapLayerApiBody) {
 
 export function validateUpdatePayload(values: UpdateMapLayerApiBody) {
   return updateMapLayerApiSchema.safeParse(values)
-}
-
-export function validatePermissionPayload(values: AddPermissionBody) {
-  return addPermissionSchema.safeParse(values)
-}
-
-export function validateApiKeyPayload(values: CreateApiKeyBody) {
-  return createApiKeySchema.safeParse(values)
-}
-
-export function validateShareKeyPayload(values: CreateApiKeyBody) {
-  return validateApiKeyPayload(values)
 }
 
 export function getMappedErrorMessage(error: unknown, fallback: string) {

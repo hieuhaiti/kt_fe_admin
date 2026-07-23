@@ -31,7 +31,6 @@ export type * from './citizenFeedback'
 export type * from './mapImage'
 export type * from './mapLayer'
 export type * from './mapLayerApi'
-export type * from './apiKey'
 
 // GEE / satellite / weather / fire risk / mobile
 export type * from './weather'
@@ -39,11 +38,7 @@ export type * from './remoteSensing'
 export type * from './fireRisk'
 export type * from './satellite'
 export type * from './forestClassification'
-export type * from './mobile'
+export type * from './fieldMeasurement'
 
-// Stats / spatial
+// Statistics
 export type * from './statistics'
-
-// Legacy / kept as-is
-export type * from './search'
-export type * from './cronAlert'

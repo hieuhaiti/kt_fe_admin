@@ -17,11 +17,7 @@ import {
 
 const statusSchema = z.object({
   status: z.enum(['new', 'in_progress', 'resolved', 'rejected'] as const),
-  note: z
-    .string()
-    .max(1000, 'Ghi chú không được vượt quá 1000 ký tự')
-    .optional()
-    .or(z.literal('')),
+  note: z.string().max(1000, 'Ghi chú không được vượt quá 1000 ký tự').optional().or(z.literal('')),
 })
 type StatusFormValues = z.infer<typeof statusSchema>
 
@@ -31,6 +27,7 @@ interface FeedbackUpdateDialogProps {
   feedback: CitizenFeedback | null
   onUpdateStatus: (data: StatusFormValues) => void
   isLoading?: boolean
+  canOverrideTransitions?: boolean
 }
 
 const STATUS_LABELS: { value: FeedbackStatus; label: string }[] = [
@@ -46,6 +43,7 @@ export default function FeedbackUpdateDialog({
   feedback,
   onUpdateStatus,
   isLoading = false,
+  canOverrideTransitions = false,
 }: FeedbackUpdateDialogProps) {
   const statusForm = useForm<StatusFormValues>({
     resolver: zodResolver(statusSchema) as any,
@@ -63,6 +61,14 @@ export default function FeedbackUpdateDialog({
       })
     }
   }, [feedback, open, statusForm])
+
+  const allowedStatuses = canOverrideTransitions
+    ? STATUS_LABELS.filter(({ value }) => value !== feedback?.status)
+    : STATUS_LABELS.filter(({ value }) => {
+        if (feedback?.status === 'new') return value === 'in_progress' || value === 'rejected'
+        if (feedback?.status === 'in_progress') return value === 'resolved' || value === 'rejected'
+        return false
+      })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -84,7 +90,7 @@ export default function FeedbackUpdateDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {STATUS_LABELS.map((status) => (
+                    {allowedStatuses.map((status) => (
                       <SelectItem key={status.value} value={status.value}>
                         {status.label}
                       </SelectItem>
@@ -114,7 +120,7 @@ export default function FeedbackUpdateDialog({
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || allowedStatuses.length === 0}>
               {isLoading ? 'Đang lưu...' : 'Cập nhật trạng thái'}
             </Button>
           </div>

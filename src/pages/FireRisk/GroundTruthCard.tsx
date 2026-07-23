@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatDate } from '@/lib/date'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 /**
  * Ground Truth card — 2 loại input:
@@ -19,6 +21,9 @@ import { formatDate } from '@/lib/date'
  */
 export default function GroundTruthCard() {
   const [open, setOpen] = useState(false)
+  const user = useAuthStore((s) => s.user)
+  // Backend: requirePermission('fire_risk', 'ground_truth') cho toàn bộ upload/delete.
+  if (!hasPerm(user, 'fire_risk', 'ground_truth')) return null
 
   return (
     <Card>

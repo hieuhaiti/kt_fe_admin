@@ -23,6 +23,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { WeatherLayer, WeatherLayerType } from '@/types/api'
 import { cn } from '@/lib/utils'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 const LAYER_TYPES: {
   value: WeatherLayerType
@@ -65,6 +67,8 @@ function getLayerName(layer: WeatherLayer) {
 }
 
 export default function WeatherPage() {
+  const user = useAuthStore((s) => s.user)
+  const canManage = hasPerm(user, 'weather', 'manage')
   const [type, setType] = useState<WeatherLayerType>('temp')
   const [lng, setLng] = useState('108.0')
   const [lat, setLat] = useState('14.35')
@@ -102,16 +106,20 @@ export default function WeatherPage() {
               Quản lý lớp thời tiết OpenWeather, kiểm tra dữ liệu tại điểm và làm mới cache phục vụ bản đồ WebGIS.
             </p>
           </div>
-          <Button
-            disabled={refreshMutation.isPending}
-            onClick={() =>
-              refreshMutation.mutate(undefined, { onSuccess: () => toast.success('Đã làm mới cache thời tiết') })
-            }
-            className="w-full sm:w-auto"
-          >
-            <RefreshCcw className={cn('size-4', refreshMutation.isPending && 'animate-spin')} />
-            {refreshMutation.isPending ? 'Đang làm mới...' : 'Làm mới cache'}
-          </Button>
+          {canManage && (
+            <Button
+              disabled={refreshMutation.isPending}
+              onClick={() =>
+                refreshMutation.mutate(undefined, {
+                  onSuccess: () => toast.success('Đã làm mới cache thời tiết'),
+                })
+              }
+              className="w-full sm:w-auto"
+            >
+              <RefreshCcw className={cn('size-4', refreshMutation.isPending && 'animate-spin')} />
+              {refreshMutation.isPending ? 'Đang làm mới...' : 'Làm mới cache'}
+            </Button>
+          )}
         </div>
       </div>
 

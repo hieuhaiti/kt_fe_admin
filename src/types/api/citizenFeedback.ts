@@ -1,5 +1,5 @@
-export type FeedbackCategory = 'chay_rung' | 'vi_pham' | 'hien_trang' | string
-export type FeedbackStatus = 'new' | 'in_progress' | 'resolved' | 'rejected' | string
+export type FeedbackCategory = 'chay_rung' | 'vi_pham' | 'hien_trang'
+export type FeedbackStatus = 'new' | 'in_progress' | 'resolved' | 'rejected'
 export type FeedbackPriority = 'low' | 'normal' | 'high' | 'urgent'
 
 export interface FeedbackAttachment {
@@ -27,6 +27,7 @@ export interface FeedbackStatusLog {
   note?: string | null
   changedBy?: number | string | null
   changedByName?: string | null
+  changedAt?: string
   createdAt?: string
 }
 
@@ -90,8 +91,7 @@ export interface CitizenFeedback {
 }
 
 export interface CitizenFeedbackListData {
-  feedbacks: CitizenFeedback[]
-  pagination: import('./index').Pagination
+  items: CitizenFeedback[]
 }
 
 export interface FeedbackStatistics {
@@ -136,5 +136,17 @@ export interface FeedbackListParams {
 
 export interface FeedbackFeatureCollection {
   type: 'FeatureCollection'
-  features: any[]
+  features: Array<
+    GeoJSON.Feature<
+      GeoJSON.Point,
+      {
+        id: number | string
+        category: FeedbackCategory
+        title: string
+        status: FeedbackStatus
+        priority: FeedbackPriority
+        createdAt?: string
+      }
+    >
+  >
 }

@@ -15,8 +15,8 @@ export interface ForestClassSnapshot {
   id: number | string
   year: number
   month: number
-  status: string                       // pending | computing | completed | failed | published
-  trigger?: string                     // cron | manual | user
+  status: string // pending | computing | completed | failed | published
+  trigger?: string // cron | manual | user
   provinceSummary?: ForestClassProvinceSummary
   oobAccuracy?: number | null
   testAccuracy?: number | null
@@ -53,9 +53,46 @@ export interface ForestClassDistrictArea {
   [key: string]: any
 }
 
+export interface ForestClassAreaComparisonMetric {
+  currentHa: number
+  previousHa: number
+  deltaHa: number
+  changePct: number | null
+}
+
+export interface ForestClassClassComparison extends ForestClassAreaComparisonMetric {
+  classId: number
+  className: string
+}
+
+export interface ForestClassDistrictComparison {
+  districtCode?: string | null
+  districtName?: string | null
+  total: ForestClassAreaComparisonMetric
+  forest: ForestClassAreaComparisonMetric
+  classes: ForestClassClassComparison[]
+}
+
+export interface ForestClassComparison {
+  previousSnapshot: {
+    id: number | string
+    year: number
+    month: number
+    computedAt?: string | null
+    publishedAt?: string | null
+  }
+  province: {
+    total: ForestClassAreaComparisonMetric
+    forest: ForestClassAreaComparisonMetric
+    classes: ForestClassClassComparison[]
+  }
+  districts: ForestClassDistrictComparison[]
+}
+
 export interface ForestClassLatestData {
   snapshot: ForestClassSnapshot | null
   districtAreas: ForestClassDistrictArea[]
+  comparison?: ForestClassComparison | null
   geeTileUrl?: string | null
   geeMapId?: string | null
   classifiedViz?: any

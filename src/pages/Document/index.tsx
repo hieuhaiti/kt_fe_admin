@@ -37,6 +37,8 @@ import DocumentFormDialog from './DocumentFormDialog'
 import { parseLink } from '@/lib/utils'
 import { formatDate } from '@/lib/date'
 import { TYPE_LABEL, TYPE_CLASS, TYPE_DOT } from '@/constant/documentConstant'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 type IsPublicFilter = 'all' | 'true' | 'false'
 
@@ -53,6 +55,10 @@ function getDocumentTitle(item: any) {
 }
 
 export default function DocumentPage(): JSX.Element {
+  const user = useAuthStore((s) => s.user)
+  const canCreate = hasPerm(user, 'documents', 'create')
+  const canUpdate = hasPerm(user, 'documents', 'update')
+  const canDelete = hasPerm(user, 'documents', 'delete')
   const [currentPage, setCurrentPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [searchValue, setSearchValue] = useState('')
@@ -209,9 +215,11 @@ export default function DocumentPage(): JSX.Element {
               </SelectContent>
             </Select>
 
-            <Button variant="default" onClick={openAddDialog}>
-              Thêm tài liệu
-            </Button>
+            {canCreate && (
+              <Button variant="default" onClick={openAddDialog}>
+                Thêm tài liệu
+              </Button>
+            )}
           </div>
         }
         total={total}
@@ -312,28 +320,32 @@ export default function DocumentPage(): JSX.Element {
                             </a>
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openEditDialog(item)
-                          }}
-                          title="Chỉnh sửa"
-                        >
-                          <Pen className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openDeleteDialog(item)
-                          }}
-                          title="Xóa"
-                        >
-                          <Trash2 className="text-destructive size-4" />
-                        </Button>
+                        {canUpdate && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openEditDialog(item)
+                            }}
+                            title="Chỉnh sửa"
+                          >
+                            <Pen className="size-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDeleteDialog(item)
+                            }}
+                            title="Xóa"
+                          >
+                            <Trash2 className="text-destructive size-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

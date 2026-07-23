@@ -1,9 +1,7 @@
 import {
   AlertTriangle,
   Bell,
-  ClipboardList,
   Cloud,
-  Compass,
   FileText,
   Flame,
   Key,
@@ -12,13 +10,12 @@ import {
   Map,
   MessageSquare,
   Newspaper,
+  Ruler,
   Satellite,
-  Smartphone,
   Trees,
   Users,
 } from 'lucide-react'
 import type { NavItem } from '@/types/common/index'
-import { ROLES } from '@/lib/permissions'
 
 export const navConfig: NavItem[] = [
   {
@@ -43,8 +40,11 @@ export const navConfig: NavItem[] = [
     permission: 'map-layers:view',
     subItems: [
       { name: 'Quản lý lớp dữ liệu', path: '/map-layers', permission: 'map-layers:view' },
-      { name: 'Nhập file GIS', path: '/map-layers/import-geojson', permission: 'map-layers:import' },
-      { name: 'Nhập Excel (legacy)', path: '/map-layers/import-excel', permission: 'map-layers:import' },
+      {
+        name: 'Nhập file GIS',
+        path: '/map-layers/import-geojson',
+        permission: 'map-layers:import',
+      },
     ],
   },
   {
@@ -83,13 +83,6 @@ export const navConfig: NavItem[] = [
     path: '/weather',
     permission: 'weather:view',
   },
-  {
-    icon: <Compass />,
-    name: 'Phân tích không gian',
-    path: '/spatial',
-    permission: 'spatial:view',
-  },
-
   // ── Nội dung ──
   {
     icon: <Newspaper />,
@@ -116,10 +109,22 @@ export const navConfig: NavItem[] = [
     permission: 'feedback:view',
   },
   {
-    icon: <Smartphone />,
-    name: 'Cập nhật MobileGIS',
-    path: '/field-updates',
-    permission: 'mobile:view',
+    icon: <Ruler />,
+    name: 'Đo đạc thực địa',
+    path: '/field-measurements',
+    permission: 'field-measurements:view',
+    subItems: [
+      {
+        name: 'Phiên đo thực địa',
+        path: '/field-measurements',
+        permission: 'field-measurements:view',
+      },
+      {
+        name: 'Khu vực theo dõi',
+        path: '/monitored-areas',
+        permission: 'field-measurements:view',
+      },
+    ],
   },
   {
     icon: <Bell />,
@@ -134,12 +139,6 @@ export const navConfig: NavItem[] = [
     name: 'Người dùng',
     path: '/users',
     permission: 'users:view',
-  },
-  {
-    icon: <ClipboardList />,
-    name: 'Nhật ký cảnh báo',
-    path: '/cron-alert-logs',
-    roles: [ROLES.SYSTEM_ADMIN],
   },
   {
     icon: <MessageSquare />,

@@ -19,11 +19,7 @@ export const ROLES = {
 
 export type Role = (typeof ROLES)[keyof typeof ROLES] | UserRoleCode | string
 
-export const ADMIN_PANEL_ROLES: Role[] = [
-  ROLES.SYSTEM_ADMIN,
-  ROLES.UBND_TINH,
-  ROLES.SO_NNMT,
-]
+export const ADMIN_PANEL_ROLES: Role[] = [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT]
 
 export function getUserRole(user: User | null | undefined): Role | null {
   if (!user) return null
@@ -34,6 +30,47 @@ export function hasRole(user: User | null | undefined, roles: Role[]): boolean {
   const role = getUserRole(user)
   if (!role) return false
   return roles.includes(role)
+}
+
+/**
+ * Kiểm tra quyền chi tiết theo (resource, action) — mirror middleware server
+ * `requirePermission(resource, action)`. Đọc trực tiếp từ `user.role.permissions`
+ * (JSONB seed từ server) → single source of truth, không drift khi server đổi
+ * migration seed. `system_admin` được bypass toàn quyền, giống backend.
+ *
+ * Tên `resource` dùng snake_case đúng như server: `map_layers`, `news`, `documents`,
+ * `forest_classification`, `fire_risk`, `weather`, `satellite`, `pdf_maps`,
+ * `remote_sensing`, `map_apis`, `field_measurements`, `notifications`, `users`,
+ * `comments`, `feedback`, `statistics`, `spatial`, `roles`.
+ *
+ * Ví dụ:
+ *   hasPerm(user, 'news', 'create')          // POST /news
+ *   hasPerm(user, 'forest_classification', 'manage')
+ *   hasPerm(user, 'users', 'change_role')
+ */
+export function hasPerm(
+  user: User | null | undefined,
+  resource: string,
+  action: string
+): boolean {
+  if (!user) return false
+  if (getUserRole(user) === ROLES.SYSTEM_ADMIN) return true
+  const perms = (user.role?.permissions ?? user.role_permissions) as
+    | Record<string, Record<string, boolean> | string[]>
+    | undefined
+  const resourcePerms = perms?.[resource]
+  if (!resourcePerms) return false
+  if (Array.isArray(resourcePerms)) return resourcePerms.includes(action)
+  return resourcePerms[action] === true
+}
+
+/** Cho phép truyền nhiều action → true nếu có bất kỳ. */
+export function hasAnyPerm(
+  user: User | null | undefined,
+  resource: string,
+  actions: string[]
+): boolean {
+  return actions.some((a) => hasPerm(user, resource, a))
 }
 
 /**
@@ -104,13 +141,9 @@ export const MODULE_PERMISSIONS: Record<string, Role[]> = {
   'stats:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
   'stats:manage': [ROLES.SYSTEM_ADMIN],
 
-  // ── Phân tích không gian ──
-  'spatial:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'spatial:analyze': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── Mobile field updates ──
-  'mobile:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'mobile:verify': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
+  // ── Đo đạc thực địa MobileGIS ──
+  'field-measurements:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
+  'field-measurements:manage': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
 
   // ── Nhật ký hệ thống ──
   'audit-logs:view': [ROLES.SYSTEM_ADMIN],
@@ -119,7 +152,10 @@ export const MODULE_PERMISSIONS: Record<string, Role[]> = {
   'notifications:send': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
 }
 
-export function can(user: User | null | undefined, permission: keyof typeof MODULE_PERMISSIONS | string): boolean {
+export function can(
+  user: User | null | undefined,
+  permission: keyof typeof MODULE_PERMISSIONS | string
+): boolean {
   const allowed = MODULE_PERMISSIONS[permission as string]
   if (!allowed) return false
   return hasRole(user, allowed)

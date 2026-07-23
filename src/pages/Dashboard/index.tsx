@@ -1,7 +1,7 @@
 import { statisticsService, useApiQuery } from '@/service'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Trees, Flame, MessageSquareWarning, RefreshCcw } from 'lucide-react'
+import { Trees, Flame, Layers3, MessageSquareWarning, RefreshCcw } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -11,44 +11,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatDateTime } from '@/lib/date'
-
-interface DistrictCoverage {
-  name: string
-  unitCode: string
-  coveragePct: number
-  forestAreaHa?: number
-}
-
-interface ForestBlock {
-  totalForestHa?: number
-  naturalForestHa?: number
-  plantedForestHa?: number
-  provinceCoveragePct?: number
-  lowCoverageDistricts?: DistrictCoverage[]
-  topCoverageDistricts?: DistrictCoverage[]
-}
-
-interface FeedbackBlock {
-  total?: number
-  byStatus?: Record<string, number>
-}
-
-interface FireAlertsBlock {
-  available?: boolean
-  note?: string
-  snapshotId?: number | string
-  analysisDate?: string
-  avgLevel?: number | null
-  minLevel?: number | null
-  maxLevel?: number | null
-  riskLevelDist?: Record<string, number>
-  s2CoverageRatio?: number | null
-  hotspotDistrictCount?: number
-  hotspotMinLevel?: number
-  geoserverLayer?: string | null
-  geeDownloadUrl?: string | null
-  publishedAt?: string | null
-}
+import type {
+  DashboardDistrictCoverage,
+  DashboardFireRiskBlock,
+  DashboardForestClassificationBlock,
+  DashboardStats,
+} from '@/types/api'
 
 const RISK_LEVEL_META: Record<number, { label: string; color: string }> = {
   1: { label: 'Cấp I — Thấp', color: '#00a65a' },
@@ -56,15 +24,6 @@ const RISK_LEVEL_META: Record<number, { label: string; color: string }> = {
   3: { label: 'Cấp III — Cao', color: '#f39c12' },
   4: { label: 'Cấp IV — Nguy hiểm', color: '#e74c3c' },
   5: { label: 'Cấp V — Cực kỳ nguy hiểm', color: '#7b241c' },
-}
-
-interface DashboardData {
-  year?: number
-  forest?: ForestBlock
-  feedback?: FeedbackBlock
-  fireAlerts?: FireAlertsBlock
-  cached?: boolean
-  computedAt?: string
 }
 
 const FEEDBACK_STATUS_LABEL: Record<string, string> = {
@@ -98,10 +57,11 @@ export default function DashboardPage() {
   const forceRefetch = () =>
     statisticsService.getDashboard({ force: true }).then(() => dashboardQuery.refetch())
 
-  const data = (dashboardQuery.data?.data ?? {}) as DashboardData
+  const data = (dashboardQuery.data?.data ?? {}) as DashboardStats
   const forest = data.forest
   const feedback = data.feedback
   const fireAlerts = data.fireAlerts
+  const forestClassification = data.forestClassification
 
   return (
     <div className="space-y-6 p-6">
@@ -109,8 +69,14 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold">Bảng điều khiển</h1>
           <p className="text-muted-foreground text-sm">
-            Tổng hợp che phủ rừng, phản ánh và cảnh báo cháy toàn tỉnh Kon Tum
-            {data.year != null && <> — dữ liệu năm <strong>{data.year}</strong></>}.
+            Tổng hợp phân loại rừng, phản ánh và cảnh báo cháy toàn tỉnh Kon Tum
+            {data.year != null && (
+              <>
+                {' '}
+                — dữ liệu năm <strong>{data.year}</strong>
+              </>
+            )}
+            .
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -149,12 +115,12 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Feedback + Fire */}
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Feedback + forest classification + fire risk */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardContent className="p-6">
             <div className="mb-3 flex items-center gap-2">
-              <MessageSquareWarning className="text-amber-600 size-5" />
+              <MessageSquareWarning className="size-5 text-amber-600" />
               <h2 className="text-lg font-semibold">Phản ánh</h2>
               <span className="text-muted-foreground ml-auto text-sm">
                 Tổng: <strong>{feedback?.total ?? 0}</strong>
@@ -165,7 +131,7 @@ export default function DashboardPage() {
                 <div
                   key={k}
                   className={`rounded-md border px-3 py-2 text-sm ${
-                    FEEDBACK_STATUS_CLASS[k] ?? 'bg-slate-50 text-slate-600 border-slate-200'
+                    FEEDBACK_STATUS_CLASS[k] ?? 'border-slate-200 bg-slate-50 text-slate-600'
                   }`}
                 >
                   <span>{FEEDBACK_STATUS_LABEL[k] ?? k}</span>
@@ -179,6 +145,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        <ForestClassificationDashboardCard data={forestClassification} />
         <FireRiskDashboardCard fireAlerts={fireAlerts} />
       </div>
 
@@ -210,13 +177,13 @@ export default function DashboardPage() {
  * snapshot mới nhất. Nút "Xem chi tiết" điều hướng sang trang FireRisk để
  * xem history + publish GeoServer.
  */
-function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: FireAlertsBlock }) {
+function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskBlock }) {
   if (!fireAlerts?.available) {
     return (
       <Card>
         <CardContent className="p-6">
           <div className="mb-3 flex items-center gap-2">
-            <Flame className="text-red-600 size-5" />
+            <Flame className="size-5 text-red-600" />
             <h2 className="text-lg font-semibold">Cảnh báo cháy rừng</h2>
           </div>
           <p className="text-muted-foreground text-sm">
@@ -228,14 +195,14 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: FireAlertsBlock })
   }
 
   const maxLevel = fireAlerts.maxLevel ?? 0
-  const isHigh   = maxLevel >= 4
+  const isHigh = maxLevel >= 4
   const maxColor = RISK_LEVEL_META[maxLevel]?.color || '#94a3b8'
 
   return (
     <Card className={isHigh ? 'border-red-400' : ''}>
       <CardContent className="p-6">
         <div className="mb-3 flex items-center gap-2">
-          <Flame className="text-red-600 size-5" />
+          <Flame className="size-5 text-red-600" />
           <h2 className="text-lg font-semibold">Cảnh báo cháy rừng</h2>
           {fireAlerts.geoserverLayer ? (
             <span className="ml-auto rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
@@ -280,9 +247,7 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: FireAlertsBlock })
           </span>
           <span className="text-muted-foreground">
             Điểm nóng (huyện ≥ C{fireAlerts.hotspotMinLevel ?? 3}):{' '}
-            <strong className="text-red-600">
-              {fireAlerts.hotspotDistrictCount ?? 0}
-            </strong>
+            <strong className="text-red-600">{fireAlerts.hotspotDistrictCount ?? 0}</strong>
           </span>
           {fireAlerts.s2CoverageRatio != null && (
             <span className="text-muted-foreground">
@@ -304,15 +269,121 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: FireAlertsBlock })
   )
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
+function ForestClassificationDashboardCard({
+  data,
 }: {
-  icon: React.ReactNode
-  label: string
-  value: string
+  data?: DashboardForestClassificationBlock
 }) {
+  if (!data?.available) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Layers3 className="size-5 text-emerald-600" />
+            <h2 className="text-lg font-semibold">Phân loại rừng</h2>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            {data?.note ?? 'Chưa có snapshot phân loại rừng.'}
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const comparison = data.comparison
+  const change = comparison?.forestDeltaHa
+  const changeClass =
+    change == null ? 'text-muted-foreground' : change < 0 ? 'text-destructive' : 'text-success'
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="mb-3 flex items-center gap-2">
+          <Layers3 className="size-5 text-emerald-600" />
+          <h2 className="text-lg font-semibold">Phân loại rừng</h2>
+          {data.geoserverLayer ? (
+            <span className="bg-success/10 text-success ml-auto rounded px-2 py-0.5 text-[10px] font-medium">
+              GeoServer ✓
+            </span>
+          ) : data.geeDownloadUrl ? (
+            <span className="bg-warning/10 text-warning-foreground ml-auto rounded px-2 py-0.5 text-[10px] font-medium">
+              Chưa publish
+            </span>
+          ) : null}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <Metric label="Rừng" value={formatHa(data.forestAreaHa ?? undefined)} />
+          <Metric label="Tỷ lệ" value={formatPct(data.forestCoveragePct ?? undefined)} />
+          <Metric
+            label="OOB accuracy"
+            value={data.oobAccuracy != null ? `${data.oobAccuracy.toFixed(1)}%` : '—'}
+          />
+        </div>
+
+        <div className="mt-3 space-y-1 text-xs">
+          <p className="text-muted-foreground">
+            Kỳ:{' '}
+            <strong className="text-foreground">
+              {data.year}-{String(data.month ?? '').padStart(2, '0')}
+            </strong>
+            {' · '}Tổng vùng:{' '}
+            <strong className="text-foreground">{formatHa(data.totalAreaHa ?? undefined)}</strong>
+          </p>
+          <p className="text-muted-foreground">
+            Lớp chiếm ưu thế:{' '}
+            <strong className="text-foreground">{data.dominantClassName ?? '—'}</strong>
+          </p>
+          {comparison && (
+            <p className="text-muted-foreground">
+              So với {comparison.previousYear}-{String(comparison.previousMonth).padStart(2, '0')}:{' '}
+              <strong className={changeClass}>
+                {change == null ? '—' : `${change > 0 ? '+' : ''}${formatHa(change)}`}
+                {comparison.forestChangePct != null
+                  ? ` (${comparison.forestChangePct > 0 ? '+' : ''}${comparison.forestChangePct.toFixed(2)}%)`
+                  : ''}
+              </strong>
+            </p>
+          )}
+          {data.testAccuracy != null && (
+            <p className="text-muted-foreground">
+              Test accuracy:{' '}
+              <strong className="text-foreground">{data.testAccuracy.toFixed(1)}%</strong>
+              {data.testKappa != null && (
+                <>
+                  {' '}
+                  · Kappa: <strong className="text-foreground">{data.testKappa.toFixed(3)}</strong>
+                </>
+              )}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-3">
+          <a
+            href="/forest-classification"
+            className="text-primary text-xs font-medium hover:underline"
+          >
+            Xem chi tiết & Publish GeoServer →
+          </a>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border p-2">
+      <p className="text-muted-foreground text-[10px]">{label}</p>
+      <p className="truncate text-sm font-bold" title={value}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <Card>
       <CardContent className="p-4">
@@ -326,7 +397,7 @@ function StatCard({
   )
 }
 
-function DistrictTable({ districts }: { districts: DistrictCoverage[] }) {
+function DistrictTable({ districts }: { districts: DashboardDistrictCoverage[] }) {
   if (!districts.length) {
     return <p className="text-muted-foreground text-sm">Chưa có dữ liệu.</p>
   }

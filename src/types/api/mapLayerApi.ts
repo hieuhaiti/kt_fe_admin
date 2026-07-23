@@ -86,65 +86,6 @@ export interface MapApiKeyIssueData {
   raw_key?: string
 }
 
-/** Legacy: public map layer api metadata for /public tester page */
-export interface PublicMapLayerApiData {
-  id: number
-  name: string
-  slug: string
-  description?: string
-  endpoint_url: string
-  http_method: string
-  status: string
-}
-
-/** Legacy permission types kept for pages */
-export type PrincipalType = 'user' | 'role' | 'public'
-export type PermissionLevel = 'view' | 'edit' | 'manage'
-export type ApiStatus = 'draft' | 'published'
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-
-export interface ApiPermission {
-  id: number
-  map_layer_api_id: number
-  principal_type: PrincipalType
-  user_id?: number | null
-  role_id?: number | null
-  can_view: boolean
-  can_edit: boolean
-  can_delete: boolean
-  can_share: boolean
-  created_at: string
-}
-
-export interface AddPermissionBody {
-  principal_type: PrincipalType
-  user_id?: number | null
-  role_id?: number | null
-  can_view?: boolean
-  can_edit?: boolean
-  can_delete?: boolean
-  can_share?: boolean
-}
-
-export interface ApiShare {
-  id: number
-  map_layer_api_id: number
-  shared_with_type: PrincipalType
-  shared_with_user_id?: number | null
-  shared_with_role_id?: number | null
-  permission_level: PermissionLevel
-  expires_at?: string
-  created_at: string
-}
-
-export interface CreateShareBody {
-  shared_with_type: PrincipalType
-  shared_with_user_id?: number | null
-  shared_with_role_id?: number | null
-  permission_level?: PermissionLevel
-  expires_at?: string
-}
-
 /** Consumer-side (/map-data/*) — used from citizen apps */
 export interface MapDataFeaturesQuery {
   bbox?: string

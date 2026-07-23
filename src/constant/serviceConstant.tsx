@@ -39,7 +39,6 @@ export const serviceMapApiPath = '/map-apis'
 export const serviceMapDataPath = '/map-data'
 // Legacy aliases
 export const serviceMapLayerApiPath = '/map-apis'
-export const serviceApiKeyPath = '/map-apis'
 
 // Weather
 export const serviceWeatherPath = '/weather'
@@ -47,9 +46,8 @@ export const serviceWeatherPath = '/weather'
 // Remote Sensing
 export const serviceRemoteSensingPath = '/remote-sensing'
 
-// Statistics / Spatial
+// Statistics
 export const serviceStatsPath = '/stats'
-export const serviceSpatialPath = '/spatial'
 // Legacy alias
 export const serviceStatisticsPath = '/stats'
 
@@ -62,10 +60,10 @@ export const serviceSatellitePath = '/satellite'
 // Forest Classification
 export const serviceForestClassificationPath = '/forest-classification'
 
-// Mobile Field Updates
-export const serviceMobilePath = '/mobile'
+// MobileGIS field measurements
+export const serviceFieldMeasurementPath = '/field-measurements'
+export const serviceMonitoredAreaPath = '/monitored-areas'
 
 // Legacy modules (kept as-is, not in Postman)
 export const serviceNewsCommentPath = '/news-comments'
 export const serviceAuditLogPath = '/audit-logs'
-export const serviceSearchPath = '/search'

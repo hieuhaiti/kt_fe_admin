@@ -44,6 +44,8 @@ import PageLayout from '@/layout/pageLayout'
 import { toast } from 'react-toastify'
 import UserDetailDialog from './UserDetailDialog'
 import UserFormDialog from './UserFormDialog'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 const ROLE_OPTIONS: { value: UserRoleCode; label: string }[] = [
   { value: 'system_admin', label: 'Quản trị hệ thống' },
@@ -65,6 +67,13 @@ function roleLabel(code?: string | null, fallback?: string | null) {
 }
 
 export default function User(): JSX.Element {
+  const currentUser = useAuthStore((s) => s.user)
+  const canCreate = hasPerm(currentUser, 'users', 'create')
+  const canUpdate = hasPerm(currentUser, 'users', 'update')
+  const canDelete = hasPerm(currentUser, 'users', 'delete')
+  const canChangeRole = hasPerm(currentUser, 'users', 'change_role')
+  const canChangeStatus = hasPerm(currentUser, 'users', 'change_status')
+  const canResetPassword = hasPerm(currentUser, 'users', 'reset_password')
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [limit, setLimit] = useState<number>(10)
   const [searchValue, setSearchValue] = useState<string>('')
@@ -125,7 +134,7 @@ export default function User(): JSX.Element {
     false,
     false
   )
-  const currentUser = (currentUserQuery.data as ApiResponse<AuthMeData>)?.data?.user ?? null
+  const profileUser = (currentUserQuery.data as ApiResponse<AuthMeData>)?.data?.user ?? null
 
   const queryClient = useQueryClient()
 
@@ -221,7 +230,7 @@ export default function User(): JSX.Element {
   }
 
   function openActiveDialog(u: any) {
-    if (currentUser && String(u.id) === String(currentUser.id)) {
+    if (profileUser && String(u.id) === String(profileUser.id)) {
       toast.warning('Bạn không thể thay đổi trạng thái của tài khoản mình')
       return
     }
@@ -230,7 +239,7 @@ export default function User(): JSX.Element {
   }
 
   function openResetPasswordDialog(u: any) {
-    if (currentUser && String(u.id) === String(currentUser.id)) {
+    if (profileUser && String(u.id) === String(profileUser.id)) {
       toast.warning('Vui lòng dùng chức năng Đổi mật khẩu cho tài khoản của mình')
       return
     }
@@ -240,7 +249,7 @@ export default function User(): JSX.Element {
   }
 
   function openChangeRoleDialog(u: any) {
-    if (currentUser && String(u.id) === String(currentUser.id)) {
+    if (profileUser && String(u.id) === String(profileUser.id)) {
       toast.warning('Bạn không thể tự đổi vai trò của mình')
       return
     }
@@ -251,7 +260,7 @@ export default function User(): JSX.Element {
   }
 
   function openDeleteDialog(u: any) {
-    if (currentUser && String(u.id) === String(currentUser.id)) {
+    if (profileUser && String(u.id) === String(profileUser.id)) {
       toast.warning('Bạn không thể xóa tài khoản của bạn')
       return
     }
@@ -353,9 +362,11 @@ export default function User(): JSX.Element {
               </SelectContent>
             </Select>
 
-            <Button variant="default" onClick={openAddDialog}>
-              Thêm người dùng
-            </Button>
+            {canCreate && (
+              <Button variant="default" onClick={openAddDialog}>
+                Thêm người dùng
+              </Button>
+            )}
           </div>
         }
         total={total}
@@ -409,65 +420,77 @@ export default function User(): JSX.Element {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openEditDialog(u)
-                          }}
-                          title="Chỉnh sửa"
-                        >
-                          <Pen className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openChangeRoleDialog(u)
-                          }}
-                          title="Đổi vai trò"
-                        >
-                          <ShieldCheck className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openResetPasswordDialog(u)
-                          }}
-                          title="Đặt lại mật khẩu"
-                        >
-                          <KeyRound className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openActiveDialog(u)
-                          }}
-                          title={isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                        >
-                          <Power
-                            className={
-                              isActive ? 'text-success size-4' : 'text-muted-foreground size-4'
-                            }
-                          />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openDeleteDialog(u)
-                          }}
-                          title="Xóa"
-                        >
-                          <Trash2 className="text-destructive size-4" />
-                        </Button>
+                        {canUpdate && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openEditDialog(u)
+                            }}
+                            title="Chỉnh sửa"
+                          >
+                            <Pen className="size-4" />
+                          </Button>
+                        )}
+                        {canChangeRole && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openChangeRoleDialog(u)
+                            }}
+                            title="Đổi vai trò"
+                          >
+                            <ShieldCheck className="size-4" />
+                          </Button>
+                        )}
+                        {canResetPassword && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openResetPasswordDialog(u)
+                            }}
+                            title="Đặt lại mật khẩu"
+                          >
+                            <KeyRound className="size-4" />
+                          </Button>
+                        )}
+                        {canChangeStatus && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openActiveDialog(u)
+                            }}
+                            title={isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                          >
+                            <Power
+                              className={
+                                isActive
+                                  ? 'text-success size-4'
+                                  : 'text-muted-foreground size-4'
+                              }
+                            />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDeleteDialog(u)
+                            }}
+                            title="Xóa"
+                          >
+                            <Trash2 className="text-destructive size-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -26,11 +26,9 @@ const MapLayerPage = lazy(() => import('@/pages/MapLayers'))
 const MapLayerApisPage = lazy(() => import('@/pages/MapLayerApis'))
 const MapLayerApiPublicPage = lazy(() => import('@/pages/MapLayerApis/MapLayerApiPublicPage'))
 const ImportGeoJsonPage = lazy(() => import('@/pages/MapLayers/ImportGeoJson'))
-const ImportExcelPage = lazy(() => import('@/pages/MapLayers/ImportExcel'))
 const MapImagePage = lazy(() => import('@/pages/MapImage'))
 const DocumentPage = lazy(() => import('@/pages/Document'))
 const FeedbackPage = lazy(() => import('@/pages/Feedback'))
-const CronAlertLogPage = lazy(() => import('@/pages/CronAlertLog'))
 const ProfilePage = lazy(() => import('@/pages/Profile'))
 const ChangePasswordPage = lazy(() => import('@/pages/ChangePassword'))
 
@@ -42,9 +40,9 @@ const RemoteSensingPage = lazy(() => import('@/pages/RemoteSensing'))
 const FireRiskPage = lazy(() => import('@/pages/FireRisk'))
 const SatellitePage = lazy(() => import('@/pages/Satellite'))
 const ForestClassificationPage = lazy(() => import('@/pages/ForestClassification'))
-const FieldUpdatesPage = lazy(() => import('@/pages/FieldUpdates'))
+const FieldMeasurementsPage = lazy(() => import('@/pages/FieldMeasurements'))
+const MonitoredAreasPage = lazy(() => import('@/pages/MonitoredAreas'))
 const NotificationSendPage = lazy(() => import('@/pages/NotificationSend'))
-const SpatialPage = lazy(() => import('@/pages/Spatial'))
 
 function App() {
   const location = useLocation()
@@ -113,14 +111,16 @@ function App() {
               </Route>
               <Route element={<ProtectedRoute permission="map-layers:import" />}>
                 <Route path="/map-layers/import-geojson" element={<ImportGeoJsonPage />} />
-                <Route path="/map-layers/import-excel" element={<ImportExcelPage />} />
               </Route>
               <Route element={<ProtectedRoute permission="map-apis:view" />}>
                 <Route path="/map-apis/*" element={<MapLayerApisPage />} />
               </Route>
               <Route path="/public/map-apis" element={<MapLayerApiPublicPage />} />
               <Route path="/map-layer-apis/*" element={<Navigate to="/map-apis" replace />} />
-              <Route path="/public/map-layer-apis" element={<Navigate to="/public/map-apis" replace />} />
+              <Route
+                path="/public/map-layer-apis"
+                element={<Navigate to="/public/map-apis" replace />}
+              />
               <Route element={<ProtectedRoute permission="pdf-maps:view" />}>
                 <Route path="/map-images" element={<MapImagePage />} />
               </Route>
@@ -144,25 +144,16 @@ function App() {
                 <Route path="/weather" element={<WeatherPage />} />
               </Route>
 
-              {/* Phân tích không gian */}
-              <Route element={<ProtectedRoute permission="spatial:view" />}>
-                <Route path="/spatial" element={<SpatialPage />} />
-              </Route>
-
               {/* Vận hành */}
               <Route element={<ProtectedRoute permission="feedback:view" />}>
                 <Route path="/feedbacks" element={<FeedbackPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="mobile:view" />}>
-                <Route path="/field-updates" element={<FieldUpdatesPage />} />
+              <Route element={<ProtectedRoute permission="field-measurements:view" />}>
+                <Route path="/field-measurements" element={<FieldMeasurementsPage />} />
+                <Route path="/monitored-areas" element={<MonitoredAreasPage />} />
               </Route>
               <Route element={<ProtectedRoute permission="notifications:send" />}>
                 <Route path="/notifications/send" element={<NotificationSendPage />} />
-              </Route>
-
-              {/* Nhật ký cảnh báo cron (chỉ system_admin) */}
-              <Route element={<ProtectedRoute permission="audit-logs:view" />}>
-                <Route path="/cron-alert-logs" element={<CronAlertLogPage />} />
               </Route>
 
               {/* Redirects for legacy paths */}

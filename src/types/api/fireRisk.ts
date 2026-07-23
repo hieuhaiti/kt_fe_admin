@@ -115,9 +115,12 @@ export interface FireRiskHistoryData {
 export interface FireRiskRefreshBody {
   analysisDate?: string
   submitExport?: boolean
+  enableRf?: boolean
+  inputFireAssetId?: string
 }
 
 export interface FireRiskHistoryParams {
   page?: number
   limit?: number
+  hasGeoserverLayer?: boolean | string
 }

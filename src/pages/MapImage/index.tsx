@@ -50,8 +50,14 @@ import MapImageDetailDialog from './MapImageDetailDialog'
 import MapImageFormDialog from './MapImageFormDialog'
 import { isPdf, parseLink } from '@/lib/utils'
 import { formatDate } from '@/lib/date'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 export default function MapImagePage(): JSX.Element {
+  const user = useAuthStore((s) => s.user)
+  const canCreate = hasPerm(user, 'pdf_maps', 'create')
+  const canUpdate = hasPerm(user, 'pdf_maps', 'update')
+  const canDelete = hasPerm(user, 'pdf_maps', 'delete')
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [limit, setLimit] = useState<number>(10)
   const [searchValue, setSearchValue] = useState<string>('')
@@ -268,9 +274,11 @@ export default function MapImagePage(): JSX.Element {
               </SelectContent>
             </Select>
 
-            <Button variant="default" onClick={openAddDialog}>
-              Thêm bản đồ PDF
-            </Button>
+            {canCreate && (
+              <Button variant="default" onClick={openAddDialog}>
+                Thêm bản đồ PDF
+              </Button>
+            )}
           </div>
         }
         total={total}
@@ -342,47 +350,55 @@ export default function MapImagePage(): JSX.Element {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openEditDialog(item)
-                        }}
-                        title="Chỉnh sửa"
-                      >
-                        <Pen className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleMutation.mutate({
-                            id: item.id,
-                            expectedUpdatedAt: (item.updatedAt ?? item.updated_at ?? '') as string,
-                            isPublic: !(item.isPublic ?? item.is_active ?? false),
-                          })
-                        }}
-                        title={item.is_active ? 'Hủy kích hoạt' : 'Kích hoạt'}
-                      >
-                        {item.is_active ? (
-                          <ToggleRight className="text-primary size-4" />
-                        ) : (
-                          <ToggleLeft className="text-muted-foreground size-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openDeleteDialog(item)
-                        }}
-                        title="Xóa"
-                      >
-                        <Trash2 className="text-destructive size-4" />
-                      </Button>
+                      {canUpdate && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openEditDialog(item)
+                          }}
+                          title="Chỉnh sửa"
+                        >
+                          <Pen className="size-4" />
+                        </Button>
+                      )}
+                      {canUpdate && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleMutation.mutate({
+                              id: item.id,
+                              expectedUpdatedAt: (item.updatedAt ??
+                                item.updated_at ??
+                                '') as string,
+                              isPublic: !(item.isPublic ?? item.is_active ?? false),
+                            })
+                          }}
+                          title={item.is_active ? 'Hủy kích hoạt' : 'Kích hoạt'}
+                        >
+                          {item.is_active ? (
+                            <ToggleRight className="text-primary size-4" />
+                          ) : (
+                            <ToggleLeft className="text-muted-foreground size-4" />
+                          )}
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openDeleteDialog(item)
+                          }}
+                          title="Xóa"
+                        >
+                          <Trash2 className="text-destructive size-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

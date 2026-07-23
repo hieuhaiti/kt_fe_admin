@@ -1,12 +1,11 @@
 import type { JSX } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
-import { KeyRound, Pen, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react'
+import { KeyRound, Pen, RotateCcw, Trash2 } from 'lucide-react'
 import PageLayout from '@/layout/pageLayout'
 import ToolTableCustom from '@/components/features/ToolTableCustom'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
   SelectContent,
@@ -32,7 +31,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { mapLayerApiService, mapLayerService, useApiMutation, useApiQuery } from '@/service'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import type { ApiResponse, MapLayer, MapLayerApi, MapLayerApiListData, Pagination } from '@/types/api'
@@ -41,25 +39,8 @@ import { getMappedErrorMessage } from '@/validators/mapLayerApiValidators'
 import { hasMapLayerApiPermission } from '@/components/map-layer-apis/permissionUtils'
 import { StatusDotBadge } from '@/components/common/StatusDotBadge'
 import { ACTIVE_CLASS, ACTIVE_DOT, ACTIVE_LABEL } from '@/constant/mapLayerConstant'
-import ApiKeysTab from '@/components/map-layer-apis/ApiKeysTab'
-import PermissionsTab from '@/components/map-layer-apis/PermissionsTab'
 import MapLayerApiDetailDialog from './MapLayerApiDetailDialog'
 import MapLayerApiFormDialog from './MapLayerApiFormDialog'
-
-const tabValues = ['apis', 'apikeys'] as const
-type MapLayerApiTab = (typeof tabValues)[number]
-
-function toValidTab(value: string | null, canShare: boolean): MapLayerApiTab {
-  if (value === 'apikeys' && canShare) return 'apikeys'
-  return 'apis'
-}
-
-function toValidApiId(value: string | null): number | undefined {
-  if (!value) return undefined
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed) || parsed <= 0) return undefined
-  return parsed
-}
 
 function getMapApis(data: unknown): MapLayerApi[] {
   const response = data as ApiResponse<MapLayerApiListData> | undefined
@@ -92,13 +73,11 @@ function formatScope(api: MapLayerApi) {
 
 export default function MapLayerApiListPage(): JSX.Element {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const user = useAuthStore((state) => state.user)
 
   const canCreate = hasMapLayerApiPermission(user, 'create')
   const canUpdate = hasMapLayerApiPermission(user, 'update')
   const canDelete = hasMapLayerApiPermission(user, 'delete')
-  const canShare = hasMapLayerApiPermission(user, 'share')
 
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [limit, setLimit] = useState<number>(10)
@@ -122,14 +101,6 @@ export default function MapLayerApiListPage(): JSX.Element {
     false
   )
 
-  const allApisQuery = useApiQuery(
-    ['mapLayerApiAllForKeySelection'],
-    () => mapLayerApiService.getAll({ page: 1, limit: 100 }),
-    {},
-    false,
-    false
-  )
-
   const layerOptionsQuery = useApiQuery(
     ['map-layers-for-map-api-filter'],
     () => mapLayerService.getAll({ page: 1, limit: 100, is_active: true }),
@@ -139,7 +110,6 @@ export default function MapLayerApiListPage(): JSX.Element {
   )
 
   const apis = getMapApis(listQuery.data)
-  const availableApis = getMapApis(allApisQuery.data)
   const layerOptions = useMemo(() => getLayerItems(layerOptionsQuery.data), [layerOptionsQuery.data])
   const filteredApis = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase()
@@ -166,13 +136,10 @@ export default function MapLayerApiListPage(): JSX.Element {
   const [selectedApiId, setSelectedApiId] = useState<number | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [formDialogOpen, setFormDialogOpen] = useState(false)
-  const [permissionDialogOpen, setPermissionDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false)
   const [apiToDelete, setApiToDelete] = useState<MapLayerApi | null>(null)
   const [apiToRegenerate, setApiToRegenerate] = useState<MapLayerApi | null>(null)
-  const currentTab = toValidTab(searchParams.get('tab'), canShare)
-  const currentKeyApiId = useMemo(() => toValidApiId(searchParams.get('keyApiId')), [searchParams])
 
   const deleteMutation = useApiMutation(
     (id: number) => mapLayerApiService.delete(id),
@@ -180,7 +147,6 @@ export default function MapLayerApiListPage(): JSX.Element {
       onSuccess: () => {
         toast.success('Xóa API key thành công')
         listQuery.refetch()
-        allApisQuery.refetch()
         setDeleteDialogOpen(false)
         setApiToDelete(null)
       },
@@ -198,7 +164,6 @@ export default function MapLayerApiListPage(): JSX.Element {
         const key = response?.data?.apiKey || response?.data?.raw_key
         toast.success(key ? `Đã xoay key. Key mới: ${key}` : 'Đã xoay key thành công')
         listQuery.refetch()
-        allApisQuery.refetch()
         setRegenerateDialogOpen(false)
         setApiToRegenerate(null)
       },
@@ -236,19 +201,6 @@ export default function MapLayerApiListPage(): JSX.Element {
     setRegenerateDialogOpen(true)
   }
 
-  function openPermissionDialog(api: MapLayerApi) {
-    setSelectedApiId(api.id)
-    setPermissionDialogOpen(true)
-  }
-
-  function handleTabChange(tab: string) {
-    const nextTab = toValidTab(tab, canShare)
-    const nextParams = new URLSearchParams(searchParams)
-    nextParams.set('tab', nextTab)
-    if (nextTab !== 'apikeys') nextParams.delete('keyApiId')
-    setSearchParams(nextParams)
-  }
-
   function handleDelete() {
     if (apiToDelete) deleteMutation.mutate(apiToDelete.id)
   }
@@ -259,14 +211,7 @@ export default function MapLayerApiListPage(): JSX.Element {
 
   return (
     <PageLayout title="Quản lý Map API" description="Cấp và quản lý API key đọc dữ liệu lớp bản đồ">
-      <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="apis">API keys</TabsTrigger>
-          {canShare && <TabsTrigger value="apikeys">Kiểm thử key</TabsTrigger>}
-        </TabsList>
-
-        <TabsContent value="apis">
-          <ToolTableCustom
+      <ToolTableCustom
             searchValue={searchValue}
             setSearchValue={setSearchValue}
             filter={
@@ -401,19 +346,6 @@ export default function MapLayerApiListPage(): JSX.Element {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          {canShare && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                openPermissionDialog(api)
-                              }}
-                              title="Phân quyền API"
-                            >
-                              <ShieldCheck className="size-4" />
-                            </Button>
-                          )}
                           {canUpdate && (
                             <Button
                               variant="ghost"
@@ -460,17 +392,7 @@ export default function MapLayerApiListPage(): JSX.Element {
                 )}
               </TableBody>
             </Table>
-          </ToolTableCustom>
-        </TabsContent>
-
-        {canShare && (
-          <TabsContent value="apikeys">
-            <div className="bg-card rounded-lg border p-4">
-              <ApiKeysTab availableApis={availableApis} currentApiId={currentKeyApiId} />
-            </div>
-          </TabsContent>
-        )}
-      </Tabs>
+      </ToolTableCustom>
 
       <MapLayerApiDetailDialog
         open={detailDialogOpen}
@@ -484,23 +406,8 @@ export default function MapLayerApiListPage(): JSX.Element {
         apiId={selectedApiId}
         onSaved={() => {
           listQuery.refetch()
-          allApisQuery.refetch()
         }}
       />
-
-      <Dialog open={permissionDialogOpen} onOpenChange={setPermissionDialogOpen}>
-        <DialogContent className="max-h-[85vh] max-w-5xl overflow-y-auto">
-          <DialogTitle>Phân quyền API</DialogTitle>
-          <DialogDescription>Quản lý danh sách quyền truy cập API đã chọn</DialogDescription>
-          {selectedApiId ? (
-            <div className="mt-4">
-              <PermissionsTab apiId={selectedApiId} />
-            </div>
-          ) : (
-            <div className="mt-4">Không có dữ liệu</div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
         <AlertDialogContent>

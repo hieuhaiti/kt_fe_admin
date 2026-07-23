@@ -26,30 +26,86 @@ export interface LandcoverStat {
   [key: string]: any
 }
 
+export interface DashboardDistrictCoverage {
+  name: string
+  unitCode: string
+  coveragePct: number
+  forestAreaHa?: number
+}
+
+export interface DashboardForestBlock {
+  totalForestHa?: number
+  naturalForestHa?: number
+  plantedForestHa?: number
+  provinceCoveragePct?: number
+  lowCoverageDistricts?: DashboardDistrictCoverage[]
+  topCoverageDistricts?: DashboardDistrictCoverage[]
+  districts?: DashboardDistrictCoverage[]
+}
+
+export interface DashboardFeedbackBlock {
+  total?: number
+  byStatus?: Record<string, number>
+}
+
+export interface DashboardFireRiskBlock {
+  available?: boolean
+  note?: string
+  snapshotId?: number | string
+  analysisDate?: string
+  avgLevel?: number | null
+  minLevel?: number | null
+  maxLevel?: number | null
+  riskLevelDist?: Record<string, number>
+  s2CoverageRatio?: number | null
+  hotspotDistrictCount?: number
+  hotspotMinLevel?: number
+  geoserverLayer?: string | null
+  geeDownloadUrl?: string | null
+  publishedAt?: string | null
+}
+
+export interface DashboardForestClassificationBlock {
+  available?: boolean
+  note?: string
+  snapshotId?: number | string
+  year?: number
+  month?: number
+  status?: string
+  totalAreaHa?: number | null
+  forestAreaHa?: number | null
+  forestCoveragePct?: number | null
+  byClass?: Record<string, number>
+  dominantClassId?: number | null
+  dominantClassName?: string | null
+  dominantClassAreaHa?: number | null
+  oobAccuracy?: number | null
+  testAccuracy?: number | null
+  testKappa?: number | null
+  s2ImageCount?: number | null
+  landsatImageCount?: number | null
+  geoserverLayer?: string | null
+  geeDownloadUrl?: string | null
+  computedAt?: string | null
+  publishedAt?: string | null
+  comparison?: {
+    previousSnapshotId: number | string
+    previousYear: number
+    previousMonth: number
+    forestDeltaHa?: number | null
+    forestChangePct?: number | null
+  } | null
+}
+
 export interface DashboardStats {
-  totals?: Record<string, number>
-  landcover?: LandcoverStat[]
-  fireRisk?: any
-  updatedAt?: string
-  [key: string]: any
-}
-
-export interface ForestChangeItem {
-  unitCode?: string
-  unitName?: string
-  fromYear: number
-  toYear: number
-  forestType: ForestType
-  areaFromHa: number
-  areaToHa: number
-  deltaHa: number
-  deltaPct: number
-  trend: 'up' | 'down' | 'flat'
-}
-
-export interface ResidentialDistanceFeatureCollection {
-  type: 'FeatureCollection'
-  features: any[]
+  scope?: 'executive' | 'operational'
+  year?: number
+  forest?: DashboardForestBlock
+  feedback?: DashboardFeedbackBlock
+  fireAlerts?: DashboardFireRiskBlock
+  forestClassification?: DashboardForestClassificationBlock
+  cached?: boolean
+  computedAt?: string
 }
 
 // ── Params ──
@@ -67,20 +123,6 @@ export interface LandcoverParams {
 
 export interface DashboardParams {
   force?: boolean
-}
-
-export interface ForestChangeParams {
-  from_year: number
-  to_year: number
-  forest_type?: ForestType
-  unit_code?: string
-}
-
-export interface ResidentialDistanceParams {
-  residential_code: string
-  forest_code: string
-  threshold_m?: number
-  limit?: number
 }
 
 // ── Legacy (kept for pages not yet migrated) ──

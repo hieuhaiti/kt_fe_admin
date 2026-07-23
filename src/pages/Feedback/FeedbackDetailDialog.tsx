@@ -42,6 +42,11 @@ function isImageAttachment(att: FeedbackAttachment) {
   return mimeType.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(attachmentUrl(att))
 }
 
+function isVideoAttachment(att: FeedbackAttachment) {
+  const mimeType = att.mime_type ?? att.mimeType ?? ''
+  return mimeType.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(attachmentUrl(att))
+}
+
 function mediaItemsOf(feedback: CitizenFeedback) {
   const mediaUrls =
     feedback.mediaUrls?.map(
@@ -49,7 +54,11 @@ function mediaItemsOf(feedback: CitizenFeedback) {
         id: `media-${index}`,
         fileUrl: url,
         filePath: url,
-        mimeType: /\.(png|jpe?g|webp|gif)$/i.test(url) ? 'image/*' : undefined,
+        mimeType: /\.(png|jpe?g|webp|gif)$/i.test(url)
+          ? 'image/*'
+          : /\.(mp4|webm|mov|m4v)$/i.test(url)
+            ? 'video/*'
+            : undefined,
       })
     ) ?? []
 
@@ -94,7 +103,9 @@ export default function FeedbackDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogTitle>Chi tiết phản ánh</DialogTitle>
-        <DialogDescription>Thông tin chi tiết phản ánh của người dân</DialogDescription>
+        <DialogDescription>
+          Thông tin phản ánh hiện trường gửi từ WebGIS, MobileGIS
+        </DialogDescription>
 
         {dbQuery.isLoading ? (
           <div className="text-muted-foreground py-8 text-center">Đang tải dữ liệu...</div>
@@ -193,9 +204,18 @@ export default function FeedbackDetailDialog({
                   <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
                   <div>
                     {feedback.location_text && <p className="text-sm">{feedback.location_text}</p>}
-                    {locationCoordinates && (
+                    {feedback.lng != null && feedback.lat != null ? (
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${feedback.lat}&mlon=${feedback.lng}#map=16/${feedback.lat}/${feedback.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary text-xs hover:underline"
+                      >
+                        {locationCoordinates}
+                      </a>
+                    ) : locationCoordinates ? (
                       <p className="text-muted-foreground text-xs">{locationCoordinates}</p>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </Row>
@@ -249,6 +269,14 @@ export default function FeedbackDetailDialog({
                             alt={(att.file_name ?? att.fileName ?? '') as string}
                             className="h-24 w-full rounded border object-cover transition group-hover:opacity-80"
                           />
+                        ) : isVideoAttachment(att) ? (
+                          <video
+                            src={parseLink(url)}
+                            controls
+                            preload="metadata"
+                            className="h-24 w-full rounded border object-cover"
+                            onClick={(event) => event.preventDefault()}
+                          />
                         ) : (
                           <div className="bg-muted flex h-24 items-center justify-center rounded border">
                             <Paperclip className="text-muted-foreground size-6" />
@@ -275,7 +303,9 @@ export default function FeedbackDetailDialog({
                       {log.note && <p className="text-muted-foreground mt-1">{log.note}</p>}
                       <p className="text-muted-foreground mt-1 text-xs">
                         {log.changedByName ?? log.changedBy ?? 'Hệ thống'}
-                        {log.createdAt ? ` - ${formatDateTime(log.createdAt)}` : ''}
+                        {log.changedAt || log.createdAt
+                          ? ` - ${formatDateTime(log.changedAt ?? log.createdAt)}`
+                          : ''}
                       </p>
                     </div>
                   ))}

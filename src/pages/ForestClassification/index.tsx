@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   FileJson,
+  GitCompareArrows,
   Image as ImageIcon,
   Layers,
   TreePine,
@@ -43,16 +44,27 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { formatDateTime } from '@/lib/date'
+import {
+  buildGeoserverDownloadUrl,
+  buildGeoserverPreviewUrl,
+  downloadRasterFile,
+} from '@/lib/geoserver'
 import type {
   ForestClassSnapshot,
+  ForestClassAreaComparisonMetric,
+  ForestClassClassComparison,
+  ForestClassComparison,
   ForestClassDistrictArea,
   ForestClassDistrictClassArea,
+  ForestClassDistrictComparison,
   ForestClassHistoryItem,
 } from '@/types/api'
 import ForestMap from '@/components/features/ForestMap'
 import LoadingInline from '@/components/common/LoadingInline'
 import { PaginationCustom } from '@/components/features/PaginationCustom'
 import ForestGroundTruthCard from './ForestGroundTruthCard'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 /**
  * Phân loại rừng — admin (mirror pattern FireRisk).
@@ -105,8 +117,17 @@ const formatPct = (v?: number | null, decimals = 1) => {
   if (v == null || !Number.isFinite(v)) return '—'
   return `${v.toFixed(decimals)}%`
 }
+const formatAreaChange = (metric?: ForestClassAreaComparisonMetric | null) => {
+  if (!metric) return '—'
+  const sign = metric.deltaHa > 0 ? '+' : ''
+  const pct =
+    metric.changePct == null
+      ? ''
+      : ` (${metric.changePct > 0 ? '+' : ''}${metric.changePct.toFixed(1)}%)`
+  return `${sign}${Math.round(metric.deltaHa).toLocaleString('vi')} ha${pct}`
+}
 const formatPeriod = (year: number, month: number) => `${year}-${String(month).padStart(2, '0')}`
-const MIN_ANALYSIS_YEAR = 1984
+const MIN_ANALYSIS_YEAR = 2015
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1)
 
 /**
@@ -151,35 +172,6 @@ function resolveRasterTileUrl(snapshot: ForestClassSnapshot | null | undefined):
   return geeTile || null
 }
 
-/**
- * Build URL preview OpenLayers sinh sẵn — click từ list history mở tab
- * GeoServer preview.
- */
-function buildGeoserverPreviewUrl(layerFqn: string): string {
-  const raw = (import.meta.env.VITE_GEOSERVER_URL as string | undefined) || ''
-  const [workspace, layerName] = String(layerFqn).includes(':')
-    ? String(layerFqn).split(':')
-    : [(import.meta.env as any).VITE_GEOSERVER_WORKSPACE || 'kontum', String(layerFqn)]
-  const root = raw
-    .replace(/\/+$/, '')
-    .replace(new RegExp(`/${workspace}/wms$`, 'i'), '')
-    .replace(/\/wms$/i, '')
-  const bbox = '107.35,13.83,108.87,15.55'
-  const qs = new URLSearchParams({
-    service: 'WMS',
-    version: '1.1.0',
-    request: 'GetMap',
-    layers: `${workspace}:${layerName}`,
-    bbox,
-    width: '768',
-    height: '768',
-    srs: 'EPSG:4326',
-    styles: '',
-    format: 'application/openlayers',
-  })
-  return `${root}/${workspace}/wms?${qs.toString()}`
-}
-
 // ── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status?: string }) {
   const s = String(status || '').toLowerCase()
@@ -210,6 +202,8 @@ function StatusBadge({ status }: { status?: string }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function ForestClassificationPage() {
+  const user = useAuthStore((s) => s.user)
+  const canManage = hasPerm(user, 'forest_classification', 'manage')
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonth = now.getMonth() + 1
@@ -232,6 +226,7 @@ export default function ForestClassificationPage() {
   const latest = latestQuery.data?.data
   const snapshot = (latest?.snapshot || null) as ForestClassSnapshot | null
   const districtAreas = (latest?.districtAreas || []) as ForestClassDistrictArea[]
+  const comparison = (latest?.comparison || null) as ForestClassComparison | null
   const history = (historyQuery.data?.data?.items ?? []) as ForestClassHistoryItem[]
   const historyMetadata = historyQuery.data?.metadata
   const historyTotal = Number(historyMetadata?.total) || 0
@@ -312,13 +307,15 @@ export default function ForestClassificationPage() {
             </div>
           )}
         </div>
-        <Button
-          className="w-full md:w-auto md:shrink-0"
-          onClick={() => setRefreshDialogOpen(true)}
-          disabled={isRefreshing}
-        >
-          {isRefreshing ? 'Đang chạy (~3-5 phút)...' : 'Chạy lại phân tích'}
-        </Button>
+        {canManage && (
+          <Button
+            className="w-full md:w-auto md:shrink-0"
+            onClick={() => setRefreshDialogOpen(true)}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? 'Đang chạy (~3-5 phút)...' : 'Chạy lại phân tích'}
+          </Button>
+        )}
       </div>
 
       {/* ── Dialog xác nhận ───────────────────────────── */}
@@ -435,9 +432,8 @@ export default function ForestClassificationPage() {
             </p>
           ) : (
             <>
-              {/* KPI — 2 thẻ diện tích + 2 thẻ accuracy (chỉ render khi có
-                  giá trị). Với `skipStats: true` ở pipeline mới, OOB/Kappa
-                  luôn null → 2 thẻ đó tự động ẩn, grid rút xuống 2 cột. */}
+              {/* KPI — OOB xuất hiện với snapshot mới; Kappa chỉ có khi server
+                  chạy đánh giá bằng ground-truth holdout. */}
               {(() => {
                 const hasOob = snapshot.oobAccuracy != null
                 const hasKappa = snapshot.testKappa != null
@@ -480,6 +476,8 @@ export default function ForestClassificationPage() {
                 )
               })()}
 
+              {comparison && <ComparisonCard comparison={comparison} />}
+
               {/* Class distribution bar — collapsible, mở mặc định vì đây là
                   chỉ số quan trọng nhất (breakdown 11 lớp toàn tỉnh). */}
               <CollapsibleSection
@@ -509,7 +507,9 @@ export default function ForestClassificationPage() {
                     onHeatOpacityChange={setHeatOpacity}
                     geoserverLayer={snapshot.geoserverLayer}
                     downloadUrl={
-                      (snapshot as any).geoserverDownloadUrl || snapshot.geeDownloadUrl || null
+                      buildGeoserverDownloadUrl(snapshot.geoserverLayer) ||
+                      snapshot.geeDownloadUrl ||
+                      null
                     }
                     downloadFilename={
                       (snapshot as any).downloadFilename ||
@@ -525,7 +525,7 @@ export default function ForestClassificationPage() {
                 title="Bảng chi tiết 11 lớp phủ"
                 hint="Diện tích (ha) + % tổng cho từng lớp"
               >
-                <ClassAreaTable byClass={byClass} />
+                <ClassAreaTable byClass={byClass} comparison={comparison?.province.classes} />
               </CollapsibleSection>
 
               {/* Phân bố theo huyện — collapsible, mặc định đóng vì bảng dài
@@ -535,7 +535,7 @@ export default function ForestClassificationPage() {
                   title="Phân bố theo huyện"
                   hint={`${districtAreas.length} huyện · dominant class + forest %`}
                 >
-                  <DistrictAreaTable rows={districtAreas} />
+                  <DistrictAreaTable rows={districtAreas} comparison={comparison?.districts} />
                 </CollapsibleSection>
               )}
             </>
@@ -852,10 +852,82 @@ function ClassDistributionBar({
   )
 }
 
+function ComparisonCard({ comparison }: { comparison: ForestClassComparison }) {
+  const previousPeriod = formatPeriod(
+    comparison.previousSnapshot.year,
+    comparison.previousSnapshot.month
+  )
+  const topChanges = comparison.province.classes
+    .filter((item) => item.deltaHa !== 0)
+    .sort((a, b) => Math.abs(b.deltaHa) - Math.abs(a.deltaHa))
+    .slice(0, 3)
+  return (
+    <div className="overflow-hidden rounded-md border">
+      <div className="bg-muted/40 flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <GitCompareArrows className="text-primary h-4 w-4" />
+          So sánh với kỳ gần nhất
+        </h3>
+        <Badge variant="outline" className="font-mono text-xs">
+          {previousPeriod}
+        </Badge>
+      </div>
+      <div className="grid gap-3 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(220px,1.4fr)]">
+        <div>
+          <p className="text-muted-foreground text-xs">Tổng diện tích</p>
+          <p className="mt-1 font-semibold tabular-nums">
+            {formatAreaChange(comparison.province.total)}
+          </p>
+          <p className="text-muted-foreground text-[11px]">
+            Kỳ trước {formatHa(comparison.province.total.previousHa)}
+          </p>
+        </div>
+        <div>
+          <p className="text-muted-foreground text-xs">Diện tích rừng</p>
+          <p className="mt-1 font-semibold text-emerald-700 tabular-nums">
+            {formatAreaChange(comparison.province.forest)}
+          </p>
+          <p className="text-muted-foreground text-[11px]">
+            Kỳ trước {formatHa(comparison.province.forest.previousHa)}
+          </p>
+        </div>
+        <div>
+          <p className="text-muted-foreground mb-1 text-xs">Lớp biến động nhiều nhất</p>
+          {topChanges.length > 0 ? (
+            <div className="divide-y">
+              {topChanges.map((item) => (
+                <div key={item.classId} className="flex items-center gap-2 py-1 text-xs">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-sm border"
+                    style={{ backgroundColor: CLASS_META[item.classId]?.color }}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{item.className}</span>
+                  <span className="shrink-0 font-medium tabular-nums">
+                    {formatAreaChange(item)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-xs">Không có biến động diện tích.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /**
  * Table 11 lớp — hiển thị tên, diện tích, % vs tổng, cờ "rừng thực".
  */
-function ClassAreaTable({ byClass }: { byClass: Record<string, number> }) {
+function ClassAreaTable({
+  byClass,
+  comparison,
+}: {
+  byClass: Record<string, number>
+  comparison?: ForestClassClassComparison[]
+}) {
+  const comparisonByClass = new Map((comparison || []).map((item) => [item.classId, item]))
   const totalHa = Object.values(byClass).reduce((s, v) => s + (Number(v) || 0), 0)
   const rows = Object.entries(CLASS_META).map(([id, meta]) => {
     const ha = Number(byClass[id]) || 0
@@ -866,6 +938,7 @@ function ClassAreaTable({ byClass }: { byClass: Record<string, number> }) {
       ha,
       pct: totalHa > 0 ? (ha / totalHa) * 100 : 0,
       isForest: FOREST_CLASS_IDS.includes(Number(id)),
+      comparison: comparisonByClass.get(Number(id)),
     }
   })
 
@@ -878,6 +951,8 @@ function ClassAreaTable({ byClass }: { byClass: Record<string, number> }) {
             <TableHead>Lớp phủ</TableHead>
             <TableHead className="text-right">Diện tích (ha)</TableHead>
             <TableHead className="text-right">% tổng</TableHead>
+            {comparison && <TableHead className="text-right">Kỳ trước</TableHead>}
+            {comparison && <TableHead className="text-right">Chênh lệch</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -895,6 +970,16 @@ function ClassAreaTable({ byClass }: { byClass: Record<string, number> }) {
               </TableCell>
               <TableCell className="text-right tabular-nums">{formatHa(r.ha)}</TableCell>
               <TableCell className="text-right tabular-nums">{formatPct(r.pct, 2)}</TableCell>
+              {comparison && (
+                <TableCell className="text-right tabular-nums">
+                  {formatHa(r.comparison?.previousHa)}
+                </TableCell>
+              )}
+              {comparison && (
+                <TableCell className="text-right tabular-nums">
+                  {formatAreaChange(r.comparison)}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
@@ -910,7 +995,16 @@ function ClassAreaTable({ byClass }: { byClass: Record<string, number> }) {
  *
  * (Trước đây group by district_code + flat rows — sai vì API nested sẵn.)
  */
-function DistrictAreaTable({ rows }: { rows: ForestClassDistrictArea[] }) {
+function DistrictAreaTable({
+  rows,
+  comparison,
+}: {
+  rows: ForestClassDistrictArea[]
+  comparison?: ForestClassDistrictComparison[]
+}) {
+  const comparisonByDistrict = new Map(
+    (comparison || []).map((item) => [item.districtCode || item.districtName, item])
+  )
   // Compute derived stats per row + sort desc theo totalHa.
   const list = rows
     .map((r) => {
@@ -932,6 +1026,7 @@ function DistrictAreaTable({ rows }: { rows: ForestClassDistrictArea[] }) {
         forestHa,
         forestPct,
         dominant,
+        comparison: comparisonByDistrict.get(r.districtCode || r.districtName),
       }
     })
     .sort((a, b) => b.totalHa - a.totalHa)
@@ -943,10 +1038,12 @@ function DistrictAreaTable({ rows }: { rows: ForestClassDistrictArea[] }) {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-20 whitespace-nowrap">Mã huyện</TableHead>
             <TableHead>Huyện</TableHead>
             <TableHead className="text-right">Tổng ha</TableHead>
             <TableHead className="text-right">Rừng ha</TableHead>
             <TableHead className="text-right">Rừng %</TableHead>
+            {comparison && <TableHead className="text-right">Δ rừng</TableHead>}
             <TableHead>Class dominant</TableHead>
           </TableRow>
         </TableHeader>
@@ -955,12 +1052,18 @@ function DistrictAreaTable({ rows }: { rows: ForestClassDistrictArea[] }) {
             const dom = g.dominant != null ? CLASS_META[g.dominant.classId] : null
             return (
               <TableRow key={g.code}>
+                <TableCell className="whitespace-nowrap font-mono text-xs">{g.code}</TableCell>
                 <TableCell className="font-medium">{g.name}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatHa(g.totalHa)}</TableCell>
                 <TableCell className="text-right text-emerald-700 tabular-nums">
                   {formatHa(g.forestHa)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatPct(g.forestPct)}</TableCell>
+                {comparison && (
+                  <TableCell className="text-right tabular-nums">
+                    {formatAreaChange(g.comparison?.forest)}
+                  </TableCell>
+                )}
                 <TableCell>
                   {dom ? (
                     <span className="inline-flex items-center gap-1.5 text-xs">
@@ -1009,18 +1112,9 @@ function LayerManager({
   const downloadRaster = async () => {
     if (!downloadUrl) return
     try {
-      const res = await fetch(downloadUrl)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const blob = await res.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = objectUrl
-      a.download = downloadFilename
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 5000)
+      await downloadRasterFile(downloadUrl, downloadFilename)
     } catch (err: any) {
-      console.warn('[ForestCls] blob download failed:', err?.message)
-      window.open(downloadUrl, '_blank', 'noopener')
+      toast.error(err?.message || 'Không thể tải GeoTIFF phân loại rừng.')
     }
   }
 
@@ -1116,6 +1210,8 @@ function LayerManager({
  * class breakdown + raster info + publish control + raw JSON.
  */
 function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
+  const user = useAuthStore((s) => s.user)
+  const canPublishRaster = hasPerm(user, 'map_layers', 'ingest_raster')
   const s = (item.province_summary || {}) as any
   const byClass: Record<string, number> = s.byClass || {}
   const totalHa = Number(s.totalHa) || 0
@@ -1126,7 +1222,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
   const queryClient = useQueryClient()
   const hasDownload = Boolean(item.gee_download_url)
   const published = Boolean(item.geoserver_layer)
-  const canPublish = hasDownload && !published && !busy
+  const canPublish = canPublishRaster && hasDownload && !published && !busy
 
   const startPublish = async () => {
     setBusy(true)
@@ -1134,6 +1230,10 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
       const res = await forestClassificationService.publishSnapshotRaster(item.id)
       const data: any = (res as any)?.data?.data ?? (res as any)?.data
       if (data?.alreadyPublished) {
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['forest-class-latest'], type: 'active' }),
+          queryClient.refetchQueries({ queryKey: ['forest-class-history'], type: 'active' }),
+        ])
         toast.info('Snapshot đã publish trước đó.')
         setBusy(false)
         return
@@ -1171,8 +1271,21 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
     setBusy(false)
     if (job.status === 'completed') {
       toast.success(`Publish xong → ${job.geoserver_layer || ''}`)
-      queryClient.invalidateQueries({ queryKey: ['forest-class-latest'] })
-      queryClient.invalidateQueries({ queryKey: ['forest-class-history'] })
+      void Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['forest-class-latest'],
+          refetchType: 'none',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['forest-class-history'],
+          refetchType: 'none',
+        }),
+      ]).then(() =>
+        Promise.all([
+          queryClient.refetchQueries({ queryKey: ['forest-class-latest'], type: 'active' }),
+          queryClient.refetchQueries({ queryKey: ['forest-class-history'], type: 'active' }),
+        ])
+      )
     } else {
       toast.error(`Job ${job.status}: ${job.error_log || ''}`)
     }
@@ -1243,7 +1356,9 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
 
   return (
     <div className="space-y-4">
-      {/* Publish control */}
+      {/* Publish control — chỉ hiện cho user có quyền map_layers:ingest_raster
+          (mirror backend POST /snapshots/:id/publish-raster gate). */}
+      {canPublishRaster && (
       <div className="bg-background/60 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
         <div className="min-w-0 flex-1 text-xs">
           <p className="font-semibold">Lưu ảnh GeoTIFF & Publish GeoServer</p>
@@ -1305,6 +1420,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
           {busy ? 'Đang chạy...' : published ? 'Đã publish' : 'Publish → GeoServer'}
         </Button>
       </div>
+      )}
 
       {/* Facts grid */}
       <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
@@ -1313,7 +1429,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
             <p className="text-muted-foreground text-[10px]" title={f.hint}>
               {f.label}
             </p>
-            <p className="mt-0.5 truncate">{f.value}</p>
+            <div className="mt-0.5 min-w-0 truncate">{f.value}</div>
           </div>
         ))}
       </div>

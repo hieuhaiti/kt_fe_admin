@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
 import { useState, useEffect, useRef } from 'react'
 import { useApiQuery, useApiMutation, newsCommentService } from '@/service'
-import type { ApiResponse, NewsComment, Pagination } from '@/types/api'
+import type { ApiResponse, Pagination } from '@/types/api'
 import {
   Select,
   SelectTrigger,
@@ -31,15 +31,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { MessagesSquare, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import PageLayout from '@/layout/pageLayout'
 import { UserCell } from '@/components/common/UserCell'
 import NewsCommentDetailDialog from './NewsCommentDetailDialog'
-import NewsCommentReplyDialog from './NewsCommentReplyDialog'
 import { formatDate } from '@/lib/date'
 import { toApprovedFlag } from '@/lib/newsComment'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 export default function NewsComments(): JSX.Element {
+  const user = useAuthStore((s) => s.user)
+  const canApprove = hasPerm(user, 'comments', 'approve')
+  const canDelete = hasPerm(user, 'comments', 'delete')
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [limit, setLimit] = useState<number>(10)
   const [searchValue, setSearchValue] = useState<string>('')
@@ -91,8 +95,6 @@ export default function NewsComments(): JSX.Element {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [commentToDelete, setCommentToDelete] = useState<any | null>(null)
-  const [replyDialogOpen, setReplyDialogOpen] = useState(false)
-  const [commentToReply, setCommentToReply] = useState<NewsComment | null>(null)
 
   // Approve mutation
   const approveMutation = useApiMutation(
@@ -232,47 +234,41 @@ export default function NewsComments(): JSX.Element {
                   <TableCell>{c.created_at ? formatDate(c.created_at) : '-'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant={toApprovedFlag(c.is_approved) ? 'outline' : 'default'}
-                        size="sm"
-                        disabled={toApprovedFlag(c.is_approved) || approveMutation.isPending}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (!toApprovedFlag(c.is_approved)) approveMutation.mutate(c.id)
-                        }}
-                        title={toApprovedFlag(c.is_approved) ? 'Bình luận đã được duyệt' : 'Duyệt bình luận'}
-                      >
-                        {toApprovedFlag(c.is_approved)
-                          ? 'Đã duyệt'
-                          : approveMutation.isPending
-                            ? 'Đang duyệt...'
-                            : 'Duyệt'}
-                      </Button>
-                      {!c.parent_comment_id && (
+                      {canApprove && (
+                        <Button
+                          variant={toApprovedFlag(c.is_approved) ? 'outline' : 'default'}
+                          size="sm"
+                          disabled={toApprovedFlag(c.is_approved) || approveMutation.isPending}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (!toApprovedFlag(c.is_approved)) approveMutation.mutate(c.id)
+                          }}
+                          title={
+                            toApprovedFlag(c.is_approved)
+                              ? 'Bình luận đã được duyệt'
+                              : 'Duyệt bình luận'
+                          }
+                        >
+                          {toApprovedFlag(c.is_approved)
+                            ? 'Đã duyệt'
+                            : approveMutation.isPending
+                              ? 'Đang duyệt...'
+                              : 'Duyệt'}
+                        </Button>
+                      )}
+                      {canDelete && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
-                            setCommentToReply(c)
-                            setReplyDialogOpen(true)
+                            openDeleteDialog(c)
                           }}
-                          title="Trả lời bình luận"
+                          title="Xóa"
                         >
-                          <MessagesSquare className="size-4 text-blue-600" />
+                          <Trash2 className="text-destructive size-4" />
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openDeleteDialog(c)
-                        }}
-                        title="Xóa"
-                      >
-                        <Trash2 className="text-destructive size-4" />
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -281,17 +277,6 @@ export default function NewsComments(): JSX.Element {
           </TableBody>
         </Table>
       </ToolTableCustom>
-
-      {/* Dialog trả lời */}
-      <NewsCommentReplyDialog
-        open={replyDialogOpen}
-        onOpenChange={setReplyDialogOpen}
-        parentComment={commentToReply}
-        onSuccess={() => {
-          dbQuery.refetch()
-          setCommentToReply(null)
-        }}
-      />
 
       {/* Dialog chi tiết */}
       <NewsCommentDetailDialog

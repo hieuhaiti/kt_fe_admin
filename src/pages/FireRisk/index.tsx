@@ -35,11 +35,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { formatDate, formatDateTime } from '@/lib/date'
+import { buildGeoserverDownloadUrl, downloadRasterFile } from '@/lib/geoserver'
 import type { FireRiskFeature, FireRiskProvinceSummary } from '@/types/api'
 import FireRiskMap from '@/components/features/FireRiskMap'
 import LoadingInline from '@/components/common/LoadingInline'
 import { PaginationCustom } from '@/components/features/PaginationCustom'
 import GroundTruthCard from './GroundTruthCard'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 /**
  * Cảnh báo cháy rừng (fire-risk v8.1).
@@ -81,6 +84,8 @@ const LEVEL_META: Record<number, { color: string; label: string }> = {
 const DEFAULT_MIN_RISK_LEVEL = 1
 
 export default function FireRiskPage() {
+  const user = useAuthStore((s) => s.user)
+  const canManage = hasPerm(user, 'fire_risk', 'manage')
   const minRiskLevel = DEFAULT_MIN_RISK_LEVEL // hard-coded, filter UI đã bỏ.
   const [page, setPage] = useState(1)
   // Trạng thái dialog xác nhận + hiển thị tiến trình refresh (thay `confirm()` cũ).
@@ -231,13 +236,15 @@ export default function FireRiskPage() {
             </div>
           )}
         </div>
-        <Button
-          className="w-full md:w-auto md:shrink-0"
-          onClick={() => setRefreshDialogOpen(true)}
-          disabled={isRefreshing}
-        >
-          {isRefreshing ? 'Đang chạy (~3-5 phút)...' : 'Chạy lại phân tích'}
-        </Button>
+        {canManage && (
+          <Button
+            className="w-full md:w-auto md:shrink-0"
+            onClick={() => setRefreshDialogOpen(true)}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? 'Đang chạy (~3-5 phút)...' : 'Chạy lại phân tích'}
+          </Button>
+        )}
       </div>
 
       {/* ── Dialog xác nhận + tiến trình refresh ──── */}
@@ -440,6 +447,7 @@ export default function FireRiskPage() {
               <TableHeader className="bg-background sticky top-0 z-10">
                 <TableRow>
                   <TableHead className="w-8" />
+                  <TableHead className="w-20 whitespace-nowrap">Mã huyện</TableHead>
                   <TableHead>Tên huyện</TableHead>
                   <TableHead>Cấp cao nhất</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Diện tích (ha)</TableHead>
@@ -467,6 +475,9 @@ export default function FireRiskPage() {
                             }`}
                           />
                         </TableCell>
+                        <TableCell className="whitespace-nowrap font-mono text-xs">
+                          {d.code}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">{d.name}</TableCell>
                         <TableCell>
                           <Badge
@@ -489,7 +500,7 @@ export default function FireRiskPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
-                          <TableCell colSpan={5} className="py-3">
+                          <TableCell colSpan={6} className="py-3">
                             <DistrictLevelBreakdown dist={dist} maxLevel={d.maxLevel} />
                           </TableCell>
                         </TableRow>
@@ -499,7 +510,7 @@ export default function FireRiskPage() {
                 })}
                 {!districtRows.length && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-muted-foreground text-center">
+                    <TableCell colSpan={6} className="text-muted-foreground text-center">
                       Chưa có dữ liệu cảnh báo theo huyện.
                     </TableCell>
                   </TableRow>
@@ -673,7 +684,7 @@ function FireRiskLayerManager({
   // trước đây Windows Explorer prompt "invalid archive" khi double-click).
   const downloadHeatRaster = async () => {
     const url =
-      (snapshot as any)?.geoserverDownloadUrl ||
+      buildGeoserverDownloadUrl(snapshot?.geoserverLayer ?? snapshot?.geoserver_layer) ||
       snapshot?.geeDownloadUrl ||
       snapshot?.gee_download_url
     if (!url) return
@@ -682,18 +693,9 @@ function FireRiskLayerManager({
       snapshot?.geeDownloadFilename ||
       `fire_risk_kontum_${(snapshot?.analysisDate || '').slice(0, 10).replace(/-/g, '')}.tif`
     try {
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const blob = await res.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = objectUrl
-      a.download = filename
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 5000)
+      await downloadRasterFile(url, filename)
     } catch (err: any) {
-      console.warn('[FireRisk] blob download failed, fallback tab:', err?.message)
-      window.open(url, '_blank', 'noopener')
+      toast.error(err?.message || 'Không thể tải GeoTIFF cảnh báo cháy rừng.')
     }
   }
 
@@ -732,9 +734,9 @@ function FireRiskLayerManager({
       onOpacityChange: onHeatOpacityChange,
       // Chỉ giữ 1 nút "Tải ảnh" — đã bỏ Copy URL + Xem tile preview để UI gọn.
       canDownload: Boolean(
-        (snapshot as any)?.geoserverDownloadUrl ||
+        buildGeoserverDownloadUrl(snapshot?.geoserverLayer ?? snapshot?.geoserver_layer) ||
         snapshot?.geeDownloadUrl ||
-        snapshot?.gee_download_url,
+        snapshot?.gee_download_url
       ),
       downloadLabel: 'Tải ảnh bản đồ nhiệt (GeoTIFF màu, clip theo tỉnh)',
       downloadIcon: 'raster' as const,
@@ -1070,6 +1072,8 @@ function ConfigStatusBanner({
  * giữa chừng). Mỗi field guard riêng để không vỡ render.
  */
 function SnapshotDetailPanel({ item }: { item: any }) {
+  const user = useAuthStore((s) => s.user)
+  const canPublishRaster = hasPerm(user, 'map_layers', 'ingest_raster')
   const s = (item?.province_summary || {}) as any
   const dist: Record<string, number> = s.riskLevelDist || {}
   const blend = s.blendCaseHa || {}
@@ -1083,7 +1087,7 @@ function SnapshotDetailPanel({ item }: { item: any }) {
   const queryClient = useQueryClient()
   const hasDownload = Boolean(item.gee_download_url || item.geeDownloadUrl)
   const published = Boolean(item.geoserver_layer)
-  const canPublish = hasDownload && !published && !busy
+  const canPublish = canPublishRaster && hasDownload && !published && !busy
 
   const startPublish = async () => {
     setBusy(true)
@@ -1091,6 +1095,11 @@ function SnapshotDetailPanel({ item }: { item: any }) {
       const res = await fireRiskService.publishSnapshotRaster(item.id)
       const data: any = res?.data?.data ?? res?.data
       if (data?.alreadyPublished) {
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['fire-risk-latest'], type: 'active' }),
+          queryClient.refetchQueries({ queryKey: ['fire-risk-map'], type: 'active' }),
+          queryClient.refetchQueries({ queryKey: ['fire-risk-history'], type: 'active' }),
+        ])
         toast.info('Snapshot đã publish trước đó.')
         setBusy(false)
         return
@@ -1132,9 +1141,17 @@ function SnapshotDetailPanel({ item }: { item: any }) {
     setBusy(false)
     if (job.status === 'completed') {
       toast.success(`Publish xong → ${job.geoserver_layer || ''}`)
-      queryClient.invalidateQueries({ queryKey: ['fire-risk-latest'] })
-      queryClient.invalidateQueries({ queryKey: ['fire-risk-map'] })
-      queryClient.invalidateQueries({ queryKey: ['fire-risk-history'] })
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['fire-risk-latest'], refetchType: 'none' }),
+        queryClient.invalidateQueries({ queryKey: ['fire-risk-map'], refetchType: 'none' }),
+        queryClient.invalidateQueries({ queryKey: ['fire-risk-history'], refetchType: 'none' }),
+      ]).then(() =>
+        Promise.all([
+          queryClient.refetchQueries({ queryKey: ['fire-risk-latest'], type: 'active' }),
+          queryClient.refetchQueries({ queryKey: ['fire-risk-map'], type: 'active' }),
+          queryClient.refetchQueries({ queryKey: ['fire-risk-history'], type: 'active' }),
+        ])
+      )
     } else {
       toast.error(`Job ${job.status}: ${job.error_log || ''}`)
     }
@@ -1208,7 +1225,9 @@ function SnapshotDetailPanel({ item }: { item: any }) {
   return (
     <div className="space-y-4">
       {/* Publish → GeoServer: MinIO lưu GeoTIFF, GeoServer publish layer,
-          back-link vào snapshot khi xong. FE poll job 5s. */}
+          back-link vào snapshot khi xong. FE poll job 5s.
+          Gate `map_layers:ingest_raster` — mirror backend. */}
+      {canPublishRaster && (
       <div className="bg-background/60 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
         <div className="min-w-0 flex-1 text-xs">
           <p className="font-semibold">Lưu ảnh GeoTIFF & Publish GeoServer</p>
@@ -1272,6 +1291,7 @@ function SnapshotDetailPanel({ item }: { item: any }) {
                 : 'Chưa có geeDownloadUrl'}
         </Button>
       </div>
+      )}
 
       {/* Grid metadata */}
       <div className="grid gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2">
@@ -1596,16 +1616,16 @@ function buildGeoserverPreviewUrl(layerFqn: string): string {
     .replace(/\/wms$/i, '')
   const bbox = '107.35,13.83,108.87,15.55'
   const qs = new URLSearchParams({
-    service:  'WMS',
-    version:  '1.1.0',
-    request:  'GetMap',
-    layers:   `${workspace}:${layerName}`,
+    service: 'WMS',
+    version: '1.1.0',
+    request: 'GetMap',
+    layers: `${workspace}:${layerName}`,
     bbox,
-    width:    '768',
-    height:   '768',
-    srs:      'EPSG:4326',
-    styles:   '',
-    format:   'application/openlayers',
+    width: '768',
+    height: '768',
+    srs: 'EPSG:4326',
+    styles: '',
+    format: 'application/openlayers',
   })
   return `${root}/${workspace}/wms?${qs.toString()}`
 }

@@ -7,7 +7,6 @@ import type {
   CreateMapLayerBody,
   PatchMapLayerBody,
   PatchMapLayerActiveBody,
-  ImportGeoJsonInlineBody,
   ImportJob,
   HarvestRasterBody,
 } from '@/types/api'
@@ -75,10 +74,6 @@ export default {
   importFile: (data: FormData) =>
     apiClient.post<{ jobId: string }>(`${serviceMapLayerPath}/import-file`, data, true),
 
-  /** POST /map/layers/:mapLayerCode/import  (sync GeoJSON import) */
-  importInline: (mapLayerCode: string, data: ImportGeoJsonInlineBody) =>
-    apiClient.post<MapLayer>(`${serviceMapLayerPath}/${mapLayerCode}/import`, data),
-
   /** GET /map/layers/:mapLayerCode/import-jobs */
   listImportJobs: (mapLayerCode: string) =>
     apiClient.get<{ jobs: ImportJob[] }>(`${serviceMapLayerPath}/${mapLayerCode}/import-jobs`),
@@ -94,34 +89,7 @@ export default {
       data
     ),
 
-  // ── Legacy shims ──
-
-  /**
-   * Legacy /map-layers/import-geojson multipart flow. New API only accepts
-   * inline JSON via `POST /map/layers/:code/import`. This shim requires the
-   * caller to have `mapLayerCode` in FormData under `code`.
-   */
+  /** Backward-compatible name for the current import-file endpoint. */
   importGeoJson: (data: FormData) =>
     apiClient.post<{ jobId: string }>(`${serviceMapLayerPath}/import-file`, data, true),
-
-  /** Legacy Excel import — server no longer supports Excel; use import-file */
-  importExcel: (data: FormData) =>
-    apiClient.post<{ jobId: string }>(`${serviceMapLayerPath}/import-file`, data, true),
-
-  /** Legacy category-based queries — not in Postman. Kept as no-op empty result. */
-  getByCategory: (_categoryId: number) =>
-    Promise.resolve({ message: '', status: 200, data: [] as MapLayer[] } as ApiResponse<MapLayer[]>),
-
-  /** Legacy category toggle — not in Postman. Kept as no-op. */
-  toggleStatusByCategory: (_categoryId: number) =>
-    Promise.resolve({ message: '', status: 200, data: {} } as ApiResponse<{}>),
-
-  /**
-   * Legacy calculate-lost-area — not in Postman. Kept as a stub that throws so
-   * callers surface the missing endpoint rather than silently succeeding.
-   */
-  calculateLostArea: (_data: any): Promise<ApiResponse<any>> =>
-    Promise.reject(
-      new Error('calculateLostArea không còn được backend hỗ trợ theo Postman v2')
-    ),
 }

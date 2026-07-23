@@ -29,12 +29,10 @@ export { default as remoteSensingService } from './remoteSensingService'
 export { default as fireRiskService } from './fireRiskService'
 export { default as satelliteService } from './satelliteService'
 export { default as forestClassificationService } from './forestClassificationService'
-export { default as mobileService } from './mobileService'
+export { default as fieldMeasurementService } from './fieldMeasurementService'
 
-// Stats / spatial
+// Statistics
 export { default as statisticsService } from './statisticsService'
 export { default as statsService } from './statisticsService'
 
 // Legacy / kept as-is (not in Postman)
-export { default as searchService } from './searchService'
-export { default as cronAlertService } from './cronAlertService'

@@ -36,6 +36,8 @@ import PageLayout from '@/layout/pageLayout'
 import NewsDetailDialog from './NewsDetailDialog'
 import NewsFormDialog from './NewsFormDialog'
 import { formatDate } from '@/lib/date'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 const STATUS_LABEL: Record<string, string> = {
   published: 'Đã xuất bản',
@@ -51,6 +53,10 @@ const STATUS_DOT: Record<string, string> = {
 }
 
 export default function News(): JSX.Element {
+  const user = useAuthStore((s) => s.user)
+  const canCreate = hasPerm(user, 'news', 'create')
+  const canUpdate = hasPerm(user, 'news', 'update')
+  const canDelete = hasPerm(user, 'news', 'delete')
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [limit, setLimit] = useState<number>(10)
   const [searchValue, setSearchValue] = useState<string>('')
@@ -216,9 +222,11 @@ export default function News(): JSX.Element {
               </SelectContent>
             </Select>
 
-            <Button variant="default" onClick={openAddDialog}>
-              Thêm tin tức
-            </Button>
+            {canCreate && (
+              <Button variant="default" onClick={openAddDialog}>
+                Thêm tin tức
+              </Button>
+            )}
           </div>
         }
         total={total}
@@ -274,28 +282,32 @@ export default function News(): JSX.Element {
                     <TableCell>{createdAt ? formatDate(createdAt) : '-'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openEditDialog(n)
-                          }}
-                          title="Chỉnh sửa"
-                        >
-                          <Pen className="size-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openDeleteDialog(n)
-                          }}
-                          title="Xóa"
-                        >
-                          <Trash2 className="text-destructive size-4" />
-                        </Button>
+                        {canUpdate && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openEditDialog(n)
+                            }}
+                            title="Chỉnh sửa"
+                          >
+                            <Pen className="size-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDeleteDialog(n)
+                            }}
+                            title="Xóa"
+                          >
+                            <Trash2 className="text-destructive size-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

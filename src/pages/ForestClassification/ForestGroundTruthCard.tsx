@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatDate } from '@/lib/date'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 /**
  * Ground truth card cho phân loại rừng 11-class.
@@ -41,6 +43,11 @@ const classLabel = (id: number) => {
 
 export default function ForestGroundTruthCard() {
   const [open, setOpen] = useState(false)
+  const user = useAuthStore((s) => s.user)
+  // Backend gate: verifyToken + requirePermission('forest_classification', 'ground_truth').
+  // Toàn bộ card (upload zone/point + delete) đều chung 1 quyền — ẩn thẳng card
+  // để tránh hiển thị UI mà mọi mutation sẽ 403.
+  if (!hasPerm(user, 'forest_classification', 'ground_truth')) return null
 
   return (
     <Card>

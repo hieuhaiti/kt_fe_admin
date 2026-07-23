@@ -34,20 +34,7 @@ export default {
   adminDelete: (commentId: number | string) =>
     apiClient.del<ApiResponse<{}>>(`${serviceAdminCommentsPath}/${commentId}`),
 
-  // ── Legacy shims (endpoints removed from Postman v2) ──
-
-  /** Legacy: getById not in Postman — derive from admin list */
+  /** GET /admin/comments/:commentId */
   getById: (commentId: number | string) =>
     apiClient.get<{ comment: NewsComment }>(`${serviceAdminCommentsPath}/${commentId}`),
-
-  /** Legacy: reply — not supported anymore, no-op stub */
-  replyComment: (_data: { news_id: number; content: string; parent_comment_id?: number }) =>
-    Promise.resolve({ message: 'Chức năng trả lời bình luận đã ngừng hỗ trợ', status: 410, data: {} as NewsComment } as ApiResponse<NewsComment>),
-
-  /** Legacy count endpoints — return zero */
-  getCountByNewsId: (_newsId: number | string) =>
-    Promise.resolve({ message: '', status: 200, data: { count: 0 } } as ApiResponse<{ count: number }>),
-
-  getPendingCount: () =>
-    Promise.resolve({ message: '', status: 200, data: { count: 0 } } as ApiResponse<{ count: number }>),
 }
