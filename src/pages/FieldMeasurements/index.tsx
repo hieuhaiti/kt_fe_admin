@@ -47,6 +47,8 @@ import type {
 import { formatDateTime } from '@/lib/date'
 import { can } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
+import { tokenManager } from '@/lib/tokenManager'
+import { serviceFieldMeasurementPath } from '@/constant/serviceConstant'
 
 const STATUS: Record<FieldMeasurementStatus, { label: string; badge: string; dot: string }> = {
   draft: {
@@ -214,6 +216,39 @@ export default function FieldMeasurementsPage() {
     }
   }
 
+  // XLSX endpoint trả binary blob (apiClient parse JSON nên phải fetch tay).
+  // Server: GET /field-measurements/export?format=xlsx → application/vnd...sheet.
+  async function exportXlsx() {
+    try {
+      const base = (
+        import.meta.env.VITE_BASE_URL_BE ||
+        import.meta.env.VITE_API_BASE_URL ||
+        ''
+      ).replace(/\/$/, '')
+      const qs = new URLSearchParams({
+        format: 'xlsx',
+        lang: 'vi',
+        ...(from && { from }),
+        ...(to && { to }),
+      })
+      const token = tokenManager.getAccessToken()
+      const res = await fetch(`${base}${serviceFieldMeasurementPath}/export?${qs.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      if (!blob.size) throw new Error('Tệp trả về rỗng')
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `field-measurements-${new Date().toISOString().slice(0, 10)}.xlsx`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      toast.error(err?.message || 'Không thể xuất Excel')
+    }
+  }
+
   return (
     <PageLayout
       title="Đo đạc thực địa"
@@ -282,7 +317,10 @@ export default function FieldMeasurementsPage() {
               </SelectContent>
             </Select>
             <Button variant="outline" onClick={exportGeoJson} title="Xuất GeoJSON đã xác minh">
-              <Download className="size-4" /> Xuất GeoJSON
+              <Download className="size-4" /> GeoJSON
+            </Button>
+            <Button variant="outline" onClick={exportXlsx} title="Xuất Excel đã xác minh">
+              <Download className="size-4" /> Excel
             </Button>
           </div>
         }
@@ -384,8 +422,70 @@ export default function FieldMeasurementsPage() {
                 />
                 <Info label="Số điểm GPS" value={String(detail.points?.length ?? 0)} />
               </div>
+              {/* Timeline vòng đời — server ghi lại 4 mốc (bắt đầu đo → kết thúc
+                  → gửi duyệt → xác minh/từ chối). Hiển thị dạng grid gọn. */}
+              <div className="rounded-md border p-3">
+                <p className="text-muted-foreground mb-2 text-xs">Vòng đời phiên đo</p>
+                <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                  <TimelineEntry label="Bắt đầu đo" at={detail.startedAt} />
+                  <TimelineEntry label="Kết thúc đo" at={detail.finishedAt} />
+                  <TimelineEntry label="Gửi duyệt" at={detail.submittedAt} />
+                  <TimelineEntry
+                    label={detail.status === 'rejected' ? 'Từ chối' : 'Xác minh'}
+                    at={detail.verifiedAt}
+                  />
+                </div>
+              </div>
+
               {detail.note && <Info label="Ghi chú hiện trường" value={detail.note} />}
               {detail.reviewNote && <Info label="Ghi chú xác minh" value={detail.reviewNote} />}
+
+              {/* affectedFeatures — server auto-fill khi tạo phiên đo (giao cắt
+                  với lớp thửa nền qua repo.intersectWithLayer, ORDER BY
+                  overlap_m2 DESC LIMIT 50). Empty khi payload.layerCode null. */}
+              {Array.isArray(detail.affectedFeatures) && detail.affectedFeatures.length > 0 && (
+                <div className="rounded-md border">
+                  <div className="border-b p-3">
+                    <p className="text-muted-foreground text-xs">
+                      Thửa/đối tượng giao cắt ({detail.affectedFeatures.length})
+                    </p>
+                    <p className="text-muted-foreground mt-0.5 text-[10px]">
+                      Sắp xếp theo diện tích chồng lấp giảm dần
+                    </p>
+                  </div>
+                  <div className="max-h-64 overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Feature ID</TableHead>
+                          <TableHead className="text-xs">Loại đất</TableHead>
+                          <TableHead className="text-right text-xs">Chồng lấp</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {detail.affectedFeatures.map((feat, idx) => {
+                          const f = feat as {
+                            featureId?: string | number
+                            landUse?: string | null
+                            overlapM2?: number | string | null
+                          }
+                          return (
+                            <TableRow key={String(f.featureId ?? idx)}>
+                              <TableCell className="font-mono text-[10px]">
+                                {String(f.featureId ?? '—')}
+                              </TableCell>
+                              <TableCell className="text-xs">{f.landUse || '—'}</TableCell>
+                              <TableCell className="text-right text-xs tabular-nums">
+                                {formatArea(f.overlapM2)}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
               {/* Preview GeoJSON polygon trên bản đồ. GeoJsonMapPreview tự
                   gỡ WebGL context + markers khi unmount (dialog đóng → detail
                   reset → component unmount → map.remove() chạy). Chỉ render
@@ -446,6 +546,15 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="rounded-md border p-3">
       <p className="text-muted-foreground mb-1 text-xs">{label}</p>
       <div className="font-medium">{value}</div>
+    </div>
+  )
+}
+
+function TimelineEntry({ label, at }: { label: string; at?: string | null }) {
+  return (
+    <div>
+      <p className="text-muted-foreground text-[10px]">{label}</p>
+      <p className="font-medium tabular-nums">{at ? formatDateTime(at) : '—'}</p>
     </div>
   )
 }
