@@ -8,7 +8,6 @@ import {
   ChevronUp,
   Eye,
   EyeOff,
-  FileJson,
   GitCompareArrows,
   Image as ImageIcon,
   Layers,
@@ -46,7 +45,6 @@ import {
 import { formatDateTime } from '@/lib/date'
 import {
   buildGeoserverDownloadUrl,
-  buildGeoserverPreviewUrl,
   downloadRasterFile,
 } from '@/lib/geoserver'
 import type {
@@ -177,17 +175,17 @@ function StatusBadge({ status }: { status?: string }) {
   const s = String(status || '').toLowerCase()
   const map: Record<string, { label: string; className: string }> = {
     completed: {
-      label: 'completed',
+      label: 'Hoàn thành',
       className: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     },
     published: {
-      label: 'published',
+      label: 'Đã công bố',
       className: 'bg-emerald-200 text-emerald-900 border-emerald-400',
     },
-    computing: { label: 'computing', className: 'bg-sky-100 text-sky-800 border-sky-300' },
-    exporting: { label: 'exporting', className: 'bg-sky-100 text-sky-800 border-sky-300' },
-    pending: { label: 'pending', className: 'bg-slate-100 text-slate-800 border-slate-300' },
-    failed: { label: 'failed', className: 'bg-red-100 text-red-800 border-red-300' },
+    computing: { label: 'Đang phân tích', className: 'bg-sky-100 text-sky-800 border-sky-300' },
+    exporting: { label: 'Đang tạo bản đồ', className: 'bg-sky-100 text-sky-800 border-sky-300' },
+    pending: { label: 'Đang chờ', className: 'bg-slate-100 text-slate-800 border-slate-300' },
+    failed: { label: 'Thất bại', className: 'bg-red-100 text-red-800 border-red-300' },
   }
   const meta = map[s] || {
     label: status || '—',
@@ -287,23 +285,19 @@ export default function ForestClassificationPage() {
             <TreePine className="h-6 w-6 text-emerald-600" />
             Phân loại lớp phủ rừng
           </h1>
-          <p className="text-muted-foreground text-sm">
-            Random Forest 11 lớp, chạy 45 ngày/lần. Có thể chọn lại các kỳ dữ liệu trong quá khứ.
+          <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
+            Theo dõi 11 nhóm lớp phủ, diện tích rừng và biến động theo tháng trên toàn tỉnh.
           </p>
           {snapshot && (
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
               <span>
                 Kỳ dữ liệu:{' '}
-                <span className="font-mono">{formatPeriod(snapshot.year, snapshot.month)}</span>
+                <span>{formatPeriod(snapshot.year, snapshot.month)}</span>
               </span>
               <StatusBadge status={snapshot.status} />
-              {snapshot.geoserverLayer ? (
-                <span className="text-emerald-600">GeoServer ✓ (persistent)</span>
-              ) : snapshot.geeTileUrl ? (
-                <span className="text-amber-600">GEE tile (TTL ~24h)</span>
-              ) : (
-                <span className="text-slate-500">Chưa có raster</span>
-              )}
+              <span className={rasterTileUrl ? 'text-emerald-700' : 'text-amber-700'}>
+                {rasterTileUrl ? 'Bản đồ sẵn sàng' : 'Bản đồ đang xử lý'}
+              </span>
             </div>
           )}
         </div>
@@ -313,7 +307,7 @@ export default function ForestClassificationPage() {
             onClick={() => setRefreshDialogOpen(true)}
             disabled={isRefreshing}
           >
-            {isRefreshing ? 'Đang chạy (~3-5 phút)...' : 'Chạy lại phân tích'}
+            {isRefreshing ? 'Đang phân loại...' : 'Phân loại lại'}
           </Button>
         )}
       </div>
@@ -329,23 +323,22 @@ export default function ForestClassificationPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isRefreshing ? 'Đang chạy phân loại...' : 'Chạy lại phân loại?'}
+              {isRefreshing ? 'Đang phân loại dữ liệu...' : 'Phân loại lại lớp phủ rừng?'}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 {isRefreshing ? (
                   <>
-                    <p>Server đang gọi Google Earth Engine để phân loại 11 lớp. Mất ~3-5 phút.</p>
+                    <p>Hệ thống đang cập nhật 11 nhóm lớp phủ cho kỳ đã chọn.</p>
                     <p className="flex items-center gap-2 text-sky-700">
                       <LoadingInline size="small" />
-                      <span>Đang xử lý — không tắt tab.</span>
+                      <span>Đang xử lý, kết quả sẽ tự động cập nhật.</span>
                     </p>
                   </>
                 ) : (
                   <>
                     <p>
-                      Chọn kỳ dữ liệu cần chạy Random Forest. Chạy lại cùng một kỳ sẽ cập nhật
-                      snapshot của kỳ đó.
+                      Chọn kỳ dữ liệu cần cập nhật. Kết quả mới sẽ thay thế kết quả của cùng kỳ.
                     </p>
                     <div className="grid grid-cols-2 gap-3 py-2">
                       <label className="space-y-1 text-xs font-medium">
@@ -395,10 +388,8 @@ export default function ForestClassificationPage() {
                         </Select>
                       </label>
                     </div>
-                    <p>
-                      Bạn có thể tiếp tục làm việc khác — kết quả tự động hiện lên khi xong.
-                      Auto-ingest raster vào MinIO/GeoServer chạy song song sau khi analysis
-                      complete.
+                    <p className="text-muted-foreground text-xs">
+                      Dữ liệu hiện tại vẫn được giữ nguyên cho đến khi quá trình hoàn tất.
                     </p>
                   </>
                 )}
@@ -422,13 +413,11 @@ export default function ForestClassificationPage() {
       {/* ── Overview ─────────────────────────────────── */}
       <Card>
         <CardContent className="space-y-4 p-4 sm:p-6">
-          {snapshot && <ConfigStatusBanner snapshot={snapshot} />}
-
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Đang tải dữ liệu snapshot...</p>
+            <p className="text-muted-foreground text-sm">Đang tải dữ liệu phân loại...</p>
           ) : !snapshot ? (
             <p className="text-sm text-amber-700">
-              Chưa có snapshot nào. Bấm "Chạy lại phân tích" để tạo lần đầu.
+              Chưa có dữ liệu phân loại. Hãy chạy phân loại lần đầu.
             </p>
           ) : (
             <>
@@ -448,27 +437,27 @@ export default function ForestClassificationPage() {
                   <div className={`grid gap-4 ${grid}`}>
                     <Stat
                       label="Tổng diện tích"
-                      hint="Σ theo tất cả 11 lớp"
+                        hint="Tổng diện tích đã được phân loại"
                       value={formatHa(totalHa)}
                     />
                     <Stat
                       label="Diện tích rừng"
-                      hint="Σ class 1, 3-8 (rừng thực + trồng)"
+                        hint="Gồm các nhóm rừng tự nhiên và rừng trồng"
                       value={formatHa(forestHa)}
                       sub={`${formatPct(forestPct)} tổng`}
                       tone="success"
                     />
                     {hasOob && (
                       <Stat
-                        label="OOB accuracy"
-                        hint="Out-of-bag accuracy của Random Forest"
+                        label="Độ chính xác mô hình"
+                        hint="Độ chính xác ước tính của kết quả phân loại"
                         value={formatPct(snapshot.oobAccuracy)}
                       />
                     )}
                     {hasKappa && (
                       <Stat
-                        label="Kappa"
-                        hint="Test set κ (0-1); >0.6 là tốt cho 11 class"
+                        label="Mức đồng thuận"
+                        hint="Mức phù hợp giữa kết quả và dữ liệu kiểm chứng"
                         value={snapshot.testKappa!.toFixed(3)}
                       />
                     )}
@@ -505,7 +494,6 @@ export default function ForestClassificationPage() {
                     heatOpacity={heatOpacity}
                     onHeatVisibleChange={setHeatVisible}
                     onHeatOpacityChange={setHeatOpacity}
-                    geoserverLayer={snapshot.geoserverLayer}
                     downloadUrl={
                       buildGeoserverDownloadUrl(snapshot.geoserverLayer) ||
                       snapshot.geeDownloadUrl ||
@@ -533,7 +521,7 @@ export default function ForestClassificationPage() {
               {districtAreas.length > 0 && (
                 <CollapsibleSection
                   title="Phân bố theo huyện"
-                  hint={`${districtAreas.length} huyện · dominant class + forest %`}
+                  hint={`${districtAreas.length} huyện · nhóm phủ chính và tỷ lệ rừng`}
                 >
                   <DistrictAreaTable rows={districtAreas} comparison={comparison?.districts} />
                 </CollapsibleSection>
@@ -549,7 +537,6 @@ export default function ForestClassificationPage() {
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Lịch sử chạy phân loại</h2>
-              <p className="text-muted-foreground text-xs">Click hàng để xem chi tiết snapshot.</p>
             </div>
           </div>
           {/* History table — max-h giới hạn để không đẩy pagination xa khỏi
@@ -559,15 +546,13 @@ export default function ForestClassificationPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10" />
-                  <TableHead>#</TableHead>
                   <TableHead>Kỳ</TableHead>
                   <TableHead>Trạng thái</TableHead>
-                  <TableHead>Trigger</TableHead>
-                  <TableHead className="text-right">OOB</TableHead>
+                  <TableHead className="text-right">Độ chính xác</TableHead>
                   <TableHead className="text-right">Tổng ha</TableHead>
                   <TableHead className="text-right">Rừng ha</TableHead>
-                  <TableHead>Raster</TableHead>
-                  <TableHead>Tính lúc</TableHead>
+                  <TableHead>Bản đồ</TableHead>
+                  <TableHead>Cập nhật lúc</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -599,12 +584,10 @@ export default function ForestClassificationPage() {
                             <ChevronRight className="h-4 w-4" />
                           )}
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{h.id}</TableCell>
-                        <TableCell className="font-mono">{formatPeriod(h.year, h.month)}</TableCell>
+                        <TableCell>{formatPeriod(h.year, h.month)}</TableCell>
                         <TableCell>
                           <StatusBadge status={h.status} />
                         </TableCell>
-                        <TableCell className="text-xs">{h.trigger || 'cron'}</TableCell>
                         <TableCell className="text-right tabular-nums">
                           {h.oob_accuracy != null ? `${h.oob_accuracy}%` : '—'}
                         </TableCell>
@@ -616,11 +599,11 @@ export default function ForestClassificationPage() {
                         </TableCell>
                         <TableCell className="text-xs">
                           {rasterKind === 'GeoServer' ? (
-                            <span className="text-emerald-600">GeoServer ✓</span>
+                            <span className="text-emerald-700">Sẵn sàng</span>
                           ) : rasterKind === 'GEE tile' ? (
-                            <span className="text-amber-600">GEE tile</span>
+                            <span className="text-amber-700">Tạm thời</span>
                           ) : (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-slate-500">Đang xử lý</span>
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
@@ -629,7 +612,7 @@ export default function ForestClassificationPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="bg-muted/20">
-                          <TableCell colSpan={10}>
+                          <TableCell colSpan={8}>
                             <SnapshotDetailPanel item={h} />
                           </TableCell>
                         </TableRow>
@@ -639,7 +622,7 @@ export default function ForestClassificationPage() {
                 })}
                 {!history.length && (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-muted-foreground text-center">
+                    <TableCell colSpan={8} className="text-muted-foreground text-center">
                       Chưa có bản ghi lịch sử.
                     </TableCell>
                   </TableRow>
@@ -742,47 +725,6 @@ function CollapsibleSection({
         )}
       </Button>
       {open && <div className="border-t p-3">{children}</div>}
-    </div>
-  )
-}
-
-/**
- * Banner giải thích snapshot đang dùng nguồn raster nào.
- */
-function ConfigStatusBanner({ snapshot }: { snapshot: ForestClassSnapshot }) {
-  if (snapshot.geoserverLayer) {
-    return (
-      <div className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-        <b>Raster:</b> GeoServer WMS ✓ (persistent) —{' '}
-        <span className="font-mono">{snapshot.geoserverLayer}</span>
-      </div>
-    )
-  }
-  if (snapshot.geeTileUrl) {
-    const ageMs = snapshot.geeTileGeneratedAt
-      ? Date.now() - new Date(snapshot.geeTileGeneratedAt).getTime()
-      : 0
-    const ageHours = ageMs / 3_600_000
-    const stale = ageHours >= 24
-    if (stale) {
-      return (
-        <div className="rounded-md border border-red-400 bg-red-50 px-3 py-2 text-xs text-red-800">
-          <b>⚠ Raster GEE có thể đã hết hạn</b> — tile URL sinh {ageHours.toFixed(1)}h trước (TTL
-          24h). Bấm <b>"Chạy lại phân tích"</b> để tạo URL mới, hoặc dùng snapshot cũ đã publish
-          GeoServer.
-        </div>
-      )
-    }
-    return (
-      <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        <b>Raster:</b> Earth Engine (TTL ~24h, còn ~{Math.max(0, 24 - ageHours).toFixed(1)}h).
-        Auto-ingest raster vào MinIO/GeoServer sẽ sinh layer WMS persistent sau vài phút.
-      </div>
-    )
-  }
-  return (
-    <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-      <b>Chưa có raster.</b> Snapshot chưa completed hoặc getDownloadURL timeout.
     </div>
   )
 }
@@ -1044,7 +986,7 @@ function DistrictAreaTable({
             <TableHead className="text-right">Rừng ha</TableHead>
             <TableHead className="text-right">Rừng %</TableHead>
             {comparison && <TableHead className="text-right">Δ rừng</TableHead>}
-            <TableHead>Class dominant</TableHead>
+            <TableHead>Lớp phủ chính</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1095,7 +1037,6 @@ function LayerManager({
   heatOpacity,
   onHeatVisibleChange,
   onHeatOpacityChange,
-  geoserverLayer,
   downloadUrl,
   downloadFilename,
 }: {
@@ -1103,7 +1044,6 @@ function LayerManager({
   heatOpacity: number
   onHeatVisibleChange: (v: boolean) => void
   onHeatOpacityChange: (v: number) => void
-  geoserverLayer: string | null | undefined
   downloadUrl: string | null | undefined
   downloadFilename: string
 }) {
@@ -1114,7 +1054,7 @@ function LayerManager({
     try {
       await downloadRasterFile(downloadUrl, downloadFilename)
     } catch (err: any) {
-      toast.error(err?.message || 'Không thể tải GeoTIFF phân loại rừng.')
+      toast.error(err?.message || 'Không thể tải dữ liệu phân loại rừng.')
     }
   }
 
@@ -1131,7 +1071,7 @@ function LayerManager({
       >
         <div className="flex items-center gap-2">
           <Layers size={16} className="text-primary" />
-          <span className="text-sm font-semibold">Quản lý Layer</span>
+          <span className="text-sm font-semibold">Lớp bản đồ</span>
         </div>
         {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </Button>
@@ -1167,8 +1107,8 @@ function LayerManager({
                   variant="ghost"
                   size="icon-xs"
                   onClick={downloadRaster}
-                  title={`Tải GeoTIFF (${downloadFilename})`}
-                  aria-label="Tải GeoTIFF"
+                  title="Tải dữ liệu phân loại"
+                  aria-label="Tải dữ liệu phân loại"
                 >
                   <ImageIcon className="text-primary h-3.5 w-3.5" />
                 </Button>
@@ -1184,21 +1124,7 @@ function LayerManager({
               className="accent-primary mt-2 block w-full"
               title={`Độ trong suốt: ${Math.round(heatOpacity * 100)}%`}
             />
-            <p className="text-muted-foreground mt-1 text-[10px]">
-              Nguồn: {geoserverLayer ? 'GeoServer WMS' : 'Earth Engine tile'}
-            </p>
           </div>
-          {geoserverLayer && (
-            <a
-              href={buildGeoserverPreviewUrl(geoserverLayer)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block truncate rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1.5 font-mono text-[10px] text-emerald-700 hover:bg-emerald-100"
-              title="Mở OpenLayers preview trên GeoServer"
-            >
-              ↗ {geoserverLayer}
-            </a>
-          )}
         </div>
       )}
     </div>
@@ -1234,16 +1160,16 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
           queryClient.refetchQueries({ queryKey: ['forest-class-latest'], type: 'active' }),
           queryClient.refetchQueries({ queryKey: ['forest-class-history'], type: 'active' }),
         ])
-        toast.info('Snapshot đã publish trước đó.')
+        toast.info('Dữ liệu này đã có trên bản đồ.')
         setBusy(false)
         return
       }
       if (data?.jobId) {
         setIngestJobId(Number(data.jobId))
-        toast.success(`Đã kích hoạt job publish (#${data.jobId}). Đang xử lý...`)
+        toast.success('Đã bắt đầu cập nhật bản đồ.')
       }
     } catch (err: any) {
-      toast.error(err?.message || 'Publish thất bại')
+      toast.error(err?.message || 'Không thể cập nhật bản đồ')
       setBusy(false)
     }
   }
@@ -1270,7 +1196,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
     if (!terminal || !busy) return
     setBusy(false)
     if (job.status === 'completed') {
-      toast.success(`Publish xong → ${job.geoserver_layer || ''}`)
+      toast.success('Đã cập nhật bản đồ thành công.')
       void Promise.all([
         queryClient.invalidateQueries({
           queryKey: ['forest-class-latest'],
@@ -1287,71 +1213,51 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
         ])
       )
     } else {
-      toast.error(`Job ${job.status}: ${job.error_log || ''}`)
+      toast.error(job.error_log || 'Cập nhật bản đồ thất bại.')
     }
   }, [terminal, busy, job?.status, job?.geoserver_layer, job?.error_log, queryClient])
 
   const dismissJob = () => setIngestJobId(null)
 
   const facts: Array<{ label: string; value: React.ReactNode; hint?: string }> = [
-    { label: 'ID', value: <span className="font-mono">{item.id}</span> },
     {
       label: 'Kỳ dữ liệu',
-      value: <span className="font-mono">{formatPeriod(item.year, item.month)}</span>,
+      value: <span>{formatPeriod(item.year, item.month)}</span>,
     },
     { label: 'Trạng thái', value: <StatusBadge status={item.status} /> },
-    { label: 'Trigger', value: item.trigger || 'cron' },
-    { label: 'Tính lúc', value: item.computed_at ? formatDateTime(item.computed_at) : '—' },
-    { label: 'Publish lúc', value: item.published_at ? formatDateTime(item.published_at) : '—' },
-    { label: 'OOB accuracy', value: item.oob_accuracy != null ? `${item.oob_accuracy}%` : '—' },
+    { label: 'Hoàn thành lúc', value: item.computed_at ? formatDateTime(item.computed_at) : '—' },
+    { label: 'Công bố lúc', value: item.published_at ? formatDateTime(item.published_at) : '—' },
     {
-      label: 'Duration',
+      label: 'Độ chính xác',
+      value: item.oob_accuracy != null ? `${item.oob_accuracy}%` : '—',
+    },
+    {
+      label: 'Thời gian xử lý',
       value: item.duration_ms != null ? `${Math.round(item.duration_ms / 1000)}s` : '—',
     },
-    { label: 'Tổng ha', value: formatHa(totalHa) },
-    { label: 'Rừng ha', value: <span className="text-emerald-700">{formatHa(forestHa)}</span> },
+    { label: 'Tổng diện tích', value: formatHa(totalHa) },
     {
-      label: 'GeoServer layer',
+      label: 'Diện tích rừng',
+      value: <span className="text-emerald-700">{formatHa(forestHa)}</span>,
+    },
+    {
+      label: 'Bản đồ',
       value: item.geoserver_layer ? (
-        <a
-          href={buildGeoserverPreviewUrl(item.geoserver_layer)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-mono text-emerald-600 underline decoration-dotted hover:decoration-solid"
-          title="Mở OpenLayers preview trên GeoServer"
-        >
-          {item.geoserver_layer} ↗
-        </a>
+        <span className="text-emerald-700">Sẵn sàng</span>
+      ) : item.gee_tile_url ? (
+        <span className="text-amber-700">Tạm thời</span>
       ) : (
-        <span className="text-slate-500">chưa publish</span>
-      ),
-      hint: 'Layer WMS đã publish. Click để mở preview OpenLayers.',
-    },
-    {
-      label: 'GEE tile URL',
-      value: item.gee_tile_url ? (
-        <span className="text-amber-600">có (TTL ~24h)</span>
-      ) : (
-        <span className="text-slate-400">—</span>
+        <span className="text-muted-foreground">Đang xử lý</span>
       ),
     },
-    {
-      label: 'Download URL',
-      value: item.gee_download_url ? (
-        <span className="text-emerald-600">có</span>
-      ) : (
-        <span className="text-slate-400">—</span>
-      ),
-      hint: 'GEE getDownloadURL — TTL ~24h. Publish sẽ pull vào MinIO trước hạn.',
-    },
-    {
-      label: 'Lỗi',
-      value: item.error_message ? (
+    ...(item.error_message
+      ? [{
+        label: 'Thông báo lỗi',
+        value: (
         <span className="text-xs text-red-600">{item.error_message}</span>
-      ) : (
-        <span className="text-slate-400">—</span>
-      ),
-    },
+        ),
+      }]
+      : []),
   ]
 
   return (
@@ -1361,23 +1267,22 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
       {canPublishRaster && (
       <div className="bg-background/60 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
         <div className="min-w-0 flex-1 text-xs">
-          <p className="font-semibold">Lưu ảnh GeoTIFF & Publish GeoServer</p>
+          <p className="font-semibold">Đưa kết quả lên bản đồ</p>
           <p className="text-muted-foreground mt-0.5">
-            Ingest ảnh phân loại 11 lớp (RGB viz) từ GEE → MinIO → GeoServer. Layer sẽ gán vào
-            snapshot này, xem lại được cả trên admin và client.
+            Công bố kết quả này để dùng ổn định trên trang quản trị và cổng bản đồ công khai.
           </p>
           {job && !terminal && (
             <p className="mt-1 flex items-center gap-2 text-sky-700">
               <LoadingInline size="small" />
               <span>
-                Job #{job.id} — {job.status} ({job.progress}%)
+                Đang cập nhật bản đồ ({job.progress}%)
               </span>
             </p>
           )}
           {job?.status === 'completed' && job.geoserver_layer && (
             <p className="mt-1 flex items-center gap-2 text-emerald-700">
               <span>
-                ✓ Layer: <span className="font-mono">{job.geoserver_layer}</span>
+                Đã cập nhật bản đồ thành công
               </span>
               <Button
                 type="button"
@@ -1392,7 +1297,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
           )}
           {job?.status === 'failed' && (
             <p className="mt-1 text-red-700">
-              ✗ Job #{job.id} failed: {job.error_log?.slice(0, 200) || 'không rõ'}
+              {job.error_log?.slice(0, 200) || 'Không thể cập nhật bản đồ.'}
               <Button
                 type="button"
                 variant="link"
@@ -1400,7 +1305,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
                 onClick={dismissJob}
                 className="h-auto shrink-0 px-0 py-0 text-[10px] text-slate-500 hover:text-slate-700"
               >
-                Clear
+                Đóng
               </Button>
             </p>
           )}
@@ -1411,13 +1316,13 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
           disabled={!canPublish}
           title={
             published
-              ? 'Đã publish rồi.'
+              ? 'Đã công bố.'
               : hasDownload
-                ? 'Bấm để enqueue job publish → MinIO → GeoServer'
-                : 'Chưa có geeDownloadUrl'
+                ? 'Đưa kết quả lên bản đồ'
+                : 'Chưa có dữ liệu bản đồ'
           }
         >
-          {busy ? 'Đang chạy...' : published ? 'Đã publish' : 'Publish → GeoServer'}
+          {busy ? 'Đang xử lý...' : published ? 'Đã công bố' : 'Đưa lên bản đồ'}
         </Button>
       </div>
       )}
@@ -1438,21 +1343,12 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
       {totalHa > 0 && (
         <div className="rounded-md border p-3">
           <p className="text-muted-foreground mb-2 text-xs font-semibold">
-            Phân bố 11 lớp trong snapshot này
+            Phân bố 11 lớp của kỳ này
           </p>
           <ClassDistributionBar byClass={byClass} totalHa={totalHa} />
         </div>
       )}
 
-      {/* Raw JSON — collapsible cho debug */}
-      <details className="bg-background/40 rounded-md border p-2 text-xs">
-        <summary className="flex cursor-pointer items-center gap-1.5 font-semibold">
-          <FileJson size={12} /> Raw JSON snapshot
-        </summary>
-        <pre className="mt-2 max-h-64 overflow-auto text-[10px]">
-          {JSON.stringify(item, null, 2)}
-        </pre>
-      </details>
     </div>
   )
 }

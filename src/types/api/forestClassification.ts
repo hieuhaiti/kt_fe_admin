@@ -16,23 +16,15 @@ export interface ForestClassSnapshot {
   year: number
   month: number
   status: string // pending | computing | completed | failed | published
-  trigger?: string // cron | manual | user
   provinceSummary?: ForestClassProvinceSummary
   oobAccuracy?: number | null
-  testAccuracy?: number | null
   testKappa?: number | null
-  sampleQuotas?: any
-  modelParams?: any
-  durationMs?: number | null
   geoserverLayer?: string | null
   geeTileUrl?: string | null
-  geeMapId?: string | null
-  geeTileGeneratedAt?: string | null
   geeDownloadUrl?: string | null
   geoserverDownloadUrl?: string | null
   downloadFilename?: string | null
   computedAt?: string | null
-  publishedAt?: string | null
   errorMessage?: string | null
   [key: string]: any
 }
@@ -68,9 +60,7 @@ export interface ForestClassClassComparison extends ForestClassAreaComparisonMet
 export interface ForestClassDistrictComparison {
   districtCode?: string | null
   districtName?: string | null
-  total: ForestClassAreaComparisonMetric
   forest: ForestClassAreaComparisonMetric
-  classes: ForestClassClassComparison[]
 }
 
 export interface ForestClassComparison {
@@ -94,8 +84,6 @@ export interface ForestClassLatestData {
   districtAreas: ForestClassDistrictArea[]
   comparison?: ForestClassComparison | null
   geeTileUrl?: string | null
-  geeMapId?: string | null
-  classifiedViz?: any
   stale?: boolean
   computing?: boolean
 }
@@ -108,19 +96,14 @@ export interface ForestClassHistoryItem {
   year: number
   month: number
   status: string
-  trigger?: string
   oob_accuracy?: number | null
   duration_ms?: number | null
   province_summary?: ForestClassProvinceSummary
   computed_at?: string | null
   published_at?: string | null
-  created_at?: string | null
   gee_tile_url?: string | null
-  gee_tile_generated_at?: string | null
   gee_download_url?: string | null
   geoserver_layer?: string | null
-  geoserver_store?: string | null
-  minio_key?: string | null
   error_message?: string | null
   [key: string]: any
 }

@@ -187,7 +187,7 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
             <h2 className="text-lg font-semibold">Cảnh báo cháy rừng</h2>
           </div>
           <p className="text-muted-foreground text-sm">
-            {fireAlerts?.note ?? 'Chưa có snapshot cảnh báo cháy.'}
+            Chưa có dữ liệu cảnh báo cháy.
           </p>
         </CardContent>
       </Card>
@@ -206,11 +206,11 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
           <h2 className="text-lg font-semibold">Cảnh báo cháy rừng</h2>
           {fireAlerts.geoserverLayer ? (
             <span className="ml-auto rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-              GeoServer ✓
+              Bản đồ sẵn sàng
             </span>
           ) : fireAlerts.geeDownloadUrl ? (
             <span className="ml-auto rounded bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-              GEE (chưa publish)
+              Chờ công bố
             </span>
           ) : null}
         </div>
@@ -218,7 +218,7 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
         {/* Min · TB · Max — 3 số nổi bật */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="rounded-md border p-2">
-            <p className="text-muted-foreground text-[10px]">Min</p>
+            <p className="text-muted-foreground text-[10px]">Thấp nhất</p>
             <p className="text-xl font-bold">C{fireAlerts.minLevel ?? '—'}</p>
           </div>
           <div className="rounded-md border p-2">
@@ -228,7 +228,7 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
             </p>
           </div>
           <div className="rounded-md border p-2" style={{ borderColor: maxColor }}>
-            <p className="text-muted-foreground text-[10px]">Max</p>
+            <p className="text-muted-foreground text-[10px]">Cao nhất</p>
             <p className="text-xl font-bold" style={{ color: maxColor }}>
               C{fireAlerts.maxLevel ?? '—'}
             </p>
@@ -251,7 +251,7 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
           </span>
           {fireAlerts.s2CoverageRatio != null && (
             <span className="text-muted-foreground">
-              S2 phủ:{' '}
+              Ảnh hợp lệ:{' '}
               <strong className="text-foreground">
                 {(fireAlerts.s2CoverageRatio * 100).toFixed(1)}%
               </strong>
@@ -261,7 +261,7 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
 
         <div className="mt-3">
           <a href="/fire-risk" className="text-primary text-xs font-medium hover:underline">
-            Xem chi tiết & Publish GeoServer →
+            Xem chi tiết cảnh báo →
           </a>
         </div>
       </CardContent>
@@ -283,7 +283,7 @@ function ForestClassificationDashboardCard({
             <h2 className="text-lg font-semibold">Phân loại rừng</h2>
           </div>
           <p className="text-muted-foreground text-sm">
-            {data?.note ?? 'Chưa có snapshot phân loại rừng.'}
+            Chưa có dữ liệu phân loại rừng.
           </p>
         </CardContent>
       </Card>
@@ -303,11 +303,11 @@ function ForestClassificationDashboardCard({
           <h2 className="text-lg font-semibold">Phân loại rừng</h2>
           {data.geoserverLayer ? (
             <span className="bg-success/10 text-success ml-auto rounded px-2 py-0.5 text-[10px] font-medium">
-              GeoServer ✓
+              Bản đồ sẵn sàng
             </span>
           ) : data.geeDownloadUrl ? (
             <span className="bg-warning/10 text-warning-foreground ml-auto rounded px-2 py-0.5 text-[10px] font-medium">
-              Chưa publish
+              Chờ công bố
             </span>
           ) : null}
         </div>
@@ -316,7 +316,7 @@ function ForestClassificationDashboardCard({
           <Metric label="Rừng" value={formatHa(data.forestAreaHa ?? undefined)} />
           <Metric label="Tỷ lệ" value={formatPct(data.forestCoveragePct ?? undefined)} />
           <Metric
-            label="OOB accuracy"
+            label="Độ chính xác"
             value={data.oobAccuracy != null ? `${data.oobAccuracy.toFixed(1)}%` : '—'}
           />
         </div>
@@ -345,18 +345,6 @@ function ForestClassificationDashboardCard({
               </strong>
             </p>
           )}
-          {data.testAccuracy != null && (
-            <p className="text-muted-foreground">
-              Test accuracy:{' '}
-              <strong className="text-foreground">{data.testAccuracy.toFixed(1)}%</strong>
-              {data.testKappa != null && (
-                <>
-                  {' '}
-                  · Kappa: <strong className="text-foreground">{data.testKappa.toFixed(3)}</strong>
-                </>
-              )}
-            </p>
-          )}
         </div>
 
         <div className="mt-3">
@@ -364,7 +352,7 @@ function ForestClassificationDashboardCard({
             href="/forest-classification"
             className="text-primary text-xs font-medium hover:underline"
           >
-            Xem chi tiết & Publish GeoServer →
+            Xem chi tiết phân loại →
           </a>
         </div>
       </CardContent>

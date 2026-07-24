@@ -7,7 +7,6 @@ import {
   ChevronUp,
   Eye,
   EyeOff,
-  FileJson,
   Image as ImageIcon,
   Layers,
 } from 'lucide-react'
@@ -156,14 +155,7 @@ export default function FireRiskPage() {
           }, 2000)
         },
         onError: (err: any) => {
-          // Nhận diện lỗi GCS để show hướng dẫn cụ thể thay vì raw message.
-          const raw = err?.message || 'Chạy lại thất bại'
-          const isGcsErr = /GCS_BUCKET|cannot export raster/i.test(raw)
-          toast.error(
-            isGcsErr
-              ? 'Server chưa cấu hình GCS. Đã tự động tắt export raster — nếu vẫn lỗi, cần deploy code mới hoặc set GEE_GCS_BUCKET.'
-              : raw
-          )
+          toast.error(err?.message || 'Không thể chạy lại phân tích.')
           setRefreshDialogOpen(false)
         },
       }
@@ -208,10 +200,8 @@ export default function FireRiskPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold sm:text-2xl">Cảnh báo cháy rừng</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Cập nhật hàng ngày lúc 06:00 (GMT+7). Nguồn: Sentinel-2, MODIS LST, ERA5-Land. Cấp cảnh
-            báo C1-C5 do <b>Random Forest 100 trees</b> tính (blend NDVI + NDMI + NBR + LST + ERA5 +
-            slope + fuel + NesterovP), không phải phân cấp thuần Nesterov theo QĐ 25/2022.
+          <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
+            Theo dõi nguy cơ cháy theo 5 cấp, cập nhật hằng ngày cho toàn tỉnh và từng huyện.
           </p>
           {snapshot?.analysisDate && (
             // NOTE — dùng <div> thay <p> vì bên trong có <Badge> (render <div>).
@@ -219,20 +209,13 @@ export default function FireRiskPage() {
             // descendant of <p>" và bị auto-close ngoài <p> làm vỡ layout.
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
               <span>
-                Snapshot cuối:{' '}
-                <span className="font-mono">{formatDate(snapshot.analysisDate)}</span>
+                Ngày phân tích:{' '}
+                <span>{formatDate(snapshot.analysisDate)}</span>
               </span>
               {snapshot.status && <StatusBadge status={snapshot.status} />}
-              {/* NOTE — 2 nguồn raster tách biệt: GeoServer WMS (persistent) và
-                  GEE tile URL (24h TTL). Hiện thị trạng thái từng nguồn để user
-                  biết khi nào cần config GCS/GeoServer để chuyển sang persistent. */}
-              {snapshot.geoserverLayer ? (
-                <span className="text-emerald-600">GeoServer ✓ (persistent)</span>
-              ) : snapshot.geeTileUrl || (snapshot as any).gee_tile_url ? (
-                <span className="text-amber-600">GEE tile (fallback, TTL ~24h)</span>
-              ) : (
-                <span className="text-slate-500">Chưa có raster</span>
-              )}
+              <span className={resolveRasterTileUrl(snapshot) ? 'text-emerald-700' : 'text-amber-700'}>
+                {resolveRasterTileUrl(snapshot) ? 'Bản đồ sẵn sàng' : 'Bản đồ đang xử lý'}
+              </span>
             </div>
           )}
         </div>
@@ -242,7 +225,7 @@ export default function FireRiskPage() {
             onClick={() => setRefreshDialogOpen(true)}
             disabled={isRefreshing}
           >
-            {isRefreshing ? 'Đang chạy (~3-5 phút)...' : 'Chạy lại phân tích'}
+            {isRefreshing ? 'Đang phân tích...' : 'Phân tích lại'}
           </Button>
         )}
       </div>
@@ -259,35 +242,25 @@ export default function FireRiskPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isRefreshing ? 'Đang chạy phân tích cháy rừng...' : 'Chạy lại phân tích cháy rừng?'}
+              {isRefreshing ? 'Đang phân tích cháy rừng...' : 'Phân tích lại dữ liệu cháy rừng?'}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 {isRefreshing ? (
                   <>
-                    <p>
-                      Server đang gọi Google Earth Engine để tính toán. Quá trình mất{' '}
-                      <span className="font-semibold">3-5 phút</span> và không thể huỷ.
-                    </p>
+                    <p>Hệ thống đang cập nhật dữ liệu nguy cơ cháy cho toàn tỉnh.</p>
                     <p className="text-muted-foreground text-xs">
                       Bạn có thể đóng cửa sổ này sau khi hoàn tất — kết quả tự cập nhật.
                     </p>
                   </>
                 ) : (
                   <>
-                    <p>Phân tích sẽ:</p>
-                    <ul className="ml-4 list-disc space-y-1">
-                      <li>Kéo dữ liệu Sentinel-2, MODIS LST, ERA5-Land 30 ngày gần nhất</li>
-                      <li>
-                        Tính chỉ số khô hạn NesterovP + chạy Random Forest 100 trees để cho cấp cảnh
-                        báo C1-C5 (blend NDVI/NDMI/NBR + LST + ERA5 + slope + fuel + NesterovP)
-                      </li>
-                      <li>Chạy reduceRegions cho tất cả huyện của Kon Tum</li>
-                      <li>Ghi snapshot mới vào DB, submit export raster → GeoServer WMS</li>
-                    </ul>
-                    <p className="mt-2">
-                      Thời gian ước tính: <span className="font-semibold">3-5 phút</span>. Trong lúc
-                      chạy, KHÔNG được đóng tab.
+                    <p>
+                      Hệ thống sẽ dùng dữ liệu mới nhất để tính lại cấp nguy cơ cho toàn tỉnh và
+                      từng huyện. Thời gian dự kiến 3-5 phút.
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Dữ liệu hiện tại vẫn được giữ nguyên cho đến khi kết quả mới hoàn tất.
                     </p>
                   </>
                 )}
@@ -297,7 +270,7 @@ export default function FireRiskPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isRefreshing}>Huỷ</AlertDialogCancel>
             <AlertDialogAction onClick={onConfirmRefresh} disabled={isRefreshing}>
-              {isRefreshing ? 'Đang chạy...' : 'Bắt đầu chạy'}
+              {isRefreshing ? 'Đang xử lý...' : 'Bắt đầu phân tích'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -309,25 +282,11 @@ export default function FireRiskPage() {
       {/* ── Controls + tổng quan ───────────────────── */}
       <Card>
         <CardContent className="space-y-4 p-4 sm:p-6">
-          {/* Banner giải thích trạng thái config raster — luôn hiện để user
-              biết snapshot đang dùng nguồn nào. Ẩn khi chưa có snapshot. */}
-          {snapshot && (
-            <ConfigStatusBanner
-              geoserverLayer={snapshot.geoserverLayer as string | null}
-              geeTileUrl={(snapshot.geeTileUrl || (snapshot as any).gee_tile_url) as string | null}
-              geeTileGeneratedAt={
-                (snapshot.geeTileGeneratedAt || (snapshot as any).gee_tile_generated_at) as
-                  | string
-                  | null
-              }
-            />
-          )}
-
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Đang tải dữ liệu snapshot...</p>
+            <p className="text-muted-foreground text-sm">Đang tải dữ liệu cảnh báo...</p>
           ) : !snapshot ? (
             <p className="text-sm text-amber-700">
-              Chưa có snapshot nào. Bấm "Chạy lại phân tích" để tạo lần đầu.
+              Chưa có dữ liệu cảnh báo. Hãy chạy phân tích lần đầu.
             </p>
           ) : (
             <>
@@ -337,18 +296,18 @@ export default function FireRiskPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <Stat
                   label="Cấp cao nhất tỉnh"
-                  hint="Cấp có ha > 0 lớn nhất trong riskLevelDist"
+                  hint="Cấp nguy cơ cao nhất có ghi nhận diện tích"
                   value={provinceMaxLevel != null ? `Cấp ${provinceMaxLevel}` : '—'}
                   tone={provinceMaxLevel != null && provinceMaxLevel >= 4 ? 'danger' : 'default'}
                 />
                 <Stat
                   label="Cấp trung bình tỉnh"
-                  hint="Σ(cấp × ha) / Σ ha, weighted qua pixel rừng"
+                  hint="Mức nguy cơ bình quân theo diện tích"
                   value={summary.avgRiskLevel != null ? summary.avgRiskLevel.toFixed(2) : '—'}
                 />
                 <Stat
-                  label="S2 phủ trung bình"
-                  hint="% pixel có ảnh Sentinel-2 hợp lệ (30 ngày, mask mây)"
+                  label="Ảnh hợp lệ"
+                  hint="Tỷ lệ khu vực có đủ dữ liệu ảnh để phân tích"
                   value={
                     summary.s2CoverageRatio != null
                       ? `${(summary.s2CoverageRatio * 100).toFixed(1)}%`
@@ -359,12 +318,12 @@ export default function FireRiskPage() {
 
               {latest?.stale && (
                 <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
-                  ⚠ Snapshot đã cũ hơn 24h. Cân nhắc chạy lại phân tích.
+                  Dữ liệu đã cũ. Nên chạy phân tích lại để cập nhật bản đồ.
                 </div>
               )}
               {latest?.computing && (
                 <div className="rounded-md border border-sky-400 bg-sky-50 p-3 text-sm text-sky-800">
-                  ⏳ Đang tính snapshot mới — dữ liệu hiển thị là snapshot cũ.
+                  Đang tạo kết quả mới. Bản đồ hiện vẫn dùng dữ liệu gần nhất.
                 </div>
               )}
             </>
@@ -433,8 +392,7 @@ export default function FireRiskPage() {
         <CardContent className="p-4 sm:p-6">
           <h2 className="mb-1 text-lg font-semibold">Chi tiết huyện ({districtRows.length})</h2>
           <p className="text-muted-foreground mb-3 text-xs">
-            <b>Diện tích</b> = ha ở CHÍNH cấp cao nhất của huyện. <b>S2 phủ</b> = % pixel có
-            Sentinel-2 hợp lệ 30 ngày. <b>Click hàng</b> để xem breakdown theo từng cấp.
+            Diện tích được tính tại cấp cảnh báo cao nhất của từng huyện.
           </p>
           {/* Wrap trong div scrollable — header sticky nhờ Radix Table + inline
               positioning. Max-height ~450px = ~10 hàng; overflow-x-auto để
@@ -447,7 +405,6 @@ export default function FireRiskPage() {
               <TableHeader className="bg-background sticky top-0 z-10">
                 <TableRow>
                   <TableHead className="w-8" />
-                  <TableHead className="w-20 whitespace-nowrap">Mã huyện</TableHead>
                   <TableHead>Tên huyện</TableHead>
                   <TableHead>Cấp cao nhất</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Diện tích (ha)</TableHead>
@@ -475,9 +432,6 @@ export default function FireRiskPage() {
                             }`}
                           />
                         </TableCell>
-                        <TableCell className="whitespace-nowrap font-mono text-xs">
-                          {d.code}
-                        </TableCell>
                         <TableCell className="whitespace-nowrap">{d.name}</TableCell>
                         <TableCell>
                           <Badge
@@ -500,7 +454,7 @@ export default function FireRiskPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
-                          <TableCell colSpan={6} className="py-3">
+                          <TableCell colSpan={5} className="py-3">
                             <DistrictLevelBreakdown dist={dist} maxLevel={d.maxLevel} />
                           </TableCell>
                         </TableRow>
@@ -510,7 +464,7 @@ export default function FireRiskPage() {
                 })}
                 {!districtRows.length && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-muted-foreground text-center">
+                    <TableCell colSpan={5} className="text-muted-foreground text-center">
                       Chưa có dữ liệu cảnh báo theo huyện.
                     </TableCell>
                   </TableRow>
@@ -526,23 +480,19 @@ export default function FireRiskPage() {
         <CardContent className="p-4 sm:p-6">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-lg font-semibold">Lịch sử chạy phân tích</h2>
-            <span className="text-muted-foreground text-xs">
-              Click hàng để xem chi tiết snapshot.
-            </span>
           </div>
           <div className="max-h-125 overflow-auto rounded-md border">
             <Table>
               <TableHeader className="bg-background sticky top-0 z-10">
                 <TableRow>
                   <TableHead className="w-8" />
-                  <TableHead className="w-14">#</TableHead>
                   <TableHead className="whitespace-nowrap">Ngày phân tích</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Cấp cao nhất</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Cấp TB</TableHead>
                   <TableHead className="text-right whitespace-nowrap">S2 phủ</TableHead>
-                  <TableHead className="whitespace-nowrap">Raster</TableHead>
-                  <TableHead className="whitespace-nowrap">Tính lúc</TableHead>
+                  <TableHead className="whitespace-nowrap">Bản đồ</TableHead>
+                  <TableHead className="whitespace-nowrap">Cập nhật lúc</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -572,7 +522,6 @@ export default function FireRiskPage() {
                             }`}
                           />
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{h.id}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           {formatDate(h.analysis_date || h.analysisDate)}
                         </TableCell>
@@ -594,10 +543,10 @@ export default function FireRiskPage() {
                         </TableCell>
                         <TableCell className="text-xs whitespace-nowrap">
                           {rasterKind === 'geoserver' && (
-                            <span className="text-emerald-600">GeoServer ✓</span>
+                            <span className="text-emerald-700">Sẵn sàng</span>
                           )}
-                          {rasterKind === 'gee' && <span className="text-amber-600">GEE tile</span>}
-                          {rasterKind === 'none' && <span className="text-slate-500">—</span>}
+                          {rasterKind === 'gee' && <span className="text-amber-700">Tạm thời</span>}
+                          {rasterKind === 'none' && <span className="text-slate-500">Đang xử lý</span>}
                         </TableCell>
                         <TableCell className="text-xs whitespace-nowrap">
                           {h.computed_at ? formatDateTime(h.computed_at) : '—'}
@@ -605,7 +554,7 @@ export default function FireRiskPage() {
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
-                          <TableCell colSpan={9} className="py-3">
+                          <TableCell colSpan={8} className="py-3">
                             <SnapshotDetailPanel item={h} />
                           </TableCell>
                         </TableRow>
@@ -615,7 +564,7 @@ export default function FireRiskPage() {
                 })}
                 {!history.length && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-muted-foreground text-center">
+                    <TableCell colSpan={8} className="text-muted-foreground text-center">
                       Chưa có bản ghi.
                     </TableCell>
                   </TableRow>
@@ -690,21 +639,20 @@ function FireRiskLayerManager({
     if (!url) return
     const filename =
       (snapshot as any)?.downloadFilename ||
-      snapshot?.geeDownloadFilename ||
       `fire_risk_kontum_${(snapshot?.analysisDate || '').slice(0, 10).replace(/-/g, '')}.tif`
     try {
       await downloadRasterFile(url, filename)
     } catch (err: any) {
-      toast.error(err?.message || 'Không thể tải GeoTIFF cảnh báo cháy rừng.')
+      toast.error(err?.message || 'Không thể tải dữ liệu cảnh báo cháy rừng.')
     }
   }
 
   const layers = [
     {
       id: 'district',
-      label: 'Trung bình theo huyện',
+      label: 'Cảnh báo theo huyện',
       dotClass: 'bg-emerald-500',
-      desc: `${geojson?.features?.length ?? 0} polygon huyện, tô màu theo cấp cao nhất.`,
+      desc: `${geojson?.features?.length ?? 0} khu vực hành chính`,
       visible: districtVisible,
       opacity: districtOpacity,
       onVisibleChange: onDistrictVisibleChange,
@@ -714,20 +662,15 @@ function FireRiskLayerManager({
       downloadLabel: '',
       downloadIcon: 'vector' as const,
       onDownload: () => {},
-      stats: [
-        { label: 'Nguồn', value: 'GET /api/v1/fire-risk/map' },
-        { label: 'Số huyện', value: String(geojson?.features?.length ?? 0) },
-      ],
     },
     {
       id: 'heat',
-      label: 'Bản đồ nhiệt cấp cháy',
+      label: 'Nguy cơ cháy chi tiết',
       dotClass: 'bg-orange-500',
-      desc: snapshot?.geoserverLayer
-        ? 'WMS GeoServer (persistent, không expire).'
-        : snapshot?.geeTileUrl || snapshot?.gee_tile_url
-          ? 'Earth Engine tile URL (TTL ~24h). Load chậm lần đầu.'
-          : 'Chưa có raster — snapshot chưa xong.',
+      desc:
+        snapshot?.geoserverLayer || snapshot?.geeTileUrl || snapshot?.gee_tile_url
+          ? 'Dữ liệu bản đồ đã sẵn sàng'
+          : 'Dữ liệu bản đồ đang xử lý',
       visible: heatVisible,
       opacity: heatOpacity,
       onVisibleChange: onHeatVisibleChange,
@@ -738,25 +681,9 @@ function FireRiskLayerManager({
         snapshot?.geeDownloadUrl ||
         snapshot?.gee_download_url
       ),
-      downloadLabel: 'Tải ảnh bản đồ nhiệt (GeoTIFF màu, clip theo tỉnh)',
+      downloadLabel: 'Tải dữ liệu bản đồ nguy cơ cháy',
       downloadIcon: 'raster' as const,
       onDownload: downloadHeatRaster,
-      stats: [
-        {
-          label: 'Nguồn',
-          value: snapshot?.geoserverLayer
-            ? 'GeoServer WMS'
-            : snapshot?.geeTileUrl || snapshot?.gee_tile_url
-              ? 'Earth Engine'
-              : '—',
-        },
-        ...(snapshot?.geoserverLayer
-          ? [{ label: 'Layer', value: String(snapshot.geoserverLayer) }]
-          : []),
-        ...(snapshot?.geeDownloadUrl || snapshot?.gee_download_url
-          ? [{ label: 'File', value: 'GeoTIFF 3-band RGB, TTL ~24h' }]
-          : []),
-      ],
     },
   ]
 
@@ -773,7 +700,7 @@ function FireRiskLayerManager({
       >
         <div className="flex items-center gap-2">
           <Layers size={16} className="text-primary" />
-          <span className="text-sm font-semibold">Quản lý Layer</span>
+          <span className="text-sm font-semibold">Lớp bản đồ</span>
           <span className="bg-primary/20 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
             {layers.length}
           </span>
@@ -814,11 +741,8 @@ function FireRiskLayerCard({
     downloadLabel: string
     downloadIcon: 'vector' | 'raster'
     onDownload: () => void
-    stats: Array<{ label: string; value: string }>
   }
 }) {
-  const [statsOpen, setStatsOpen] = useState(false)
-
   return (
     <div className="bg-background hover:border-border rounded border p-2 transition-colors">
       <div className="space-y-2">
@@ -851,7 +775,7 @@ function FireRiskLayerCard({
                 title={layer.downloadLabel}
                 className="h-7 w-7"
               >
-                {layer.downloadIcon === 'raster' ? <ImageIcon size={12} /> : <FileJson size={12} />}
+                <ImageIcon size={12} />
               </Button>
             )}
           </div>
@@ -878,36 +802,6 @@ function FireRiskLayerCard({
           />
         </div>
 
-        {/* Stats panel */}
-        {layer.stats.length > 0 && (
-          <div className="border-t pt-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setStatsOpen((o) => !o)}
-              className="flex h-auto w-full items-center justify-between rounded-none px-0 py-0 text-left font-normal hover:bg-transparent"
-            >
-              <span className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-                Chỉ số
-              </span>
-              {statsOpen ? (
-                <ChevronUp size={12} className="text-muted-foreground" />
-              ) : (
-                <ChevronDown size={12} className="text-muted-foreground" />
-              )}
-            </Button>
-            {statsOpen && (
-              <div className="mt-1 space-y-0.5">
-                {layer.stats.map(({ label, value }) => (
-                  <div key={label} className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground text-[11px]">{label}</span>
-                    <span className="truncate text-[11px] font-medium">{value}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )
@@ -937,6 +831,14 @@ function Stat({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const labels: Record<string, string> = {
+    completed: 'Hoàn thành',
+    published: 'Đã công bố',
+    computing: 'Đang phân tích',
+    exporting: 'Đang tạo bản đồ',
+    pending: 'Đang chờ',
+    failed: 'Thất bại',
+  }
   const variant: 'default' | 'secondary' | 'destructive' | 'outline' =
     status === 'completed' || status === 'published'
       ? 'default'
@@ -945,7 +847,7 @@ function StatusBadge({ status }: { status: string }) {
         : status === 'failed'
           ? 'destructive'
           : 'outline'
-  return <Badge variant={variant}>{status}</Badge>
+  return <Badge variant={variant}>{labels[status] || status}</Badge>
 }
 
 /**
@@ -1011,59 +913,6 @@ function DistrictLevelBreakdown({
 }
 
 /**
- * Banner ngắn giải thích snapshot đang dùng nguồn raster nào + hướng dẫn
- * setup GCS/GeoServer nếu muốn persistent. Ẩn khi cả 2 nguồn đều null (fresh
- * page trước khi có snapshot).
- */
-function ConfigStatusBanner({
-  geoserverLayer,
-  geeTileUrl,
-  geeTileGeneratedAt,
-}: {
-  geoserverLayer: string | null | undefined
-  geeTileUrl: string | null | undefined
-  geeTileGeneratedAt?: string | null | undefined
-}) {
-  if (geoserverLayer) {
-    return (
-      <div className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-        <b>Raster:</b> GeoServer WMS ✓ (persistent) —{' '}
-        <span className="font-mono">{geoserverLayer}</span>
-      </div>
-    )
-  }
-  if (geeTileUrl) {
-    // GEE tile URL có TTL ~24h. Nếu snapshot cũ hơn ngưỡng đó, đổi màu banner
-    // sang đỏ + chỉ dẫn user chạy lại — giúp debug "heat map ko lên" mà không
-    // cần mở browser console để check network 404.
-    const ageMs = geeTileGeneratedAt ? Date.now() - new Date(geeTileGeneratedAt).getTime() : 0
-    const ageHours = ageMs / 3_600_000
-    const stale = ageHours >= 24
-    if (stale) {
-      return (
-        <div className="rounded-md border border-red-400 bg-red-50 px-3 py-2 text-xs text-red-800">
-          <b>⚠ Raster GEE có thể đã hết hạn</b> — tile URL sinh {ageHours.toFixed(1)}h trước (TTL
-          24h). Bản đồ nhiệt có thể không hiển thị. Bấm <b>"Chạy lại phân tích"</b> để tạo URL mới.
-        </div>
-      )
-    }
-    return (
-      <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        <b>Raster:</b> Earth Engine (TTL ~24h, còn ~{Math.max(0, 24 - ageHours).toFixed(1)}h). Muốn
-        persistent → cấu hình{' '}
-        <code className="rounded bg-amber-100 px-1 font-mono">GEE_GCS_BUCKET</code>.
-      </div>
-    )
-  }
-  return (
-    <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-      <b>Chưa có raster.</b> Bấm "Chạy lại phân tích" hoặc xem{' '}
-      <span className="font-mono">error_message</span> trong lịch sử.
-    </div>
-  )
-}
-
-/**
  * Panel bung khi user click 1 hàng lịch sử. Hiển thị chi tiết snapshot: full
  * riskLevelDist (0-5), blendCase, confidenceHa, timestamps, raster info +
  * raw JSON. Giúp ops/admin debug trực tiếp trên UI thay vì phải psql.
@@ -1076,8 +925,6 @@ function SnapshotDetailPanel({ item }: { item: any }) {
   const canPublishRaster = hasPerm(user, 'map_layers', 'ingest_raster')
   const s = (item?.province_summary || {}) as any
   const dist: Record<string, number> = s.riskLevelDist || {}
-  const blend = s.blendCaseHa || {}
-  const conf = s.confidenceHa || {}
   const totalHaAll = [0, 1, 2, 3, 4, 5].reduce((sum, l) => sum + (Number(dist[String(l)]) || 0), 0)
 
   // Publish trigger: chỉ hiện khi snapshot có download URL và chưa publish.
@@ -1100,16 +947,16 @@ function SnapshotDetailPanel({ item }: { item: any }) {
           queryClient.refetchQueries({ queryKey: ['fire-risk-map'], type: 'active' }),
           queryClient.refetchQueries({ queryKey: ['fire-risk-history'], type: 'active' }),
         ])
-        toast.info('Snapshot đã publish trước đó.')
+        toast.info('Dữ liệu này đã có trên bản đồ.')
         setBusy(false)
         return
       }
       if (data?.jobId) {
         setIngestJobId(Number(data.jobId))
-        toast.success(`Đã kích hoạt job publish (#${data.jobId}). Đang xử lý...`)
+        toast.success('Đã bắt đầu cập nhật bản đồ.')
       }
     } catch (err: any) {
-      toast.error(err?.message || 'Publish thất bại')
+      toast.error(err?.message || 'Không thể cập nhật bản đồ')
       setBusy(false)
     }
   }
@@ -1140,7 +987,7 @@ function SnapshotDetailPanel({ item }: { item: any }) {
     if (!terminal || !busy) return
     setBusy(false)
     if (job.status === 'completed') {
-      toast.success(`Publish xong → ${job.geoserver_layer || ''}`)
+      toast.success('Đã cập nhật bản đồ thành công.')
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ['fire-risk-latest'], refetchType: 'none' }),
         queryClient.invalidateQueries({ queryKey: ['fire-risk-map'], refetchType: 'none' }),
@@ -1153,7 +1000,7 @@ function SnapshotDetailPanel({ item }: { item: any }) {
         ])
       )
     } else {
-      toast.error(`Job ${job.status}: ${job.error_log || ''}`)
+      toast.error(job.error_log || 'Cập nhật bản đồ thất bại.')
     }
   }, [terminal, busy, job?.status, job?.geoserver_layer, job?.error_log, queryClient])
 
@@ -1164,62 +1011,39 @@ function SnapshotDetailPanel({ item }: { item: any }) {
 
   const rows: Array<{ label: string; value: React.ReactNode; hint?: string }> = [
     {
-      label: 'ID snapshot',
-      value: <span className="font-mono">{item.id}</span>,
-    },
-    {
-      label: 'Analysis date',
+      label: 'Ngày phân tích',
       value: formatDate(item.analysis_date || item.analysisDate),
     },
     {
-      label: 'Status',
+      label: 'Trạng thái',
       value: <StatusBadge status={item.status} />,
     },
     {
-      label: 'Computed at',
+      label: 'Hoàn thành lúc',
       value: item.computed_at ? formatDateTime(item.computed_at) : '—',
-      hint: 'Thời điểm stats hoàn thành (status → completed).',
     },
     {
-      label: 'Published at',
+      label: 'Công bố lúc',
       value: item.published_at ? formatDateTime(item.published_at) : '—',
-      hint: 'Thời điểm GeoServer harvest xong raster (status → published).',
     },
     {
-      label: 'GeoServer layer',
+      label: 'Bản đồ',
       value: item.geoserver_layer ? (
-        <a
-          href={buildGeoserverPreviewUrl(item.geoserver_layer)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-mono text-emerald-600 underline decoration-dotted hover:decoration-solid"
-          title="Mở OpenLayers preview trên GeoServer"
-        >
-          {item.geoserver_layer} ↗
-        </a>
+        <span className="text-emerald-700">Sẵn sàng</span>
+      ) : item.gee_tile_url || item.geeTileUrl ? (
+        <span className="text-amber-700">Tạm thời</span>
       ) : (
-        <span className="text-slate-500">chưa publish</span>
+        <span className="text-muted-foreground">Đang xử lý</span>
       ),
-      hint: 'Layer WMS đã publish. Click để mở preview OpenLayers trên GeoServer.',
     },
-    {
-      label: 'GEE tile URL',
-      value:
-        item.gee_tile_url || item.geeTileUrl ? (
-          <span className="text-amber-600">có (TTL ~24h)</span>
-        ) : (
-          <span className="text-slate-500">—</span>
-        ),
-      hint: 'Fallback raster từ Earth Engine, không cần GCS. Expire sau ~24h.',
-    },
-    {
-      label: 'Error message',
-      value: item.error_message ? (
+    ...(item.error_message
+      ? [{
+        label: 'Thông báo lỗi',
+        value: (
         <span className="text-red-600">{item.error_message}</span>
-      ) : (
-        <span className="text-slate-400">—</span>
-      ),
-    },
+        ),
+      }]
+      : []),
   ]
 
   return (
@@ -1230,23 +1054,22 @@ function SnapshotDetailPanel({ item }: { item: any }) {
       {canPublishRaster && (
       <div className="bg-background/60 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
         <div className="min-w-0 flex-1 text-xs">
-          <p className="font-semibold">Lưu ảnh GeoTIFF & Publish GeoServer</p>
+          <p className="font-semibold">Đưa kết quả lên bản đồ</p>
           <p className="text-muted-foreground mt-0.5">
-            Ingest ảnh cảnh báo cháy (viz RGB) từ GEE → MinIO → GeoServer. Layer sẽ gán vào snapshot
-            này, xem lại được cả trên admin và client.
+            Công bố kết quả này để dùng ổn định trên trang quản trị và cổng bản đồ công khai.
           </p>
           {job && !terminal && (
             <p className="mt-1 flex items-center gap-2 text-sky-700">
               <LoadingInline size="small" />
               <span>
-                Job #{job.id} — {job.status} ({job.progress}%)
+                Đang cập nhật bản đồ ({job.progress}%)
               </span>
             </p>
           )}
           {job?.status === 'completed' && job.geoserver_layer && (
             <p className="mt-1 flex items-center gap-2 text-emerald-700">
               <span>
-                ✓ Layer: <span className="font-mono">{job.geoserver_layer}</span>
+                Đã cập nhật bản đồ thành công
               </span>
               <Button
                 type="button"
@@ -1262,7 +1085,7 @@ function SnapshotDetailPanel({ item }: { item: any }) {
           {(job?.status === 'failed' || job?.status === 'cancelled') && (
             <p className="mt-1 flex items-start gap-2 text-red-600">
               <span className="break-all">
-                ✗ Job #{job.id} {job.status}: {job.error_log}
+                {job.error_log || 'Không thể cập nhật bản đồ.'}
               </span>
               <Button
                 type="button"
@@ -1271,7 +1094,7 @@ function SnapshotDetailPanel({ item }: { item: any }) {
                 onClick={dismissJob}
                 className="h-auto shrink-0 px-0 py-0 text-[10px] text-slate-500 hover:text-slate-700"
               >
-                Clear
+                Đóng
               </Button>
             </p>
           )}
@@ -1283,12 +1106,12 @@ function SnapshotDetailPanel({ item }: { item: any }) {
           variant={published ? 'outline' : 'default'}
         >
           {published
-            ? 'Đã publish'
+            ? 'Đã công bố'
             : busy
               ? 'Đang xử lý...'
               : hasDownload
-                ? 'Publish → GeoServer'
-                : 'Chưa có geeDownloadUrl'}
+                ? 'Đưa lên bản đồ'
+                : 'Chưa có dữ liệu bản đồ'}
         </Button>
       </div>
       )}
@@ -1312,7 +1135,7 @@ function SnapshotDetailPanel({ item }: { item: any }) {
       {/* Risk level distribution — full 0-5 breakdown */}
       <div className="space-y-2">
         <p className="text-muted-foreground text-[11px]">
-          <b>Phân bố diện tích theo cấp cảnh báo (bao gồm Cấp 0 = thiếu quan sát S2/LST):</b>
+          <b>Phân bố diện tích theo cấp cảnh báo, gồm cả khu vực thiếu dữ liệu:</b>
         </p>
         <div className="flex flex-wrap gap-1.5">
           {[0, 1, 2, 3, 4, 5].map((l) => {
@@ -1338,100 +1161,6 @@ function SnapshotDetailPanel({ item }: { item: any }) {
         </div>
       </div>
 
-      {/* Blend case + confidence — model diagnostic */}
-      <div className="grid gap-3 text-xs sm:grid-cols-2">
-        <div className="bg-background/60 rounded-md border p-2">
-          <p className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
-            Blend case (ha)
-          </p>
-          <div className="space-y-0.5">
-            <div className="flex justify-between">
-              <span>Có input fire mask (MCD64A1/FIRMS)</span>
-              <span className="font-semibold tabular-nums">{formatHaShort(blend.withInput)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Không có input mask</span>
-              <span className="font-semibold tabular-nums">
-                {formatHaShort(blend.withoutInput)}
-              </span>
-            </div>
-          </div>
-          <p className="text-muted-foreground mt-1 text-[10px]">
-            Model chọn công thức blend khác nhau khi có/không có input fire mask (50/30/20 vs
-            60/40).
-          </p>
-        </div>
-
-        <div className="bg-background/60 rounded-md border p-2">
-          <p className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
-            Confidence class (ha)
-          </p>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-            <div className="flex justify-between">
-              <span className="text-slate-500">None</span>
-              <span className="tabular-nums">{formatHaShort(conf.none)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-orange-500">Low</span>
-              <span className="tabular-nums">{formatHaShort(conf.low)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-amber-600">Medium</span>
-              <span className="tabular-nums">{formatHaShort(conf.medium)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-emerald-600">High</span>
-              <span className="tabular-nums">{formatHaShort(conf.high)}</span>
-            </div>
-          </div>
-          <p className="text-muted-foreground mt-1 text-[10px]">
-            Confidence từ RF vote (số cây agree / tổng cây).
-          </p>
-        </div>
-      </div>
-
-      {/* P Nesterov + s2 (info-only, không hiển thị KPI ngoài) */}
-      <div className="grid gap-3 text-xs sm:grid-cols-2">
-        <div className="bg-background/60 rounded-md border p-2">
-          <p className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
-            Chỉ số phụ trợ
-          </p>
-          <div className="space-y-0.5">
-            <div className="flex justify-between">
-              <span>S2 coverage ratio</span>
-              <span className="tabular-nums">
-                {s.s2CoverageRatio != null
-                  ? (Number(s.s2CoverageRatio) * 100).toFixed(1) + '%'
-                  : '—'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>P Nesterov TB tỉnh (info)</span>
-              <span className="tabular-nums">
-                {s.pNesterovProvMean != null ? Number(s.pNesterovProvMean).toFixed(1) : '—'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Total ha (level 0-5)</span>
-              <span className="font-semibold tabular-nums">{formatHaShort(totalHaAll)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-background/60 rounded-md border p-2">
-          <p className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
-            Raw JSON — copy vào tool debug
-          </p>
-          <details>
-            <summary className="cursor-pointer text-[11px] underline">
-              Hiện full snapshot payload
-            </summary>
-            <pre className="mt-1 max-h-64 overflow-auto rounded bg-slate-900 p-2 text-[10px] whitespace-pre-wrap text-slate-100">
-              {JSON.stringify(item, null, 2)}
-            </pre>
-          </details>
-        </div>
-      </div>
     </div>
   )
 }
@@ -1598,38 +1327,6 @@ function extractFeatureCollection(payload: unknown): GeoJSON.FeatureCollection |
  * NOTE — chấp nhận cả camelCase (`geeTileUrl`) và snake_case (`gee_tile_url`)
  * để tương thích với response cũ / snapshot cũ trong DB.
  */
-/**
- * Build URL preview OpenLayers do GeoServer sinh sẵn — click từ list history
- * để user zoom/pan/inspect layer nhanh mà không cần render trong admin.
- * Fallback GetMap PNG nếu env cấu hình sai (không lỗi hard, chỉ mất preview).
- */
-function buildGeoserverPreviewUrl(layerFqn: string): string {
-  const raw = (import.meta.env.VITE_GEOSERVER_URL as string | undefined) || ''
-  const [workspace, layerName] = String(layerFqn).includes(':')
-    ? String(layerFqn).split(':')
-    : [import.meta.env.VITE_GEOSERVER_WORKSPACE || 'kontum', String(layerFqn)]
-  // Strip trailing `/kontum/wms`, `/wms`, hoặc trailing slash để lấy root
-  // GeoServer, rồi build lại đúng endpoint preview OpenLayers.
-  const root = raw
-    .replace(/\/+$/, '')
-    .replace(new RegExp(`/${workspace}/wms$`, 'i'), '')
-    .replace(/\/wms$/i, '')
-  const bbox = '107.35,13.83,108.87,15.55'
-  const qs = new URLSearchParams({
-    service: 'WMS',
-    version: '1.1.0',
-    request: 'GetMap',
-    layers: `${workspace}:${layerName}`,
-    bbox,
-    width: '768',
-    height: '768',
-    srs: 'EPSG:4326',
-    styles: '',
-    format: 'application/openlayers',
-  })
-  return `${root}/${workspace}/wms?${qs.toString()}`
-}
-
 function resolveRasterTileUrl(snapshot: any): string | null {
   if (!snapshot) return null
   const layer = snapshot.geoserverLayer ?? snapshot.geoserver_layer ?? null
