@@ -58,7 +58,8 @@ export default function MapLayerApiPublicPage() {
               <div className="bg-muted/30 rounded-md border p-3">
                 <p className="font-medium">Bước 1</p>
                 <p className="text-muted-foreground mt-1">
-                  Tạo API key trong màn Map API và lưu lại raw key vì backend chỉ hiển thị một lần.
+                  Tạo khóa truy cập trong màn Quản lý kết nối bản đồ và lưu lại mã đầy đủ
+                  vì hệ thống chỉ hiển thị một lần.
                 </p>
               </div>
 

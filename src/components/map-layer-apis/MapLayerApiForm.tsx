@@ -191,7 +191,7 @@ export default function MapLayerApiForm({
           </SelectContent>
         </Select>
         <FieldHint>
-          API key sẽ chỉ đọc được lớp dữ liệu đã chọn. Muốn đổi lớp, hãy tạo key mới theo đúng hợp đồng backend.
+          Khóa truy cập chỉ đọc được lớp dữ liệu đã chọn. Muốn đổi lớp, hãy tạo khóa mới.
         </FieldHint>
         {selectedLayer && (
           <FieldHint>
@@ -250,7 +250,7 @@ export default function MapLayerApiForm({
             max={6000}
             {...form.register('scope.rate_per_min', { valueAsNumber: true })}
           />
-          <FieldHint>Mặc định backend dùng 60 request/phút.</FieldHint>
+          <FieldHint>Mặc định hệ thống cho phép 60 yêu cầu/phút.</FieldHint>
           <FieldError message={form.formState.errors.scope?.rate_per_min?.message} />
         </div>
 
@@ -294,7 +294,8 @@ export default function MapLayerApiForm({
         <div className="flex items-start gap-2">
           <ShieldCheck className="text-primary mt-0.5 size-4 shrink-0" />
           <p className="text-muted-foreground">
-            Key thô chỉ hiển thị một lần khi tạo hoặc xoay key. Backend chỉ lưu hash và các ký tự nhận diện.
+            Mã khóa đầy đủ chỉ hiển thị một lần khi tạo hoặc cấp lại. Hệ thống chỉ lưu
+            bản đã bảo vệ và các ký tự nhận diện.
           </p>
         </div>
       </div>

@@ -9,7 +9,6 @@ import {
   Droplets,
   Eye,
   Gauge,
-  Link2,
   MapPin,
   RefreshCcw,
   Thermometer,
@@ -103,7 +102,8 @@ export default function WeatherPage() {
               <h1 className="text-2xl font-bold">Thời tiết</h1>
             </div>
             <p className="text-muted-foreground mt-2 text-sm">
-              Quản lý lớp thời tiết OpenWeather, kiểm tra dữ liệu tại điểm và làm mới cache phục vụ bản đồ WebGIS.
+              Quản lý các lớp thời tiết, kiểm tra dữ liệu tại điểm và cập nhật dữ liệu
+              phục vụ bản đồ.
             </p>
           </div>
           {canManage && (
@@ -111,13 +111,13 @@ export default function WeatherPage() {
               disabled={refreshMutation.isPending}
               onClick={() =>
                 refreshMutation.mutate(undefined, {
-                  onSuccess: () => toast.success('Đã làm mới cache thời tiết'),
+                  onSuccess: () => toast.success('Đã cập nhật dữ liệu thời tiết'),
                 })
               }
               className="w-full sm:w-auto"
             >
               <RefreshCcw className={cn('size-4', refreshMutation.isPending && 'animate-spin')} />
-              {refreshMutation.isPending ? 'Đang làm mới...' : 'Làm mới cache'}
+              {refreshMutation.isPending ? 'Đang cập nhật...' : 'Cập nhật dữ liệu'}
             </Button>
           )}
         </div>
@@ -133,9 +133,9 @@ export default function WeatherPage() {
           />
           <MetricCard
             icon={CloudSun}
-            label="Layer khả dụng"
+            label="Lớp dữ liệu khả dụng"
             value={formatNumber(layers.length, '', 0)}
-            hint={layersQuery.isFetching ? 'Đang tải danh sách' : 'Theo cấu hình backend'}
+            hint={layersQuery.isFetching ? 'Đang tải danh sách' : 'Theo cấu hình hệ thống'}
           />
           <MetricCard
             icon={MapPin}
@@ -154,11 +154,11 @@ export default function WeatherPage() {
                   Lớp thời tiết bản đồ
                 </CardTitle>
                 <CardDescription>
-                  Chọn lớp dữ liệu để kiểm tra tile proxy trước khi hiển thị trên bản đồ nghiệp vụ.
+                  Chọn lớp dữ liệu để kiểm tra trước khi hiển thị trên bản đồ nghiệp vụ.
                 </CardDescription>
               </div>
               <Badge variant="outline" className="w-fit">
-                OpenWeather
+                Nguồn dữ liệu thời tiết
               </Badge>
             </div>
           </CardHeader>
@@ -217,7 +217,7 @@ export default function WeatherPage() {
               Tra cứu thời tiết tại điểm
             </CardTitle>
             <CardDescription>
-              Nhập tọa độ để kiểm tra dữ liệu quan trắc đang được cache cho khu vực cần theo dõi.
+              Nhập tọa độ để kiểm tra dữ liệu thời tiết tại khu vực cần theo dõi.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -269,7 +269,7 @@ export default function WeatherPage() {
                       </p>
                     </div>
                     <Badge variant={point.stale ? 'destructive' : 'secondary'} className="w-fit">
-                      {point.stale ? 'Dữ liệu cũ' : point.cached ? 'Từ cache' : 'Mới cập nhật'}
+                      {point.stale ? 'Dữ liệu cũ' : point.cached ? 'Dữ liệu đã lưu' : 'Mới cập nhật'}
                     </Badge>
                   </div>
                 </div>
@@ -287,12 +287,13 @@ export default function WeatherPage() {
 
                 <div className="text-muted-foreground grid gap-2 rounded-md border p-3 text-xs md:grid-cols-2">
                   <p>Quan trắc: {formatDateTime(point.observedAt ?? point.timestamp)}</p>
-                  <p>Cập nhật cache: {formatDateTime(point.fetchedAt)}</p>
+                  <p>Cập nhật dữ liệu: {formatDateTime(point.fetchedAt)}</p>
                 </div>
               </div>
             ) : (
               <div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
-                Nhập tọa độ và bấm tra cứu để xem nhiệt độ, gió, mây, mưa và trạng thái cache.
+                Nhập tọa độ và bấm tra cứu để xem nhiệt độ, gió, mây, mưa và thời điểm
+                cập nhật dữ liệu.
               </div>
             )}
           </CardContent>
@@ -310,20 +311,20 @@ function LayerCard({ layer }: { layer: WeatherLayer }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium">{getLayerName(layer)}</p>
-          <p className="text-muted-foreground text-xs">
-            {layer.owmLayer ? `OpenWeather layer: ${layer.owmLayer}` : 'Tile proxy nội bộ'}
-          </p>
+          <p className="text-muted-foreground text-xs">Dữ liệu đã sẵn sàng</p>
         </div>
-        {layer.attribution && (
+        {tileUrl && (
           <Badge variant="secondary" className="shrink-0">
-            {layer.attribution}
+            Có thể hiển thị
           </Badge>
         )}
       </div>
       {tileUrl && (
         <div className="bg-muted mt-3 flex items-start gap-2 rounded-md p-2">
-          <Link2 className="text-muted-foreground mt-0.5 size-3.5 shrink-0" />
-          <p className="text-muted-foreground min-w-0 truncate font-mono text-xs">{tileUrl}</p>
+          <Activity className="text-muted-foreground mt-0.5 size-3.5 shrink-0" />
+          <p className="text-muted-foreground text-xs">
+            Sẵn sàng hiển thị trên bản đồ nghiệp vụ
+          </p>
         </div>
       )}
     </div>

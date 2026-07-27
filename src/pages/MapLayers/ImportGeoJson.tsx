@@ -207,8 +207,8 @@ export default function ImportGeoJsonPage(): JSX.Element {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="true">Tự publish nếu import thành công</SelectItem>
-                  <SelectItem value="false">Chỉ tạo lớp, chưa publish</SelectItem>
+                  <SelectItem value="true">Tự công bố sau khi nhập thành công</SelectItem>
+                  <SelectItem value="false">Chỉ tạo lớp, chưa công bố</SelectItem>
                 </SelectContent>
               </Select>
             </div>

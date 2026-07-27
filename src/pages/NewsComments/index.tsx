@@ -69,9 +69,11 @@ export default function NewsComments(): JSX.Element {
   const data = raw?.data as any
   const comments = data?.items ?? data?.comments ?? []
   const pagination = (raw?.metadata ?? data?.pagination ?? {}) as Partial<Pagination>
-  const lastTotalPagesRef = useRef<number | null>(null)
-  if (pagination?.totalPages) lastTotalPagesRef.current = pagination.totalPages
-  const totalPages = pagination?.totalPages ?? lastTotalPagesRef.current ?? 1
+  const lastTotalPagesRef = useRef(1)
+  if (pagination.totalPages !== undefined) {
+    lastTotalPagesRef.current = Math.max(1, pagination.totalPages)
+  }
+  const totalPages = lastTotalPagesRef.current
   const total = pagination?.total ?? 0
 
   useEffect(() => {

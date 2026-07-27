@@ -27,7 +27,7 @@
   --success-light: #dcfce7; /* green-100 */
 
   /* ===== Warning Extended ===== */
-  --warning-hover: #d97706; /* amber-600 */
+  --warning-hover: #78350f; /* amber-900 */
   --warning-light: #fef3c7; /* amber-100 */
 
   /* ===== Info Extended ===== */
@@ -52,8 +52,8 @@
 
   /* ===== Error Page Colors ===== */
   --error-400: #f87171; /* red-400 */
-  --error-401: #f59e0b; /* amber-500 */
-  --error-403: #d97706; /* amber-600 */
+  --error-401: #92400e; /* amber-800 — readable on white and with white text */
+  --error-403: #9a3412; /* orange-800 — readable on white and with white text */
   --error-404: #3b82f6; /* blue-500 */
   --error-500: #dc2626; /* red-600 */
   --error-503: #06b6d4; /* cyan-500 */

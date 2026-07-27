@@ -6,12 +6,11 @@ import {
   Flame,
   Key,
   LayoutDashboard,
-  LineChart,
   Map,
   MessageSquare,
   Newspaper,
   Ruler,
-  Satellite,
+  Image,
   Trees,
   Users,
 } from 'lucide-react'
@@ -25,13 +24,6 @@ export const navConfig: NavItem[] = [
     subpath: '/',
     permission: 'stats:view',
   },
-  {
-    icon: <LineChart />,
-    name: 'Thống kê',
-    path: '/statistics',
-    permission: 'stats:view',
-  },
-
   // ── GIS ──
   {
     icon: <Map />,
@@ -54,16 +46,11 @@ export const navConfig: NavItem[] = [
     permission: 'map-apis:view',
   },
 
-  // ── Ảnh vệ tinh & viễn thám ──
   {
-    icon: <Satellite />,
-    name: 'Ảnh vệ tinh',
-    path: '/satellite',
-    subItems: [
-      { name: 'Theo yêu cầu (GEE)', path: '/satellite', permission: 'satellite:run' },
-      { name: 'Viễn thám (COG)', path: '/remote-sensing', permission: 'remote-sensing:view' },
-      { name: 'Bản đồ PDF', path: '/map-images', permission: 'pdf-maps:view' },
-    ],
+    icon: <Image />,
+    name: 'Ảnh bản đồ',
+    path: '/map-images',
+    permission: 'pdf-maps:view',
   },
   {
     icon: <Trees />,

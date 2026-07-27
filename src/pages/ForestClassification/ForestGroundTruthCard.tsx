@@ -10,10 +10,10 @@ import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
 /**
- * Ground truth card cho phân loại rừng 11-class.
+ * Ground truth card cho phân loại lớp phủ schema v5.3.
  *
  * Khác GT của fire-risk ở chỗ:
- *   - Thang: class_id 0-10 (11 land cover class) thay vì severity 1-5
+ *   - Thang: class_id 0-12 thay vì severity 1-5
  *   - "observedAt" thay vì "occurredAt" (đo đạc chứ không phải sự cố)
  *   - Point vẫn có class_id — điểm mẫu đơn lẻ (ranger đo tại tọa độ X,Y)
  *
@@ -23,17 +23,19 @@ import { useAuthStore } from '@/stores/common/useAuthStore'
 
 // Palette + name lấy từ configs/forest-classification.js.
 const CLASSES: Array<{ id: number; name: string; color: string }> = [
-  { id: 0,  name: 'Đất khác',                       color: '#FFBEE8' },
-  { id: 1,  name: 'Cây công nghiệp',                color: '#FFEBB0' },
-  { id: 2,  name: 'Đất nông nghiệp',                color: '#F0E442' },
-  { id: 3,  name: 'Rừng hỗn giao lá rộng, lá kim',  color: '#FEFF73' },
-  { id: 4,  name: 'Rừng lá rộng thường xanh',       color: '#AAFF03' },
-  { id: 5,  name: 'Rừng lá kim',                    color: '#D0FF73' },
-  { id: 6,  name: 'Rừng lá rộng rụng lá',           color: '#E7E600' },
-  { id: 7,  name: 'Rừng tre nứa',                   color: '#4DE600' },
-  { id: 8,  name: 'Rừng trồng',                     color: '#FFAA01' },
-  { id: 9,  name: 'Sông, suối, hồ',                 color: '#73B2FF' },
-  { id: 10, name: 'Trảng cỏ, cây bụi',              color: '#55FF00' },
+  { id: 0,  name: 'Không có ảnh',                    color: '#D9D9D9' },
+  { id: 1,  name: 'Đất khác',                        color: '#FFBEE8' },
+  { id: 2,  name: 'Cây công nghiệp',                 color: '#FFEBB0' },
+  { id: 3,  name: 'Đất nông nghiệp',                 color: '#F0E442' },
+  { id: 4,  name: 'Rừng hỗn giao lá rộng, lá kim',   color: '#FEFF73' },
+  { id: 5,  name: 'Rừng lá rộng thường xanh',        color: '#AAFF03' },
+  { id: 6,  name: 'Rừng lá kim',                     color: '#D0FF73' },
+  { id: 7,  name: 'Rừng lá rộng rụng lá',            color: '#E7E600' },
+  { id: 8,  name: 'Rừng tre nứa',                    color: '#4DE600' },
+  { id: 9,  name: 'Rừng trồng',                      color: '#FFAA01' },
+  { id: 10, name: 'Sông, suối, hồ',                  color: '#73B2FF' },
+  { id: 11, name: 'Trảng cỏ, cây bụi',               color: '#55FF00' },
+  { id: 12, name: 'Không xác định',                  color: '#8C8C8C' },
 ]
 
 const classLabel = (id: number) => {
@@ -60,9 +62,9 @@ export default function ForestGroundTruthCard() {
         >
           <div className="flex items-center gap-2">
             <Trees className="h-4 w-4 text-emerald-600" />
-            <h2 className="text-lg font-semibold">Ground truth (nhãn 11-class)</h2>
+            <h2 className="text-lg font-semibold">Dữ liệu mẫu thực địa (13 lớp)</h2>
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] text-emerald-700">
-              Boost RF accuracy
+              Cải thiện độ chính xác
             </span>
           </div>
           {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -88,30 +90,28 @@ function ExplanationBanner() {
     <div className="rounded-md border border-sky-300 bg-sky-50 p-3 text-xs">
       <div className="mb-1 flex items-center gap-1.5 font-semibold text-sky-900">
         <Info size={12} />
-        Cơ chế nhận Ground Truth cho phân loại rừng
+        Cách sử dụng dữ liệu mẫu thực địa
       </div>
       <ul className="ml-5 list-disc space-y-1 text-sky-800">
         <li>
-          <b>Vùng</b> (GeoJSON Polygon): mẫu diện tích rộng — ví dụ 1 lô rừng
-          lá rộng đã khảo sát toàn bộ.
+          <b>Vùng</b>: mẫu diện tích rộng, ví dụ một lô rừng đã được khảo sát
+          toàn bộ.
         </li>
         <li>
-          <b>Điểm</b>: mẫu đơn lẻ (ranger đo tại tọa độ X,Y). Mỗi mẫu gán 1
-          class_id (0-10).
+          <b>Điểm</b>: mẫu đơn lẻ do kiểm lâm hoặc cán bộ khảo sát ghi nhận tại
+          một tọa độ. Mỗi mẫu được gán một nhóm lớp phủ.
         </li>
         <li>
-          Cron chạy <b>tháng 1</b> hàng tháng (00:00 VN) sẽ query GT trong{' '}
-          <b>180 ngày</b> trước → blend vào Random Forest với trọng số:{' '}
-          <b>50% input + 30% dataset + 20% threshold</b> (thay vì{' '}
-          <b>60% dataset + 40% threshold</b> khi không có GT).
+          Dữ liệu trong <b>180 ngày gần nhất</b> được đưa vào kỳ phân loại tiếp
+          theo với trọng số <b>50%</b>.
         </li>
         <li>
-          Sau khi upload xong: bấm <b>"Chạy lại phân tích"</b> để áp dụng ngay
-          — hoặc chờ cron tháng sau.
+          Sau khi thêm dữ liệu, bấm <b>"Chạy lại phân tích"</b> để áp dụng ngay
+          hoặc chờ kỳ phân loại tháng sau.
         </li>
         <li>
-          Env override: <code>FC_GT_WINDOW_DAYS=180</code>. Xoá là soft-delete,
-          không rewrite lịch sử snapshot.
+          Dữ liệu đã xóa không còn được dùng cho kỳ sau; kết quả lịch sử vẫn
+          được giữ nguyên.
         </li>
       </ul>
     </div>
@@ -122,7 +122,7 @@ function ClassLegend() {
   return (
     <div className="rounded-md border p-2">
       <p className="mb-1.5 text-xs font-semibold text-muted-foreground">
-        11 class ID (chọn khi upload)
+        13 nhóm lớp phủ (chọn khi thêm dữ liệu)
       </p>
       <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2 md:grid-cols-3">
         {CLASSES.map((c) => (
@@ -144,7 +144,7 @@ function ClassLegend() {
 
 function ZonesSection() {
   const [geojsonText, setGeojsonText] = useState('')
-  const [classId, setClassId] = useState(4)  // mặc định "Rừng lá rộng thường xanh"
+  const [classId, setClassId] = useState(5)  // mặc định "Rừng lá rộng thường xanh"
   const [observedAt, setObservedAt] = useState(
     new Date().toISOString().slice(0, 16),
   )
@@ -167,7 +167,7 @@ function ZonesSection() {
     try {
       parsed = JSON.parse(geojsonText)
     } catch {
-      toast.error('GeoJSON không parse được — kiểm tra syntax.')
+      toast.error('Dữ liệu vùng không hợp lệ. Vui lòng kiểm tra lại.')
       return
     }
     if (parsed.type === 'Polygon' || parsed.type === 'MultiPolygon') {
@@ -184,7 +184,7 @@ function ZonesSection() {
       parsed = { type: 'FeatureCollection', features: [parsed] }
     }
     if (parsed.type !== 'FeatureCollection') {
-      toast.error('Cần Polygon/MultiPolygon/Feature/FeatureCollection.')
+      toast.error('Dữ liệu chưa đúng định dạng vùng bản đồ được hỗ trợ.')
       return
     }
     parsed.features.forEach((f: any) => {
@@ -201,12 +201,12 @@ function ZonesSection() {
         setGeojsonText('')
         listQ.refetch()
       },
-      onError: (err: any) => toast.error(err?.message || 'Upload thất bại'),
+      onError: () => toast.error('Không thể thêm vùng mẫu. Vui lòng thử lại.'),
     })
   }
 
   const onDelete = (id: number) => {
-    if (!confirm(`Xoá zone #${id}?`)) return
+    if (!confirm(`Xoá vùng #${id}?`)) return
     deleteM.mutate(id, {
       onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() },
     })
@@ -214,7 +214,7 @@ function ZonesSection() {
 
   return (
     <div className="space-y-3 rounded-md border p-3">
-      <h3 className="text-sm font-semibold">Vùng mẫu (GeoJSON)</h3>
+      <h3 className="text-sm font-semibold">Vùng mẫu thực địa</h3>
 
       <div className="space-y-2">
         <div className="grid grid-cols-2 gap-2">
@@ -227,7 +227,7 @@ function ZonesSection() {
             />
           </label>
           <label className="space-y-0.5">
-            <span className="text-xs text-muted-foreground">Class mặc định</span>
+            <span className="text-xs text-muted-foreground">Nhóm lớp phủ mặc định</span>
             <select
               value={classId}
               onChange={(e) => setClassId(Number(e.target.value))}
@@ -242,7 +242,7 @@ function ZonesSection() {
 
         <label className="block space-y-0.5">
           <span className="text-xs text-muted-foreground">
-            Paste GeoJSON (properties.classId sẽ được set từ default nếu thiếu)
+            Dán dữ liệu vùng bản đồ (định dạng GeoJSON)
           </span>
           <textarea
             value={geojsonText}
@@ -276,8 +276,8 @@ function ZonesSection() {
                 className="inline-block h-3 w-3 shrink-0 rounded"
                 style={{ backgroundColor: c?.color }}
               />
-              <span className="flex-1 truncate" title={z.name || `Zone ${z.id}`}>
-                {z.name || `Zone #${z.id}`} · {classLabel(z.class_id)}
+              <span className="flex-1 truncate" title={z.name || `Vùng ${z.id}`}>
+                {z.name || `Vùng #${z.id}`} · {classLabel(z.class_id)}
               </span>
               <span className="text-muted-foreground">{formatDate(z.observed_at)}</span>
               <span className="text-muted-foreground tabular-nums">
@@ -303,7 +303,7 @@ function PointsSection() {
   const now = new Date().toISOString().slice(0, 16)
   const [form, setForm] = useState({
     observedAt: now,
-    classId: 4,
+    classId: 5,
     lng: '',
     lat: '',
     source: 'field_report',
@@ -328,7 +328,7 @@ function PointsSection() {
     const lng = Number(form.lng)
     const lat = Number(form.lat)
     if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
-      toast.error('lat/lng không hợp lệ.')
+      toast.error('Kinh độ hoặc vĩ độ không hợp lệ.')
       return
     }
     createM.mutate(
@@ -339,13 +339,13 @@ function PointsSection() {
           setForm((s) => ({ ...s, lng: '', lat: '', notes: '', reporterName: '' }))
           listQ.refetch()
         },
-        onError: (err: any) => toast.error(err?.message || 'Thất bại'),
+        onError: () => toast.error('Không thể thêm điểm mẫu. Vui lòng thử lại.'),
       },
     )
   }
 
   const onDelete = (id: number) => {
-    if (!confirm(`Xoá point #${id}?`)) return
+    if (!confirm(`Xoá điểm #${id}?`)) return
     deleteM.mutate(id, {
       onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() },
     })
@@ -365,7 +365,7 @@ function PointsSection() {
           />
         </label>
         <label className="space-y-0.5">
-          <span className="text-xs text-muted-foreground">Lng</span>
+          <span className="text-xs text-muted-foreground">Kinh độ</span>
           <Input
             type="number"
             step="0.000001"
@@ -375,7 +375,7 @@ function PointsSection() {
           />
         </label>
         <label className="space-y-0.5">
-          <span className="text-xs text-muted-foreground">Lat</span>
+          <span className="text-xs text-muted-foreground">Vĩ độ</span>
           <Input
             type="number"
             step="0.000001"
@@ -385,7 +385,7 @@ function PointsSection() {
           />
         </label>
         <label className="col-span-2 space-y-0.5">
-          <span className="text-xs text-muted-foreground">Class</span>
+          <span className="text-xs text-muted-foreground">Nhóm lớp phủ</span>
           <select
             value={form.classId}
             onChange={(e) => setForm((s) => ({ ...s, classId: Number(e.target.value) }))}
@@ -403,7 +403,7 @@ function PointsSection() {
             onChange={(e) => setForm((s) => ({ ...s, source: e.target.value }))}
             className="h-9 w-full rounded-md border bg-background px-2 text-sm"
           >
-            <option value="field_report">Field report</option>
+            <option value="field_report">Báo cáo thực địa</option>
             <option value="ranger">Kiểm lâm</option>
             <option value="expert">Chuyên gia</option>
             <option value="citizen">Người dân</option>

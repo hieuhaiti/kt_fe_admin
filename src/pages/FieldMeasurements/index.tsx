@@ -15,6 +15,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -30,12 +40,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { StatusDotBadge } from '@/components/common/StatusDotBadge'
-import {
-  fieldMeasurementService,
-  statisticsService,
-  useApiMutation,
-  useApiQuery,
-} from '@/service'
+import { fieldMeasurementService, statisticsService, useApiMutation, useApiQuery } from '@/service'
 import type {
   AdministrativeUnit,
   ApiResponse,
@@ -45,7 +50,7 @@ import type {
   Pagination,
 } from '@/types/api'
 import { formatDateTime } from '@/lib/date'
-import { can } from '@/lib/permissions'
+import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import { tokenManager } from '@/lib/tokenManager'
 import { serviceFieldMeasurementPath } from '@/constant/serviceConstant'
@@ -58,7 +63,7 @@ const STATUS: Record<FieldMeasurementStatus, { label: string; badge: string; dot
   },
   submitted: {
     label: 'Chờ xác minh',
-    badge: 'border-warning/40 bg-warning/10 text-foreground',
+    badge: 'border-warning/40 bg-warning/10 text-warning',
     dot: 'bg-warning',
   },
   verified: {
@@ -88,7 +93,7 @@ function formatArea(value?: number | string | null) {
 
 export default function FieldMeasurementsPage() {
   const user = useAuthStore((state) => state.user)
-  const canReview = can(user, 'field-measurements:manage')
+  const canReview = hasPerm(user, 'field_measurements', 'verify')
 
   // Đơn vị hành chính (district) để map `communeCode` → tên hiển thị. Kết quả
   // gần như tĩnh (~10 đơn vị) nên staleTime dài để tránh gọi lại. Endpoint
@@ -124,6 +129,7 @@ export default function FieldMeasurementsPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [reviewNote, setReviewNote] = useState('')
+  const [reviewAction, setReviewAction] = useState<'verify' | 'reject' | null>(null)
 
   const params = {
     page,
@@ -143,8 +149,10 @@ export default function FieldMeasurementsPage() {
   const items = response?.data?.items ?? []
   const pagination = (response?.metadata ?? {}) as Partial<Pagination>
   const lastPages = useRef(1)
-  if (pagination.totalPages) lastPages.current = pagination.totalPages
-  const totalPages = pagination.totalPages ?? lastPages.current
+  if (pagination.totalPages !== undefined) {
+    lastPages.current = Math.max(1, pagination.totalPages)
+  }
+  const totalPages = lastPages.current
   const total = pagination.total ?? items.length
 
   useEffect(() => {
@@ -177,6 +185,7 @@ export default function FieldMeasurementsPage() {
     {
       onSuccess: () => {
         toast.success('Đã xác minh phiên đo')
+        setReviewAction(null)
         listQuery.refetch()
         detailQuery.refetch()
       },
@@ -188,6 +197,7 @@ export default function FieldMeasurementsPage() {
     {
       onSuccess: () => {
         toast.success('Đã từ chối phiên đo')
+        setReviewAction(null)
         setReviewNote('')
         listQuery.refetch()
         detailQuery.refetch()
@@ -195,6 +205,23 @@ export default function FieldMeasurementsPage() {
     },
     false
   )
+  const reviewPending = verifyMutation.isPending || rejectMutation.isPending
+
+  function confirmReview() {
+    if (!detail || detail.status !== 'submitted' || !canReview || !reviewAction) return
+
+    if (reviewAction === 'verify') {
+      verifyMutation.mutate(detail.id)
+      return
+    }
+
+    const note = reviewNote.trim()
+    if (note.length < 3) {
+      toast.error('Vui lòng nhập lý do từ chối ít nhất 3 ký tự')
+      return
+    }
+    rejectMutation.mutate({ id: detail.id, note })
+  }
 
   async function exportGeoJson() {
     try {
@@ -515,17 +542,12 @@ export default function FieldMeasurementsPage() {
                   <DialogFooter>
                     <Button
                       variant="destructive"
-                      disabled={reviewNote.trim().length < 3 || rejectMutation.isPending}
-                      onClick={() =>
-                        rejectMutation.mutate({ id: detail.id, note: reviewNote.trim() })
-                      }
+                      disabled={reviewNote.trim().length < 3 || reviewPending}
+                      onClick={() => setReviewAction('reject')}
                     >
                       <X className="size-4" /> Từ chối
                     </Button>
-                    <Button
-                      disabled={verifyMutation.isPending}
-                      onClick={() => verifyMutation.mutate(detail.id)}
-                    >
+                    <Button disabled={reviewPending} onClick={() => setReviewAction('verify')}>
                       <Check className="size-4" /> Xác minh
                     </Button>
                   </DialogFooter>
@@ -537,6 +559,43 @@ export default function FieldMeasurementsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={reviewAction !== null}
+        onOpenChange={(open) => {
+          if (!open && !reviewPending) setReviewAction(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {reviewAction === 'reject' ? 'Xác nhận từ chối phiên đo' : 'Xác nhận phiên đo'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {reviewAction === 'reject'
+                ? `Phiên đo ${detail?.code ?? ''} sẽ được trả lại cho người thực hiện với lý do: “${reviewNote.trim()}”.`
+                : `Phiên đo ${detail?.code ?? ''} sẽ được xác thực và có thể được đưa vào dữ liệu xuất chính thức.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reviewPending}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={reviewPending}
+              onClick={(event) => {
+                event.preventDefault()
+                confirmReview()
+              }}
+              className={
+                reviewAction === 'reject'
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : undefined
+              }
+            >
+              {reviewPending ? 'Đang xử lý...' : reviewAction === 'reject' ? 'Từ chối' : 'Xác thực'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   )
 }

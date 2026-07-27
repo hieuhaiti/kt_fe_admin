@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
+
+export type RasterLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
 interface ForestMapProps {
   /** WMS raster tile URL — build từ resolveRasterTileUrl (ưu tiên GeoServer,
-   *  fallback GEE tile URL TTL 24h). */
+   *  fallback GEE tile URL có thời hạn). */
   rasterTileUrl?: string | null
   /** Legend items để hiển thị bảng chú giải 11 lớp góc dưới bản đồ. */
   legend?: Array<{ classId: number; name: string; color: string }>
@@ -11,6 +13,7 @@ interface ForestMapProps {
   opacity?: number
   visible?: boolean
   heightClassName?: string
+  onRasterStatusChange?: (status: RasterLoadStatus) => void
 }
 
 const BASEMAP_SOURCE_ID = 'osm-basemap'
@@ -38,9 +41,16 @@ export default function ForestMap({
   opacity = 0.75,
   visible = true,
   heightClassName = 'h-96',
+  onRasterStatusChange,
 }: ForestMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
+  const [rasterStatus, setRasterStatus] = useState<RasterLoadStatus>('idle')
+  const onRasterStatusChangeRef = useRef(onRasterStatusChange)
+
+  useEffect(() => {
+    onRasterStatusChangeRef.current = onRasterStatusChange
+  }, [onRasterStatusChange])
 
   // Init map một lần khi mount. Cleanup destroy khi unmount.
   useEffect(() => {
@@ -79,26 +89,58 @@ export default function ForestMap({
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    let failed = false
+    const updateStatus = (status: RasterLoadStatus) => {
+      setRasterStatus(status)
+      onRasterStatusChangeRef.current?.(status)
+    }
+    const handleSourceData = (event: any) => {
+      if (!failed && event.sourceId === RASTER_SOURCE_ID && event.isSourceLoaded) {
+        updateStatus('ready')
+      }
+    }
+    const handleSourceError = (event: any) => {
+      if (event.sourceId !== RASTER_SOURCE_ID) return
+      failed = true
+      updateStatus('error')
+    }
     const setup = () => {
       if (map.getLayer(RASTER_LAYER_ID)) map.removeLayer(RASTER_LAYER_ID)
       if (map.getSource(RASTER_SOURCE_ID)) map.removeSource(RASTER_SOURCE_ID)
-      if (!rasterTileUrl) return
-      map.addSource(RASTER_SOURCE_ID, {
-        type: 'raster',
-        tiles: [rasterTileUrl],
-        tileSize: 256,
-        attribution: 'Forest classification (GeoServer WMS / Earth Engine)',
-      })
-      map.addLayer({
-        id: RASTER_LAYER_ID,
-        type: 'raster',
-        source: RASTER_SOURCE_ID,
-        paint: { 'raster-opacity': opacity },
-        layout: { visibility: visible ? 'visible' : 'none' },
-      })
+      if (!rasterTileUrl) {
+        updateStatus('idle')
+        return
+      }
+      failed = false
+      updateStatus('loading')
+      try {
+        map.addSource(RASTER_SOURCE_ID, {
+          type: 'raster',
+          tiles: [rasterTileUrl],
+          tileSize: 256,
+          attribution: 'Bản đồ phân loại lớp phủ rừng',
+        })
+        map.addLayer({
+          id: RASTER_LAYER_ID,
+          type: 'raster',
+          source: RASTER_SOURCE_ID,
+          paint: { 'raster-opacity': opacity },
+          layout: { visibility: visible ? 'visible' : 'none' },
+        })
+      } catch {
+        failed = true
+        updateStatus('error')
+      }
     }
+    map.on('sourcedata', handleSourceData)
+    map.on('error', handleSourceError)
     if (map.isStyleLoaded()) setup()
     else map.once('load', setup)
+    return () => {
+      map.off('load', setup)
+      map.off('sourcedata', handleSourceData)
+      map.off('error', handleSourceError)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rasterTileUrl])
 
@@ -111,14 +153,21 @@ export default function ForestMap({
   }, [visible, opacity])
 
   return (
-    <div className="relative">
-      <div
-        ref={containerRef}
-        className={`w-full overflow-hidden rounded-md border ${heightClassName}`}
-      />
-      {!rasterTileUrl && (
+    <div className={`relative ${heightClassName}`}>
+      <div ref={containerRef} className="h-full w-full overflow-hidden rounded-md border" />
+      {rasterStatus === 'idle' && (
         <div className="pointer-events-none absolute inset-x-0 top-2 mx-auto w-fit rounded-md bg-amber-50/95 px-3 py-1 text-xs text-amber-800 shadow">
-          Chưa có raster để hiển thị (snapshot chưa completed hoặc chưa publish).
+          Chưa có dữ liệu bản đồ khả dụng.
+        </div>
+      )}
+      {rasterStatus === 'loading' && (
+        <div className="pointer-events-none absolute inset-x-0 top-2 mx-auto w-fit rounded-md bg-sky-50/95 px-3 py-1 text-xs text-sky-800 shadow">
+          Đang tải dữ liệu bản đồ...
+        </div>
+      )}
+      {rasterStatus === 'error' && (
+        <div className="pointer-events-none absolute inset-x-0 top-2 mx-auto w-fit rounded-md bg-red-50/95 px-3 py-1 text-xs text-red-700 shadow">
+          Không tải được dữ liệu bản đồ.
         </div>
       )}
       {/* Legend góc dưới trái */}

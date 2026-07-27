@@ -1,7 +1,8 @@
 import { statisticsService, useApiQuery } from '@/service'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Trees, Flame, Layers3, MessageSquareWarning, RefreshCcw } from 'lucide-react'
+import { Trees, Flame, Layers3, MessageSquareWarning, RefreshCcw, ExternalLink } from 'lucide-react'
+import { buildGeoserverPreviewUrl } from '@/lib/geoserver'
 import {
   Table,
   TableBody,
@@ -34,7 +35,7 @@ const FEEDBACK_STATUS_LABEL: Record<string, string> = {
 }
 
 const FEEDBACK_STATUS_CLASS: Record<string, string> = {
-  new: 'bg-amber-50 text-amber-700 border-amber-200',
+  new: 'border-warning/30 bg-warning/10 text-warning',
   in_progress: 'bg-blue-50 text-blue-700 border-blue-200',
   resolved: 'bg-green-50 text-green-700 border-green-200',
   rejected: 'bg-red-50 text-red-700 border-red-200',
@@ -120,7 +121,7 @@ export default function DashboardPage() {
         <Card>
           <CardContent className="p-6">
             <div className="mb-3 flex items-center gap-2">
-              <MessageSquareWarning className="size-5 text-amber-600" />
+              <MessageSquareWarning className="text-warning size-5" />
               <h2 className="text-lg font-semibold">Phản ánh</h2>
               <span className="text-muted-foreground ml-auto text-sm">
                 Tổng: <strong>{feedback?.total ?? 0}</strong>
@@ -186,9 +187,7 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
             <Flame className="size-5 text-red-600" />
             <h2 className="text-lg font-semibold">Cảnh báo cháy rừng</h2>
           </div>
-          <p className="text-muted-foreground text-sm">
-            Chưa có dữ liệu cảnh báo cháy.
-          </p>
+          <p className="text-muted-foreground text-sm">Chưa có dữ liệu cảnh báo cháy.</p>
         </CardContent>
       </Card>
     )
@@ -198,19 +197,29 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
   const isHigh = maxLevel >= 4
   const maxColor = RISK_LEVEL_META[maxLevel]?.color || '#94a3b8'
 
+  // Ưu tiên field mới `mapReady` + đếm huyện (migration 040 chia per-district),
+  // fallback legacy `geoserverLayer`/`geeDownloadUrl` cho snapshot cũ.
+  const drTotal = fireAlerts.districtRasterTotal ?? 0
+  const drReady = fireAlerts.districtRasterReady ?? 0
+  const mapReady =
+    fireAlerts.mapReady === true ||
+    (drTotal > 0 && drReady === drTotal) ||
+    Boolean(fireAlerts.geoserverLayer)
+  const mapPending = !mapReady && (drReady > 0 || Boolean(fireAlerts.geeDownloadUrl))
+
   return (
     <Card className={isHigh ? 'border-red-400' : ''}>
       <CardContent className="p-6">
         <div className="mb-3 flex items-center gap-2">
           <Flame className="size-5 text-red-600" />
           <h2 className="text-lg font-semibold">Cảnh báo cháy rừng</h2>
-          {fireAlerts.geoserverLayer ? (
+          {mapReady ? (
             <span className="ml-auto rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-              Bản đồ sẵn sàng
+              {drTotal > 0 ? `Bản đồ sẵn sàng · ${drReady}/${drTotal} huyện` : 'Bản đồ sẵn sàng'}
             </span>
-          ) : fireAlerts.geeDownloadUrl ? (
-            <span className="ml-auto rounded bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-              Chờ công bố
+          ) : mapPending ? (
+            <span className="border-warning/20 bg-warning/10 text-warning ml-auto rounded border px-2 py-0.5 text-[10px] font-medium">
+              {drTotal > 0 ? `Đang công bố ${drReady}/${drTotal} huyện` : 'Chờ công bố'}
             </span>
           ) : null}
         </div>
@@ -218,20 +227,23 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
         {/* Min · TB · Max — 3 số nổi bật */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="rounded-md border p-2">
-            <p className="text-muted-foreground text-[10px]">Thấp nhất</p>
+            <p className="text-muted-foreground text-xs font-medium">Thấp nhất</p>
             <p className="text-xl font-bold">C{fireAlerts.minLevel ?? '—'}</p>
           </div>
           <div className="rounded-md border p-2">
-            <p className="text-muted-foreground text-[10px]">Trung bình</p>
+            <p className="text-muted-foreground text-xs font-medium">Trung bình</p>
             <p className="text-xl font-bold">
               {fireAlerts.avgLevel != null ? fireAlerts.avgLevel.toFixed(2) : '—'}
             </p>
           </div>
-          <div className="rounded-md border p-2" style={{ borderColor: maxColor }}>
-            <p className="text-muted-foreground text-[10px]">Cao nhất</p>
-            <p className="text-xl font-bold" style={{ color: maxColor }}>
-              C{fireAlerts.maxLevel ?? '—'}
-            </p>
+          <div className="relative overflow-hidden rounded-md border p-2 pt-2.5">
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-1"
+              style={{ backgroundColor: maxColor }}
+            />
+            <p className="text-muted-foreground text-xs font-medium">Cao nhất</p>
+            <p className="text-foreground text-xl font-bold">C{fireAlerts.maxLevel ?? '—'}</p>
           </div>
         </div>
 
@@ -259,6 +271,12 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
           )}
         </div>
 
+        {/* List link mở xem trước từng huyện trên máy chủ bản đồ. */}
+        <PublishedDistrictLinks
+          districts={fireAlerts.publishedDistricts}
+          emptyHint="Chưa có huyện nào được phân phát ảnh bản đồ."
+        />
+
         <div className="mt-3">
           <a href="/fire-risk" className="text-primary text-xs font-medium hover:underline">
             Xem chi tiết cảnh báo →
@@ -282,9 +300,7 @@ function ForestClassificationDashboardCard({
             <Layers3 className="size-5 text-emerald-600" />
             <h2 className="text-lg font-semibold">Phân loại rừng</h2>
           </div>
-          <p className="text-muted-foreground text-sm">
-            Chưa có dữ liệu phân loại rừng.
-          </p>
+          <p className="text-muted-foreground text-sm">Chưa có dữ liệu phân loại rừng.</p>
         </CardContent>
       </Card>
     )
@@ -294,6 +310,13 @@ function ForestClassificationDashboardCard({
   const change = comparison?.forestDeltaHa
   const changeClass =
     change == null ? 'text-muted-foreground' : change < 0 ? 'text-destructive' : 'text-success'
+  // Ưu tiên field mới `mapReady` + đếm huyện (migration 040 chia per-district),
+  // fallback legacy `geoserverLayer`/`geeDownloadUrl` cho snapshot cũ.
+  const drTotal = data.districtRasterTotal ?? 0
+  const drReady = data.districtRasterReady ?? 0
+  const mapReady =
+    data.mapReady === true || (drTotal > 0 && drReady === drTotal) || Boolean(data.geoserverLayer)
+  const mapPending = !mapReady && (drReady > 0 || Boolean(data.geeDownloadUrl))
 
   return (
     <Card>
@@ -301,20 +324,20 @@ function ForestClassificationDashboardCard({
         <div className="mb-3 flex items-center gap-2">
           <Layers3 className="size-5 text-emerald-600" />
           <h2 className="text-lg font-semibold">Phân loại rừng</h2>
-          {data.geoserverLayer ? (
+          {mapReady ? (
             <span className="bg-success/10 text-success ml-auto rounded px-2 py-0.5 text-[10px] font-medium">
-              Bản đồ sẵn sàng
+              {drTotal > 0 ? `Bản đồ sẵn sàng · ${drReady}/${drTotal} huyện` : 'Bản đồ sẵn sàng'}
             </span>
-          ) : data.geeDownloadUrl ? (
-            <span className="bg-warning/10 text-warning-foreground ml-auto rounded px-2 py-0.5 text-[10px] font-medium">
-              Chờ công bố
+          ) : mapPending ? (
+            <span className="border-warning/20 bg-warning/10 text-warning ml-auto rounded border px-2 py-0.5 text-[10px] font-medium">
+              {drTotal > 0 ? `Đang công bố ${drReady}/${drTotal} huyện` : 'Chờ công bố'}
             </span>
           ) : null}
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-center">
           <Metric label="Rừng" value={formatHa(data.forestAreaHa ?? undefined)} />
-          <Metric label="Tỷ lệ" value={formatPct(data.forestCoveragePct ?? undefined)} />
+          <Metric label="Độ phủ rừng" value={formatPct(data.forestCoveragePct ?? undefined)} />
           <Metric
             label="Độ chính xác"
             value={data.oobAccuracy != null ? `${data.oobAccuracy.toFixed(1)}%` : '—'}
@@ -347,6 +370,12 @@ function ForestClassificationDashboardCard({
           )}
         </div>
 
+        {/* List link mở xem trước từng huyện trên máy chủ bản đồ. */}
+        <PublishedDistrictLinks
+          districts={data.publishedDistricts}
+          emptyHint="Chưa có huyện nào được phân phát ảnh bản đồ."
+        />
+
         <div className="mt-3">
           <a
             href="/forest-classification"
@@ -357,6 +386,58 @@ function ForestClassificationDashboardCard({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * Danh sách link mở xem trước từng huyện trên máy chủ bản đồ.
+ * Nhận `publishedDistricts` từ dashboard block; mỗi huyện có `layer` FQN
+ * (dạng `workspace:store_name`). FE build preview URL qua `buildGeoserverPreviewUrl`
+ * — trả về OpenLayers viewer, mở tab mới. Nếu server chưa cấu hình
+ * `VITE_GEOSERVER_URL` (URL null) thì bỏ qua huyện đó.
+ */
+function PublishedDistrictLinks({
+  districts,
+  emptyHint,
+}: {
+  districts?: Array<{ code: string | null; name: string | null; layer: string }>
+  emptyHint?: string
+}) {
+  const items = (districts || [])
+    .map((d) => ({
+      key: d.code || d.name || d.layer,
+      label: d.name || d.code || d.layer,
+      url: buildGeoserverPreviewUrl(d.layer),
+    }))
+    .filter((it): it is { key: string; label: string; url: string } => Boolean(it.url))
+
+  if (!items.length) {
+    return emptyHint ? (
+      <p className="text-muted-foreground mt-3 text-[11px] italic">{emptyHint}</p>
+    ) : null
+  }
+
+  return (
+    <div className="mt-3">
+      <p className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
+        Mở xem trước theo huyện
+      </p>
+      <div className="flex flex-wrap gap-1">
+        {items.map((it) => (
+          <a
+            key={it.key}
+            href={it.url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="border-primary/20 hover:bg-primary/10 hover:text-primary text-foreground/80 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] transition-colors"
+            title={`Mở ${it.label} trên máy chủ bản đồ`}
+          >
+            <span className="max-w-32 truncate">{it.label}</span>
+            <ExternalLink size={10} />
+          </a>
+        ))}
+      </div>
+    </div>
   )
 }
 

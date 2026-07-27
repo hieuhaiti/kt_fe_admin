@@ -456,11 +456,11 @@ function FileUpload(props: FileUploadProps) {
             onSuccess: (file) => {
               store.dispatch({ type: "SET_SUCCESS", file });
             },
-            onError: (file, error) => {
+            onError: (file) => {
               store.dispatch({
                 type: "SET_ERROR",
                 file,
-                error: error.message ?? "Upload failed",
+                error: "Không thể tải tệp lên. Vui lòng thử lại.",
               });
             },
           });
@@ -469,9 +469,8 @@ function FileUpload(props: FileUploadProps) {
             store.dispatch({ type: "SET_SUCCESS", file });
           }
         }
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Upload failed";
+      } catch {
+        const errorMessage = "Không thể tải tệp lên. Vui lòng thử lại.";
         for (const file of files) {
           store.dispatch({
             type: "SET_ERROR",
@@ -547,7 +546,7 @@ function FileUpload(props: FileUploadProps) {
                   fileType.startsWith(type.replace("/*", "/"))),
             )
           ) {
-            rejectionMessage = "File type not accepted";
+            rejectionMessage = "Định dạng tệp không được hỗ trợ";
             propsRef.current.onFileReject?.(file, rejectionMessage);
             rejected = true;
             invalid = true;
@@ -555,7 +554,7 @@ function FileUpload(props: FileUploadProps) {
         }
 
         if (maxSize && file.size > maxSize) {
-          rejectionMessage = "File too large";
+          rejectionMessage = "Tệp vượt quá dung lượng cho phép";
           propsRef.current.onFileReject?.(file, rejectionMessage);
           rejected = true;
           invalid = true;
@@ -664,7 +663,7 @@ function FileUpload(props: FileUploadProps) {
             onChange={onInputChange}
           />
           <span id={labelId} className="sr-only">
-            {label ?? "File upload"}
+            {label ?? "Tải tệp lên"}
           </span>
         </RootPrimitive>
       </FileUploadContext.Provider>
@@ -1016,12 +1015,12 @@ function FileUploadItem(props: FileUploadItemProps) {
   if (!fileState) return null;
 
   const statusText = fileState.error
-    ? `Error: ${fileState.error}`
+    ? `Lỗi: ${fileState.error}`
     : fileState.status === "uploading"
-      ? `Uploading: ${fileState.progress}% complete`
+      ? `Đang tải lên: hoàn tất ${fileState.progress}%`
       : fileState.status === "success"
-        ? "Upload complete"
-        : "Ready to upload";
+        ? "Tải lên hoàn tất"
+        : "Sẵn sàng tải lên";
 
   const ItemPrimitive = asChild ? Slot : "div";
 

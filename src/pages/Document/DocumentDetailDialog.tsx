@@ -113,7 +113,7 @@ export default function DocumentDetailDialog({
             {fileName && <Row label="Tên file">{fileName}</Row>}
             {mimeType && <Row label="Định dạng">{mimeType}</Row>}
             <Row label="Dung lượng">{formatBytes(fileSize)}</Row>
-            {uploadedBy && <Row label="Người upload">{uploadedBy}</Row>}
+            {uploadedBy && <Row label="Người tải lên">{uploadedBy}</Row>}
             {viewCount !== undefined && (
               <Row label="Lượt xem">
                 <span className="flex items-center gap-1">

@@ -34,11 +34,8 @@ const ChangePasswordPage = lazy(() => import('@/pages/ChangePassword'))
 
 // New modules aligned to Postman
 const DashboardPage = lazy(() => import('@/pages/Dashboard'))
-const StatisticsPage = lazy(() => import('@/pages/Statistics'))
 const WeatherPage = lazy(() => import('@/pages/Weather'))
-const RemoteSensingPage = lazy(() => import('@/pages/RemoteSensing'))
 const FireRiskPage = lazy(() => import('@/pages/FireRisk'))
-const SatellitePage = lazy(() => import('@/pages/Satellite'))
 const ForestClassificationPage = lazy(() => import('@/pages/ForestClassification'))
 const FieldMeasurementsPage = lazy(() => import('@/pages/FieldMeasurements'))
 const MonitoredAreasPage = lazy(() => import('@/pages/MonitoredAreas'))
@@ -87,7 +84,6 @@ function App() {
             <Route element={<MainLayout />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/statistics" element={<StatisticsPage />} />
 
               {/* Users */}
               <Route element={<ProtectedRoute permission="users:view" />}>
@@ -123,14 +119,6 @@ function App() {
               />
               <Route element={<ProtectedRoute permission="pdf-maps:view" />}>
                 <Route path="/map-images" element={<MapImagePage />} />
-              </Route>
-
-              {/* Ảnh vệ tinh + viễn thám */}
-              <Route element={<ProtectedRoute permission="satellite:run" />}>
-                <Route path="/satellite" element={<SatellitePage />} />
-              </Route>
-              <Route element={<ProtectedRoute permission="remote-sensing:view" />}>
-                <Route path="/remote-sensing" element={<RemoteSensingPage />} />
               </Route>
 
               {/* Phân loại rừng / cháy rừng / thời tiết */}

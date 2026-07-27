@@ -1,10 +1,11 @@
 import type * as React from 'react'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
   Eye,
   EyeOff,
   Image as ImageIcon,
@@ -34,9 +35,24 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { formatDate, formatDateTime } from '@/lib/date'
-import { buildGeoserverDownloadUrl, downloadRasterFile } from '@/lib/geoserver'
-import type { FireRiskFeature, FireRiskProvinceSummary } from '@/types/api'
-import FireRiskMap from '@/components/features/FireRiskMap'
+import {
+  buildGeoserverDownloadUrl,
+  buildGeoserverPreviewUrl,
+  buildGeoserverRasterTileUrl,
+  downloadRasterFile,
+  getTemporaryRasterUrlStatus,
+  getUsableTemporaryRasterUrl,
+  normalizeGeoserverLayer,
+} from '@/lib/geoserver'
+import type {
+  FireRiskFeature,
+  FireRiskDistrictExport,
+  FireRiskDistrictExportsData,
+  FireRiskHistoryItem,
+  FireRiskProvinceSummary,
+  FireRiskSnapshot,
+} from '@/types/api'
+import FireRiskMap, { type FireRiskRasterLoadStatus } from '@/components/features/FireRiskMap'
 import LoadingInline from '@/components/common/LoadingInline'
 import { PaginationCustom } from '@/components/features/PaginationCustom'
 import GroundTruthCard from './GroundTruthCard'
@@ -81,6 +97,251 @@ const LEVEL_META: Record<number, { color: string; label: string }> = {
 // Ngưỡng cảnh báo cứng = 1 (xem toàn bộ). User đã yêu cầu bỏ filter phía UI,
 // query API vẫn cần param này để server pre-filter polygon nếu cần.
 const DEFAULT_MIN_RISK_LEVEL = 1
+const DISTRICT_RASTER_POLL_INTERVAL_MS = 5_000
+const DISTRICT_RASTER_POLL_WINDOW_MS = 5 * 60 * 1_000
+const DISTRICT_PUBLISH_POLL_WINDOW_MS = 15 * 60 * 1_000
+const isRasterProcessingStatus = (status?: string) =>
+  ['pending', 'computing', 'exporting'].includes(String(status || '').toLowerCase())
+const ACTIVE_RASTER_INGEST_STATUSES = new Set([
+  'pending',
+  'downloading',
+  'validating',
+  'uploading',
+  'publishing',
+])
+
+const getDistrictTemporaryDownloadUrl = (district: FireRiskDistrictExport) =>
+  getUsableTemporaryRasterUrl(
+    district.geeDownloadUrl,
+    district.geeGeneratedAt ?? district.completedAt
+  )
+
+const hasDistrictSource = (district: FireRiskDistrictExport) =>
+  Boolean(
+    district.minioKey || district.geoserverDownloadUrl || getDistrictTemporaryDownloadUrl(district)
+  )
+
+const isDistrictPublished = (district: FireRiskDistrictExport) =>
+  Boolean(normalizeGeoserverLayer(district.geoserverLayer))
+
+const isDistrictReady = (district: FireRiskDistrictExport) =>
+  Boolean(
+    isDistrictPublished(district) &&
+    (district.minioKey ||
+      district.geoserverDownloadUrl ||
+      String(district.status).toLowerCase() === 'published')
+  )
+
+const hasActiveDistrictIngest = (district: FireRiskDistrictExport) => {
+  const status = String(district.rasterIngestStatus || '').toLowerCase()
+  return status ? ACTIVE_RASTER_INGEST_STATUSES.has(status) : Boolean(district.rasterIngestJobId)
+}
+
+function readNonNegativeCount(...values: unknown[]): number {
+  for (const value of values) {
+    if (value == null || value === '') continue
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed
+  }
+  return 0
+}
+
+function readOptionalNonNegativeCount(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    if (value == null || value === '') continue
+    const parsed = Number(value)
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed
+  }
+  return undefined
+}
+
+function countUniqueDistricts(districts: FireRiskDistrictExport[]): number {
+  const codes = new Set(
+    districts.map((district) => String(district.districtCode || '').trim()).filter(Boolean)
+  )
+  return codes.size || districts.length
+}
+
+function resolveDistrictTotal(
+  payload: FireRiskDistrictExportsData | null | undefined,
+  districts: FireRiskDistrictExport[] = payload?.districts ?? []
+): number {
+  const expectedTotal = readOptionalNonNegativeCount(payload?.expectedTotal)
+  if (expectedTotal != null && expectedTotal > 0) return expectedTotal
+
+  const total = readOptionalNonNegativeCount(payload?.total)
+  if (total != null && total > 0) return total
+
+  return countUniqueDistricts(districts)
+}
+
+function resolveDistrictTileUrl(district: FireRiskDistrictExport): string | null {
+  const stableLayer = normalizeGeoserverLayer(district.geoserverLayer)
+  if (stableLayer) {
+    const stableUrl = buildGeoserverRasterTileUrl([stableLayer])
+    if (stableUrl) return stableUrl
+  }
+
+  const temporaryUrl = district.tileUrl ?? district.geeTileUrl
+  return getUsableTemporaryRasterUrl(
+    temporaryUrl,
+    district.tileGeneratedAt ?? district.geeGeneratedAt ?? district.completedAt
+  )
+}
+
+function buildDistrictTiles(
+  districts: FireRiskDistrictExport[]
+): Array<{ code: string; tileUrl: string }> {
+  const tiles = new Map<string, string>()
+
+  for (const district of districts) {
+    const code = String(district.districtCode || '').trim()
+    if (!code || tiles.has(code)) continue
+    const tileUrl = resolveDistrictTileUrl(district)
+    if (tileUrl) tiles.set(code, tileUrl)
+  }
+
+  return Array.from(tiles, ([code, tileUrl]) => ({ code, tileUrl }))
+}
+
+function countGeoJsonDistricts(geojson: GeoJSON.FeatureCollection | null): number {
+  const features = geojson?.features ?? []
+  const districtKeys = new Set<string>()
+
+  for (const feature of features) {
+    const properties = feature.properties ?? {}
+    const key =
+      properties.districtCode ??
+      properties.district_code ??
+      properties.unitCode ??
+      properties.unit_code ??
+      properties.districtName ??
+      properties.district_name
+    const normalized = String(key ?? '').trim()
+    if (normalized) districtKeys.add(normalized)
+  }
+
+  return districtKeys.size || features.length
+}
+
+type DistrictArtifactSummary = {
+  total: number
+  sourceCount: number
+  storedCount: number
+  geoserverCount: number
+  readyCount: number
+  districtCodeCount: number
+  fullyPublished: boolean
+  geoserverLayers: string[]
+  available: boolean
+}
+
+function getDistrictArtifactSummary(value: Record<string, any>): DistrictArtifactSummary {
+  const nested = value.districtArtifacts ?? value.district_artifacts ?? {}
+  const rawLayers =
+    value.geoserverLayers ??
+    value.geoserver_layers ??
+    value.districtGeoserverLayers ??
+    value.district_geoserver_layers ??
+    nested.geoserverLayers ??
+    nested.geoserver_layers ??
+    []
+  const geoserverLayers = Array.isArray(rawLayers)
+    ? Array.from(
+        new Set(
+          rawLayers
+            .map((layer) => normalizeGeoserverLayer(layer))
+            .filter((layer): layer is string => Boolean(layer))
+        )
+      )
+    : []
+  const total = readNonNegativeCount(
+    value.expectedTotal,
+    value.expected_total,
+    value.districtTotal,
+    value.district_total,
+    value.totalDistricts,
+    value.total_districts,
+    nested.expectedTotal,
+    nested.expected_total,
+    nested.total
+  )
+  const sourceCount = readNonNegativeCount(
+    value.sourceCount,
+    value.source_count,
+    value.districtSourceCount,
+    value.district_source_count,
+    nested.sourceCount,
+    nested.source_count
+  )
+  const storedCount = readNonNegativeCount(
+    value.storedCount,
+    value.stored_count,
+    value.districtStoredCount,
+    value.district_stored_count,
+    nested.storedCount,
+    nested.stored_count
+  )
+  const geoserverCount = Math.max(
+    geoserverLayers.length,
+    readNonNegativeCount(
+      value.geoserverCount,
+      value.geoserver_count,
+      value.districtGeoserverCount,
+      value.district_geoserver_count,
+      value.districtLayerCount,
+      value.district_layer_count,
+      value.publishedCount,
+      value.published_count,
+      nested.geoserverCount,
+      nested.geoserver_count
+    )
+  )
+  const readyCount = readNonNegativeCount(
+    value.readyCount,
+    value.ready_count,
+    value.districtReadyCount,
+    value.district_ready_count,
+    nested.readyCount,
+    nested.ready_count
+  )
+  const districtCodeCount = readNonNegativeCount(
+    value.districtCodeCount,
+    value.district_code_count,
+    nested.districtCodeCount,
+    nested.district_code_count
+  )
+  const effectiveTotal =
+    total > 0 ? total : Math.max(sourceCount, storedCount, geoserverCount, readyCount)
+  const backendFullyPublished =
+    value.fullyPublished === true ||
+    value.fully_published === true ||
+    nested.fullyPublished === true ||
+    nested.fully_published === true
+  const fullyPublished =
+    effectiveTotal > 0 &&
+    (backendFullyPublished ||
+      (geoserverCount >= effectiveTotal &&
+        readyCount >= effectiveTotal &&
+        (districtCodeCount === 0 || districtCodeCount >= effectiveTotal)))
+
+  return {
+    total: effectiveTotal,
+    sourceCount,
+    storedCount,
+    geoserverCount,
+    readyCount,
+    districtCodeCount,
+    fullyPublished,
+    geoserverLayers,
+    available:
+      sourceCount > 0 ||
+      storedCount > 0 ||
+      geoserverCount > 0 ||
+      readyCount > 0 ||
+      geoserverLayers.length > 0,
+  }
+}
 
 export default function FireRiskPage() {
   const user = useAuthStore((s) => s.user)
@@ -98,6 +359,7 @@ export default function FireRiskPage() {
   const [districtOpacity, setDistrictOpacity] = useState(0.45)
   const [heatVisible, setHeatVisible] = useState(true)
   const [heatOpacity, setHeatOpacity] = useState(0.65)
+  const [rasterLoadStatus, setRasterLoadStatus] = useState<FireRiskRasterLoadStatus>('idle')
 
   const latestQuery = useApiQuery(['fire-risk-latest', minRiskLevel], () =>
     fireRiskService.getLatest({ minRiskLevel: Number(minRiskLevel) || undefined })
@@ -117,13 +379,79 @@ export default function FireRiskPage() {
 
   const latest = latestQuery.data?.data
   const snapshot = latest?.snapshot
+  const snapshotId = snapshot?.id ?? null
+  const isSnapshotDone = snapshot?.status === 'completed' || snapshot?.status === 'published'
+  const districtPollingRef = useRef({ snapshotId: '', startedAt: 0 })
+  const districtPollingSnapshotId = `${String(snapshotId ?? '')}:${isSnapshotDone ? 'done' : 'active'}`
+  if (districtPollingRef.current.snapshotId !== districtPollingSnapshotId) {
+    districtPollingRef.current = {
+      snapshotId: districtPollingSnapshotId,
+      startedAt: Date.now(),
+    }
+  }
+  const districtExportsQuery = useApiQuery(
+    ['fire-risk-district-exports', snapshotId],
+    () => fireRiskService.getDistrictExports(snapshotId as number | string),
+    {
+      enabled: Boolean(snapshotId) && isSnapshotDone,
+      refetchInterval: (query: any) => {
+        if (query.state.error) return false
+        if (
+          !districtPollingRef.current.startedAt ||
+          Date.now() - districtPollingRef.current.startedAt >= DISTRICT_RASTER_POLL_WINDOW_MS
+        ) {
+          return false
+        }
+        const payload = query.state.data?.data
+        const districts = Array.isArray(payload?.districts)
+          ? (payload.districts as FireRiskDistrictExport[])
+          : []
+        const expectedTotal = resolveDistrictTotal(payload, districts)
+        const readyCount =
+          readOptionalNonNegativeCount(payload?.readyCount, payload?.ready) ??
+          districts.filter(isDistrictReady).length
+        const fullyPublished =
+          payload?.fullyPublished === true || (expectedTotal > 0 && readyCount >= expectedTotal)
+        // Snapshot có thể hoàn tất trước khi worker gắn jobId. Tiếp tục poll tới khi
+        // đủ bộ raster ổn định thay vì phụ thuộc riêng vào rasterIngestJobId.
+        return !fullyPublished ? DISTRICT_RASTER_POLL_INTERVAL_MS : false
+      },
+    } as any,
+    false
+  )
   const summary: FireRiskProvinceSummary = snapshot?.provinceSummary ?? {}
   const features: FireRiskFeature[] = latest?.features ?? []
   const districtStats = snapshot?.districtStats ?? []
-  const history = historyQuery.data?.data?.items ?? []
+  const history = (historyQuery.data?.data?.items ?? []) as FireRiskHistoryItem[]
   const historyMetadata = historyQuery.data?.metadata
   const historyTotal = Number(historyMetadata?.total) || 0
-  const historyTotalPages = Number(historyMetadata?.totalPages) || 0
+  const lastHistoryTotalPages = useRef(1)
+  if (historyMetadata?.totalPages !== undefined) {
+    lastHistoryTotalPages.current = Math.max(1, Number(historyMetadata.totalPages) || 0)
+  }
+  const historyTotalPages = lastHistoryTotalPages.current
+  const latestHistoryItem = history.find((item) => String(item.id) === String(snapshot?.id))
+  const districtExports = ((districtExportsQuery.data as any)?.data ??
+    null) as FireRiskDistrictExportsData | null
+  const districtArtifacts = districtExports?.districts ?? []
+  const expectedDistrictTotal = resolveDistrictTotal(districtExports, districtArtifacts)
+  const snapshotGeeGeneratedAt =
+    snapshot?.geeTileGeneratedAt ??
+    latestHistoryItem?.gee_tile_generated_at ??
+    latestHistoryItem?.computed_at
+  const perDistrictTiles = buildDistrictTiles(districtArtifacts)
+  const hasDistrictRasterContract =
+    readOptionalNonNegativeCount(districtExports?.expectedTotal) != null &&
+    Number(districtExports?.expectedTotal) > 0
+  const allowProvinceRasterFallback = !districtExportsQuery.isLoading && !hasDistrictRasterContract
+  const rasterTileUrl = allowProvinceRasterFallback
+    ? resolveRasterTileUrl(snapshot, snapshotGeeGeneratedAt)
+    : null
+  const hasRasterTile = perDistrictTiles.length > 0 || Boolean(rasterTileUrl)
+
+  useEffect(() => {
+    if (page > historyTotalPages) setPage(historyTotalPages)
+  }, [page, historyTotalPages])
 
   // API không trả sẵn maxLevel — derive từ riskLevelDist (level cao nhất có ha>0).
   const provinceMaxLevel = deriveMaxLevel(summary.riskLevelDist)
@@ -142,7 +470,7 @@ export default function FireRiskPage() {
       { submitExport: false },
       {
         onSuccess: () => {
-          toast.success('Đã gửi yêu cầu — kết quả sẽ xuất hiện sau vài phút.')
+          toast.success('Yêu cầu đã được tiếp nhận và đang xử lý.')
           setRefreshDialogOpen(false)
           // BUG-FIX (2026-07-19): trước đây chỉ refetch `latestQuery` → history
           // table không thấy row mới cho tới khi user F5. Giờ refetch cả 3 query
@@ -154,8 +482,8 @@ export default function FireRiskPage() {
             historyQuery.refetch()
           }, 2000)
         },
-        onError: (err: any) => {
-          toast.error(err?.message || 'Không thể chạy lại phân tích.')
+        onError: () => {
+          toast.error('Không thể chạy lại phân tích. Vui lòng thử lại.')
           setRefreshDialogOpen(false)
         },
       }
@@ -209,12 +537,32 @@ export default function FireRiskPage() {
             // descendant of <p>" và bị auto-close ngoài <p> làm vỡ layout.
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
               <span>
-                Ngày phân tích:{' '}
-                <span>{formatDate(snapshot.analysisDate)}</span>
+                Ngày phân tích: <span>{formatDate(snapshot.analysisDate)}</span>
               </span>
               {snapshot.status && <StatusBadge status={snapshot.status} />}
-              <span className={resolveRasterTileUrl(snapshot) ? 'text-emerald-700' : 'text-amber-700'}>
-                {resolveRasterTileUrl(snapshot) ? 'Bản đồ sẵn sàng' : 'Bản đồ đang xử lý'}
+              <span
+                className={
+                  rasterLoadStatus === 'error'
+                    ? 'text-red-700'
+                    : hasRasterTile
+                      ? 'text-emerald-700'
+                      : 'text-warning'
+                }
+              >
+                {hasRasterTile && rasterLoadStatus === 'error'
+                  ? 'Không tải được ảnh bản đồ'
+                  : hasRasterTile && rasterLoadStatus === 'loading'
+                    ? 'Đang tải ảnh bản đồ'
+                    : hasRasterTile
+                      ? 'Bản đồ sẵn sàng'
+                      : hasDistrictRasterContract
+                        ? `Chưa có ảnh chi tiết theo huyện (${perDistrictTiles.length}/${expectedDistrictTotal})`
+                        : getTemporaryRasterUrlStatus(
+                              snapshot.geeTileUrl,
+                              snapshotGeeGeneratedAt
+                            ) === 'expired'
+                          ? 'Ảnh xem nhanh đã hết hạn'
+                          : 'Chưa có ảnh bản đồ khả dụng'}
               </span>
             </div>
           )}
@@ -284,8 +632,12 @@ export default function FireRiskPage() {
         <CardContent className="space-y-4 p-4 sm:p-6">
           {isLoading ? (
             <p className="text-muted-foreground text-sm">Đang tải dữ liệu cảnh báo...</p>
+          ) : latestQuery.isError ? (
+            <p className="text-sm text-red-700">
+              Không tải được dữ liệu cảnh báo cháy rừng. Vui lòng thử lại sau.
+            </p>
           ) : !snapshot ? (
-            <p className="text-sm text-amber-700">
+            <p className="text-warning text-sm">
               Chưa có dữ liệu cảnh báo. Hãy chạy phân tích lần đầu.
             </p>
           ) : (
@@ -317,7 +669,7 @@ export default function FireRiskPage() {
               </div>
 
               {latest?.stale && (
-                <div className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
+                <div className="border-warning/30 bg-warning/10 text-warning rounded-md border p-3 text-sm">
                   Dữ liệu đã cũ. Nên chạy phân tích lại để cập nhật bản đồ.
                 </div>
               )}
@@ -340,31 +692,37 @@ export default function FireRiskPage() {
               <span className="text-muted-foreground text-xs">Đang tải bản đồ...</span>
             )}
           </div>
-          {/* NOTE — endpoint /fire-risk/map trả RAW GeoJSON (controller
-              explicit `res.json(geojson)`, không dùng OK helper), nhưng
-              apiClient.get<T> luôn wrap kiểu ApiResponse<T> = {message, data}.
-              Nên `mapQuery.data.data` = undefined ⇒ trước đây map hiện
-              "Chưa có polygon". Unwrap fallback: nếu data.data missing → dùng
-              luôn data (đã là FeatureCollection).
-
-              Raster fallback chain (chuyền `rasterTileUrl` cho map):
-                1. WMS GeoServer (khi `snapshot.geoserverLayer` không null +
-                   env `VITE_GEOSERVER_URL` có config). Persistent.
-                2. `snapshot.geeTileUrl` — Earth Engine tile URL, server luôn
-                   cố sinh, KHÔNG cần GCS. TTL ~24h.
-                3. Không có URL → chỉ vector polygon huyện, không raster nền. */}
+          {mapQuery.isError && (
+            <div className="border-warning/30 bg-warning/10 text-warning mb-3 rounded-md border p-2 text-xs">
+              Không tải được dữ liệu ranh giới huyện. Ảnh bản đồ được hiển thị riêng nếu nguồn còn
+              khả dụng.
+            </div>
+          )}
+          {/* Endpoint bản đồ có thể trả GeoJSON trực tiếp hoặc nằm trong `data`.
+              Khi API đã khai báo dữ liệu theo huyện, chỉ các ảnh huyện có URL
+              hợp lệ được hiển thị; không thay bằng ảnh toàn tỉnh. */}
           <FireRiskMap
             geojson={extractFeatureCollection(mapQuery.data)}
-            rasterTileUrl={resolveRasterTileUrl(snapshot)}
+            rasterTileUrl={rasterTileUrl}
+            perDistrictTiles={perDistrictTiles}
             districtVisible={districtVisible}
             districtOpacity={districtOpacity}
             heatVisible={heatVisible}
             heatOpacity={heatOpacity}
+            heightClassName="h-[420px] lg:h-[560px]"
+            onRasterStatusChange={setRasterLoadStatus}
           />
           {/* Layer Manager — collapsible, giống SatelliteControll/LayerManager */}
           <FireRiskLayerManager
             geojson={extractFeatureCollection(mapQuery.data)}
             snapshot={snapshot}
+            rasterTileUrl={rasterTileUrl}
+            geeGeneratedAt={snapshotGeeGeneratedAt}
+            rasterLoadStatus={rasterLoadStatus}
+            districtExports={districtExports}
+            districtTileCount={perDistrictTiles.length}
+            isLoadingDistrictExports={districtExportsQuery.isLoading}
+            isDistrictExportsError={districtExportsQuery.isError}
             districtVisible={districtVisible}
             districtOpacity={districtOpacity}
             heatVisible={heatVisible}
@@ -436,12 +794,13 @@ export default function FireRiskPage() {
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className="whitespace-nowrap"
-                            style={{
-                              borderColor: LEVEL_META[d.maxLevel]?.color,
-                              color: LEVEL_META[d.maxLevel]?.color,
-                            }}
+                            className="bg-card text-foreground gap-1.5 whitespace-nowrap"
                           >
+                            <span
+                              aria-hidden="true"
+                              className="ring-foreground/25 inline-block h-2.5 w-2.5 shrink-0 rounded-sm ring-1 ring-inset"
+                              style={{ backgroundColor: LEVEL_META[d.maxLevel]?.color }}
+                            />
                             {LEVEL_META[d.maxLevel]?.label || `Cấp ${d.maxLevel}`}
                           </Badge>
                         </TableCell>
@@ -501,11 +860,24 @@ export default function FireRiskPage() {
                   const hMax = s.maxLevel ?? deriveMaxLevel(s.riskLevelDist)
                   const rowKey = String(h.id)
                   const isExpanded = expandedHistoryId === rowKey
-                  const rasterKind = h.geoserver_layer
-                    ? 'geoserver'
-                    : h.gee_tile_url || (h as any).geeTileUrl
-                      ? 'gee'
-                      : 'none'
+                  const geoserverLayer = normalizeGeoserverLayer(h.geoserver_layer)
+                  const districtArtifacts = getDistrictArtifactSummary(h)
+                  const hasStableDistrictRaster = districtArtifacts.fullyPublished
+                  const temporaryTileStatus = getTemporaryRasterUrlStatus(
+                    h.gee_tile_url ?? h.geeTileUrl,
+                    h.gee_tile_generated_at ?? h.computed_at
+                  )
+                  const rasterKind = hasStableDistrictRaster
+                    ? 'districts'
+                    : geoserverLayer
+                      ? 'geoserver'
+                      : temporaryTileStatus === 'available'
+                        ? 'gee'
+                        : temporaryTileStatus === 'expired'
+                          ? 'expired'
+                          : districtArtifacts.available
+                            ? 'district-sources'
+                            : 'none'
                   return (
                     <Fragment key={h.id}>
                       <TableRow
@@ -542,11 +914,44 @@ export default function FireRiskPage() {
                               : '—'}
                         </TableCell>
                         <TableCell className="text-xs whitespace-nowrap">
-                          {rasterKind === 'geoserver' && (
-                            <span className="text-emerald-700">Sẵn sàng</span>
+                          {rasterKind === 'districts' ? (
+                            <span className="text-emerald-700">
+                              Đã công bố {districtArtifacts.geoserverCount}/
+                              {districtArtifacts.total} huyện
+                            </span>
+                          ) : rasterKind === 'district-sources' ? (
+                            <span className="text-warning">
+                              Ảnh tạm {districtArtifacts.sourceCount}/{districtArtifacts.total}{' '}
+                              huyện
+                            </span>
+                          ) : rasterKind === 'geoserver' ? (
+                            (() => {
+                              const previewUrl = buildGeoserverPreviewUrl(geoserverLayer)
+                              return previewUrl ? (
+                                <Button
+                                  asChild
+                                  variant="link"
+                                  size="xs"
+                                  className="h-auto p-0 text-xs text-emerald-700 hover:text-emerald-800"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <a href={previewUrl} target="_blank" rel="noreferrer noopener">
+                                    Mở xem trước
+                                  </a>
+                                </Button>
+                              ) : (
+                                <span className="text-emerald-700">Đã lưu ổn định</span>
+                              )
+                            })()
+                          ) : rasterKind === 'gee' ? (
+                            <span className="text-warning">Bản xem trước có thời hạn</span>
+                          ) : rasterKind === 'expired' ? (
+                            <span className="text-muted-foreground">Bản xem trước đã hết hạn</span>
+                          ) : isRasterProcessingStatus(h.status) ? (
+                            <span className="text-slate-500">Đang xử lý</span>
+                          ) : (
+                            <span className="text-muted-foreground">Chưa có lớp bản đồ</span>
                           )}
-                          {rasterKind === 'gee' && <span className="text-amber-700">Tạm thời</span>}
-                          {rasterKind === 'none' && <span className="text-slate-500">Đang xử lý</span>}
                         </TableCell>
                         <TableCell className="text-xs whitespace-nowrap">
                           {h.computed_at ? formatDateTime(h.computed_at) : '—'}
@@ -605,6 +1010,13 @@ export default function FireRiskPage() {
 function FireRiskLayerManager({
   geojson,
   snapshot,
+  rasterTileUrl,
+  geeGeneratedAt,
+  rasterLoadStatus,
+  districtExports,
+  districtTileCount,
+  isLoadingDistrictExports,
+  isDistrictExportsError,
   districtVisible,
   districtOpacity,
   heatVisible,
@@ -615,7 +1027,14 @@ function FireRiskLayerManager({
   onHeatOpacityChange,
 }: {
   geojson: GeoJSON.FeatureCollection | null
-  snapshot: any
+  snapshot: FireRiskSnapshot | null | undefined
+  rasterTileUrl: string | null
+  geeGeneratedAt?: string | null
+  rasterLoadStatus: FireRiskRasterLoadStatus
+  districtExports: FireRiskDistrictExportsData | null
+  districtTileCount: number
+  isLoadingDistrictExports: boolean
+  isDistrictExportsError: boolean
   districtVisible: boolean
   districtOpacity: number
   heatVisible: boolean
@@ -626,37 +1045,86 @@ function FireRiskLayerManager({
   onHeatOpacityChange: (v: number) => void
 }) {
   const [open, setOpen] = useState(true)
+  const geoserverDownloadUrl =
+    snapshot?.geoserverDownloadUrl || buildGeoserverDownloadUrl(snapshot?.geoserverLayer)
+  const temporaryDownloadStatus = getTemporaryRasterUrlStatus(
+    snapshot?.geeDownloadUrl,
+    geeGeneratedAt
+  )
+  const downloadUrl =
+    geoserverDownloadUrl || getUsableTemporaryRasterUrl(snapshot?.geeDownloadUrl, geeGeneratedAt)
+  const districtArtifacts = districtExports?.districts ?? []
+  const districtTotal = resolveDistrictTotal(districtExports, districtArtifacts)
+  const districtSourceCount =
+    readOptionalNonNegativeCount(districtExports?.sourceCount) ??
+    districtArtifacts.filter(hasDistrictSource).length
+  const districtStoredCount =
+    readOptionalNonNegativeCount(districtExports?.storedCount) ??
+    districtArtifacts.filter((district) => Boolean(district.minioKey)).length
+  const stableDistrictCount =
+    readOptionalNonNegativeCount(
+      districtExports?.publishedCount,
+      districtExports?.geoserverCount
+    ) ?? districtArtifacts.filter(isDistrictPublished).length
+  const districtReadyCount =
+    readOptionalNonNegativeCount(districtExports?.readyCount, districtExports?.ready) ??
+    districtArtifacts.filter(isDistrictReady).length
+  const fullyPublished =
+    districtExports?.fullyPublished === true ||
+    (districtTotal > 0 &&
+      stableDistrictCount >= districtTotal &&
+      districtReadyCount >= districtTotal)
+  const getDistrictDownloadUrl = (district: (typeof districtArtifacts)[number]) =>
+    district.geoserverDownloadUrl ||
+    buildGeoserverDownloadUrl(district.geoserverLayer) ||
+    getDistrictTemporaryDownloadUrl(district)
 
-  // Tải GeoTIFF bản đồ nhiệt. Ưu tiên `geoserverDownloadUrl` (WCS GetCoverage,
-  // persistent, full-resolution) trước `geeDownloadUrl` (GEE trần, TTL 24h,
-  // downsampled). File thực sự là image/tiff — extension `.tif` (KHÔNG `.zip`,
-  // trước đây Windows Explorer prompt "invalid archive" khi double-click).
-  const downloadHeatRaster = async () => {
-    const url =
-      buildGeoserverDownloadUrl(snapshot?.geoserverLayer ?? snapshot?.geoserver_layer) ||
-      snapshot?.geeDownloadUrl ||
-      snapshot?.gee_download_url
+  const downloadDistrictRaster = async (district: (typeof districtArtifacts)[number]) => {
+    const url = getDistrictDownloadUrl(district)
     if (!url) return
     const filename =
-      (snapshot as any)?.downloadFilename ||
-      `fire_risk_kontum_${(snapshot?.analysisDate || '').slice(0, 10).replace(/-/g, '')}.tif`
+      district.downloadFilename ||
+      district.geeDownloadFilename ||
+      `fire_risk_${district.districtCode || 'kontum'}.tif`
     try {
       await downloadRasterFile(url, filename)
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể tải dữ liệu cảnh báo cháy rừng.')
+    } catch {
+      toast.error(`Không thể tải dữ liệu huyện ${district.districtName}.`)
     }
   }
+
+  // Tải GeoTIFF bản đồ nhiệt. Ưu tiên `geoserverDownloadUrl` (WCS GetCoverage,
+  // persistent, full-resolution) trước `geeDownloadUrl` tạm thời của GEE.
+  // File thực sự là image/tiff — extension `.tif` (KHÔNG `.zip`,
+  // trước đây Windows Explorer prompt "invalid archive" khi double-click).
+  const downloadHeatRaster = async () => {
+    if (!downloadUrl) return
+    const filename =
+      snapshot?.downloadFilename ||
+      `fire_risk_kontum_${(snapshot?.analysisDate || '').slice(0, 10).replace(/-/g, '')}.tif`
+    try {
+      await downloadRasterFile(downloadUrl, filename)
+    } catch {
+      toast.error('Không thể tải dữ liệu cảnh báo cháy rừng.')
+    }
+  }
+
+  const boundaryDistrictCount = countGeoJsonDistricts(geojson)
+  const hasAnyDistrictTile = districtTileCount > 0
+  const heatAvailable =
+    hasAnyDistrictTile || (Boolean(rasterTileUrl) && rasterLoadStatus !== 'error')
 
   const layers = [
     {
       id: 'district',
-      label: 'Cảnh báo theo huyện',
+      label: 'Ranh giới huyện',
       dotClass: 'bg-emerald-500',
-      desc: `${geojson?.features?.length ?? 0} khu vực hành chính`,
+      desc: boundaryDistrictCount > 0 ? `${boundaryDistrictCount} huyện` : 'Chưa có dữ liệu',
       visible: districtVisible,
       opacity: districtOpacity,
       onVisibleChange: onDistrictVisibleChange,
       onOpacityChange: onDistrictOpacityChange,
+      available: Boolean(geojson?.features?.length),
       // Bỏ download GeoJSON — layer này chỉ để visualize, không cần export.
       canDownload: false,
       downloadLabel: '',
@@ -668,20 +1136,30 @@ function FireRiskLayerManager({
       label: 'Nguy cơ cháy chi tiết',
       dotClass: 'bg-orange-500',
       desc:
-        snapshot?.geoserverLayer || snapshot?.geeTileUrl || snapshot?.gee_tile_url
-          ? 'Dữ liệu bản đồ đã sẵn sàng'
-          : 'Dữ liệu bản đồ đang xử lý',
+        rasterLoadStatus === 'error'
+          ? 'Không tải được ảnh bản đồ'
+          : rasterLoadStatus === 'loading'
+            ? 'Đang tải ảnh bản đồ'
+            : hasAnyDistrictTile
+              ? districtTileCount === districtTotal
+                ? `Ảnh chi tiết đủ ${districtTileCount}/${districtTotal} huyện`
+                : `Ảnh chi tiết ${districtTileCount}/${districtTotal} huyện — đang bổ sung`
+              : rasterTileUrl
+                ? 'Ảnh xem nhanh sẵn sàng'
+                : getTemporaryRasterUrlStatus(snapshot?.geeTileUrl, geeGeneratedAt) === 'expired'
+                  ? 'Ảnh xem nhanh đã hết hạn'
+                  : 'Chưa có ảnh bản đồ khả dụng',
       visible: heatVisible,
       opacity: heatOpacity,
       onVisibleChange: onHeatVisibleChange,
       onOpacityChange: onHeatOpacityChange,
+      available: heatAvailable,
       // Chỉ giữ 1 nút "Tải ảnh" — đã bỏ Copy URL + Xem tile preview để UI gọn.
-      canDownload: Boolean(
-        buildGeoserverDownloadUrl(snapshot?.geoserverLayer ?? snapshot?.geoserver_layer) ||
-        snapshot?.geeDownloadUrl ||
-        snapshot?.gee_download_url
-      ),
-      downloadLabel: 'Tải dữ liệu bản đồ nguy cơ cháy',
+      canDownload: Boolean(downloadUrl),
+      downloadLabel:
+        temporaryDownloadStatus === 'expired' && !geoserverDownloadUrl
+          ? 'Liên kết tải đã hết hạn'
+          : 'Tải ảnh nguy cơ cháy',
       downloadIcon: 'raster' as const,
       onDownload: downloadHeatRaster,
     },
@@ -702,7 +1180,7 @@ function FireRiskLayerManager({
           <Layers size={16} className="text-primary" />
           <span className="text-sm font-semibold">Lớp bản đồ</span>
           <span className="bg-primary/20 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
-            {layers.length}
+            {layers.filter((layer) => layer.available).length}/{layers.length}
           </span>
         </div>
         {open ? (
@@ -713,12 +1191,31 @@ function FireRiskLayerManager({
       </Button>
 
       {open && (
-        // Layout 2 col × 1 row (stack trên mobile). Admin có nhiều không gian
-        // ngang hơn client sidebar nên mỗi layer chiếm 1 cột song song.
-        <div className="grid grid-cols-1 gap-2 border-t p-3 md:grid-cols-2">
-          {layers.map((l) => (
-            <FireRiskLayerCard key={l.id} layer={l} />
-          ))}
+        <div className="space-y-2 border-t p-3">
+          {/* Layout 2 col × 1 row (stack trên mobile). */}
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+            {layers.map((layer) => (
+              <FireRiskLayerCard key={layer.id} layer={layer} />
+            ))}
+          </div>
+
+          {isDistrictExportsError ? (
+            <div className="border-warning/30 bg-warning/10 text-warning rounded-md border p-2 text-xs">
+              <p className="font-semibold">Ảnh theo huyện chưa khả dụng</p>
+              <p className="mt-1">
+                Không tải được danh sách huyện. Không có liên kết tải nào được hiển thị.
+              </p>
+            </div>
+          ) : isLoadingDistrictExports ? (
+            <div className="text-muted-foreground flex items-center gap-2 rounded-md border p-2 text-xs">
+              <LoadingInline size="small" />
+              <span>Đang tải danh sách ảnh theo huyện...</span>
+            </div>
+          ) : districtArtifacts.length > 0 ? null : (
+            <p className="text-muted-foreground rounded-md border p-2 text-xs">
+              Chưa có ảnh theo huyện cho lần phân tích này.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -737,6 +1234,7 @@ function FireRiskLayerCard({
     opacity: number
     onVisibleChange: (v: boolean) => void
     onOpacityChange: (v: number) => void
+    available: boolean
     canDownload: boolean
     downloadLabel: string
     downloadIcon: 'vector' | 'raster'
@@ -756,16 +1254,18 @@ function FireRiskLayerCard({
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant={layer.visible ? 'default' : 'outline'}
-              size="icon"
-              onClick={() => layer.onVisibleChange(!layer.visible)}
-              aria-label={layer.visible ? 'Ẩn lớp' : 'Hiển thị lớp'}
-              className="h-7 w-7"
-            >
-              {layer.visible ? <Eye size={12} /> : <EyeOff size={12} />}
-            </Button>
+            {layer.available && (
+              <Button
+                type="button"
+                variant={layer.visible ? 'default' : 'outline'}
+                size="icon"
+                onClick={() => layer.onVisibleChange(!layer.visible)}
+                aria-label={layer.visible ? 'Ẩn lớp' : 'Hiển thị lớp'}
+                className="h-7 w-7"
+              >
+                {layer.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+              </Button>
+            )}
             {layer.canDownload && (
               <Button
                 type="button"
@@ -783,25 +1283,26 @@ function FireRiskLayerCard({
 
         {/* Opacity slider — luôn hiện. Mỗi layer 1 slider độc lập.
             Khi layer ẩn slider mờ + disable để user vẫn thấy nó tồn tại. */}
-        <div className={`space-y-1 ${layer.visible ? '' : 'opacity-40'}`}>
-          <div className="flex items-center justify-between">
-            <label className="text-muted-foreground text-[11px]">Độ trong suốt</label>
-            <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-[11px] font-medium tabular-nums">
-              {Math.round(layer.opacity * 100)}%
-            </span>
+        {layer.available && (
+          <div className={`space-y-1 ${layer.visible ? '' : 'opacity-40'}`}>
+            <div className="flex items-center justify-between">
+              <label className="text-muted-foreground text-[11px]">Độ trong suốt</label>
+              <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-[11px] font-medium tabular-nums">
+                {Math.round(layer.opacity * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={layer.opacity}
+              onChange={(e) => layer.onOpacityChange(Number(e.target.value))}
+              disabled={!layer.visible}
+              className="accent-primary w-full"
+            />
           </div>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={layer.opacity}
-            onChange={(e) => layer.onOpacityChange(Number(e.target.value))}
-            disabled={!layer.visible}
-            className="accent-primary w-full"
-          />
-        </div>
-
+        )}
       </div>
     </div>
   )
@@ -838,6 +1339,7 @@ function StatusBadge({ status }: { status: string }) {
     exporting: 'Đang tạo bản đồ',
     pending: 'Đang chờ',
     failed: 'Thất bại',
+    cancelled: 'Đã hủy',
   }
   const variant: 'default' | 'secondary' | 'destructive' | 'outline' =
     status === 'completed' || status === 'published'
@@ -847,7 +1349,7 @@ function StatusBadge({ status }: { status: string }) {
         : status === 'failed'
           ? 'destructive'
           : 'outline'
-  return <Badge variant={variant}>{labels[status] || status}</Badge>
+  return <Badge variant={variant}>{labels[status] || 'Chưa xác định'}</Badge>
 }
 
 /**
@@ -863,11 +1365,7 @@ function DistrictLevelBreakdown({
   maxLevel: number
 }) {
   if (!dist) {
-    return (
-      <p className="text-muted-foreground text-xs">
-        Không có breakdown chi tiết (fallback API cũ).
-      </p>
-    )
+    return <p className="text-muted-foreground text-xs">Chưa có dữ liệu phân bố chi tiết.</p>
   }
   const chips: Array<{ level: number; ha: number }> = []
   for (let l = 5; l >= 1; l--) {
@@ -889,18 +1387,17 @@ function DistrictLevelBreakdown({
           return (
             <span
               key={c.level}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs whitespace-nowrap tabular-nums ${
-                isTop ? 'font-semibold' : 'opacity-75'
+              className={`border-border text-foreground inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs whitespace-nowrap tabular-nums ${
+                isTop ? 'font-semibold shadow-xs' : 'font-normal'
               }`}
               style={{
-                color: meta?.color,
-                borderColor: meta?.color,
                 backgroundColor: isTop ? `${meta?.color}22` : 'transparent',
               }}
               title={meta?.label}
             >
               <span
-                className="inline-block h-2 w-2 shrink-0 rounded-full"
+                aria-hidden="true"
+                className="ring-foreground/25 inline-block h-2 w-2 shrink-0 rounded-full ring-1 ring-inset"
                 style={{ backgroundColor: meta?.color }}
               />
               {meta?.label ?? `Cấp ${c.level}`} · {formatHaShort(c.ha)} ha
@@ -920,7 +1417,7 @@ function DistrictLevelBreakdown({
  * NOTE — nhiều field có thể null (snapshot cũ chưa có, hoặc pipeline fail
  * giữa chừng). Mỗi field guard riêng để không vỡ render.
  */
-function SnapshotDetailPanel({ item }: { item: any }) {
+function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
   const user = useAuthStore((s) => s.user)
   const canPublishRaster = hasPerm(user, 'map_layers', 'ingest_raster')
   const s = (item?.province_summary || {}) as any
@@ -931,33 +1428,159 @@ function SnapshotDetailPanel({ item }: { item: any }) {
   // State giữ jobId để poll trạng thái ingest — snapshot back-link khi xong.
   const [ingestJobId, setIngestJobId] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  const [publishGoalCount, setPublishGoalCount] = useState<number | null>(null)
+  const publishStartedAtRef = useRef(0)
+  const publishRequestIdRef = useRef(0)
+  const districtPollingStartedAtRef = useRef(Date.now())
   const queryClient = useQueryClient()
-  const hasDownload = Boolean(item.gee_download_url || item.geeDownloadUrl)
-  const published = Boolean(item.geoserver_layer)
-  const canPublish = canPublishRaster && hasDownload && !published && !busy
+  const geoserverLayer = normalizeGeoserverLayer(item.geoserver_layer)
+  const districtExportsQuery = useApiQuery(
+    ['fire-risk-history-district-exports', item.id],
+    () => fireRiskService.getDistrictExports(item.id),
+    {
+      refetchInterval: (query: any) => {
+        const payload = query.state.data?.data as FireRiskDistrictExportsData | undefined
+        const districts = payload?.districts ?? []
+        const hasPendingPublish =
+          Number(payload?.queuedCount ?? 0) > 0 ||
+          districts.some(
+            (district) =>
+              !isDistrictReady(district) &&
+              (hasActiveDistrictIngest(district) || isRasterProcessingStatus(district.status))
+          )
+        const withinPublishWindow =
+          publishStartedAtRef.current > 0 &&
+          Date.now() - publishStartedAtRef.current < DISTRICT_PUBLISH_POLL_WINDOW_MS
+        const withinStatusWindow =
+          Date.now() - districtPollingStartedAtRef.current < DISTRICT_PUBLISH_POLL_WINDOW_MS
+        return withinStatusWindow && ((busy && withinPublishWindow) || hasPendingPublish)
+          ? DISTRICT_RASTER_POLL_INTERVAL_MS
+          : false
+      },
+    } as any,
+    false
+  )
+  const districtExports = districtExportsQuery.data?.data ?? null
+  const districts = districtExports?.districts ?? []
+  const districtTotal = resolveDistrictTotal(districtExports, districts)
+  const districtSourceCount =
+    readOptionalNonNegativeCount(districtExports?.sourceCount) ??
+    districts.filter(hasDistrictSource).length
+  const districtStoredCount =
+    readOptionalNonNegativeCount(districtExports?.storedCount) ??
+    districts.filter((district) => Boolean(district.minioKey)).length
+  const districtPublishedCount =
+    readOptionalNonNegativeCount(
+      districtExports?.publishedCount,
+      districtExports?.geoserverCount
+    ) ?? districts.filter(isDistrictPublished).length
+  const districtReadyCount =
+    readOptionalNonNegativeCount(districtExports?.readyCount, districtExports?.ready) ??
+    districts.filter(isDistrictReady).length
+  const publishableDistrictCount = Math.max(0, districtSourceCount - districtReadyCount)
+  const districtPublishInFlight =
+    districts.some(
+      (district) =>
+        !isDistrictReady(district) &&
+        !district.errorMessage &&
+        (hasActiveDistrictIngest(district) || isRasterProcessingStatus(district.status))
+    ) || Number(districtExports?.queuedCount ?? 0) > 0
+  const hasDistrictArtifacts = districtTotal > 0 || districts.length > 0
+  const temporaryDownloadStatus = getTemporaryRasterUrlStatus(
+    item.gee_download_url ?? item.geeDownloadUrl,
+    item.gee_download_generated_at ?? item.computed_at
+  )
+  const temporaryTileStatus = getTemporaryRasterUrlStatus(
+    item.gee_tile_url ?? item.geeTileUrl,
+    item.gee_tile_generated_at ?? item.computed_at
+  )
+  const hasLegacyDownload = temporaryDownloadStatus === 'available'
+  const published = hasDistrictArtifacts
+    ? districtExports?.fullyPublished === true ||
+      (districtTotal > 0 &&
+        districtPublishedCount >= districtTotal &&
+        districtReadyCount >= districtTotal)
+    : Boolean(geoserverLayer)
+  const hasPublishSource = hasDistrictArtifacts ? publishableDistrictCount > 0 : hasLegacyDownload
+  const canPublish = canPublishRaster && hasPublishSource && !published && !busy
 
   const startPublish = async () => {
+    if (!canPublish) return
     setBusy(true)
+    setPublishGoalCount(null)
+    publishStartedAtRef.current = Date.now()
+    districtPollingStartedAtRef.current = Date.now()
+    const requestId = ++publishRequestIdRef.current
     try {
       const res = await fireRiskService.publishSnapshotRaster(item.id)
-      const data: any = res?.data?.data ?? res?.data
-      if (data?.alreadyPublished) {
+      if (publishRequestIdRef.current !== requestId) return
+      const data = res.data
+      const jobs = Array.isArray(data?.jobs) ? data.jobs : []
+      const queuedCount = readNonNegativeCount(
+        data?.queuedCount,
+        data?.queued,
+        data?.enqueuedCount,
+        data?.enqueued,
+        jobs.length
+      )
+      const responsePublishedCount = readNonNegativeCount(
+        data?.publishedCount,
+        data?.geoserverCount,
+        data?.published
+      )
+      const responseReadyCount = readNonNegativeCount(
+        data?.readyCount,
+        data?.ready,
+        responsePublishedCount
+      )
+      const responseTotal = readNonNegativeCount(data?.totalDistricts, data?.total, districtTotal)
+
+      const responseFullyPublished =
+        responseTotal > 0 &&
+        responsePublishedCount >= responseTotal &&
+        responseReadyCount >= responseTotal
+      if (
+        data?.fullyPublished === true ||
+        (data?.alreadyPublished === true && (!hasDistrictArtifacts || responseFullyPublished))
+      ) {
         await Promise.all([
           queryClient.refetchQueries({ queryKey: ['fire-risk-latest'], type: 'active' }),
           queryClient.refetchQueries({ queryKey: ['fire-risk-map'], type: 'active' }),
           queryClient.refetchQueries({ queryKey: ['fire-risk-history'], type: 'active' }),
+          districtExportsQuery.refetch(),
         ])
-        toast.info('Dữ liệu này đã có trên bản đồ.')
+        toast.info(
+          `Kết quả đã được công bố trên bản đồ (${responsePublishedCount || responseTotal}/${responseTotal} huyện).`
+        )
         setBusy(false)
+        publishStartedAtRef.current = 0
         return
       }
-      if (data?.jobId) {
+
+      // Tương thích endpoint cũ chỉ trả một job toàn tỉnh.
+      if (data?.jobId && !hasDistrictArtifacts) {
         setIngestJobId(Number(data.jobId))
-        toast.success('Đã bắt đầu cập nhật bản đồ.')
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể cập nhật bản đồ')
+
+      if (queuedCount > 0) {
+        setPublishGoalCount(
+          Math.min(responseTotal || districtTotal, responseReadyCount + queuedCount)
+        )
+        toast.success(`Đã xếp hàng lưu ${queuedCount} huyện.`)
+        await districtExportsQuery.refetch()
+        return
+      }
+
+      await districtExportsQuery.refetch()
       setBusy(false)
+      publishStartedAtRef.current = 0
+      toast.info('Không có tệp huyện mới cần đưa lên bản đồ.')
+    } catch {
+      if (publishRequestIdRef.current !== requestId) return
+      toast.error('Không thể cập nhật bản đồ. Vui lòng thử lại.')
+      setBusy(false)
+      setPublishGoalCount(null)
+      publishStartedAtRef.current = 0
     }
   }
 
@@ -986,6 +1609,8 @@ function SnapshotDetailPanel({ item }: { item: any }) {
   useEffect(() => {
     if (!terminal || !busy) return
     setBusy(false)
+    setPublishGoalCount(null)
+    publishStartedAtRef.current = 0
     if (job.status === 'completed') {
       toast.success('Đã cập nhật bản đồ thành công.')
       void Promise.all([
@@ -1000,9 +1625,88 @@ function SnapshotDetailPanel({ item }: { item: any }) {
         ])
       )
     } else {
-      toast.error(job.error_log || 'Cập nhật bản đồ thất bại.')
+      toast.error('Không thể cập nhật bản đồ. Vui lòng thử lại.')
     }
   }, [terminal, busy, job?.status, job?.geoserver_layer, job?.error_log, queryClient])
+
+  useEffect(() => {
+    if (!busy || !hasDistrictArtifacts) return
+
+    const reachedPublishGoal = publishGoalCount != null && districtReadyCount >= publishGoalCount
+    if (published) {
+      setBusy(false)
+      setPublishGoalCount(null)
+      publishStartedAtRef.current = 0
+      publishRequestIdRef.current += 1
+      toast.success(`Đã lưu ổn định ${districtReadyCount}/${districtTotal} huyện.`)
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['fire-risk-latest'] }),
+        queryClient.invalidateQueries({ queryKey: ['fire-risk-map'] }),
+        queryClient.invalidateQueries({ queryKey: ['fire-risk-history'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['fire-risk-history-district-exports', item.id],
+        }),
+      ])
+      return
+    }
+
+    if (reachedPublishGoal) {
+      setBusy(false)
+      setPublishGoalCount(null)
+      publishStartedAtRef.current = 0
+      publishRequestIdRef.current += 1
+      toast.warning(
+        `Đã lưu ${districtReadyCount}/${districtTotal} huyện; cần đủ ${districtTotal}/${districtTotal} để công bố ổn định.`
+      )
+      void queryClient.invalidateQueries({
+        queryKey: ['fire-risk-history-district-exports', item.id],
+      })
+      return
+    }
+
+    if (publishGoalCount == null) return
+
+    if (
+      !districtPublishInFlight &&
+      Number(districtExports?.failedPublishCount ?? districtExports?.failed) > 0 &&
+      districtReadyCount < publishGoalCount
+    ) {
+      setBusy(false)
+      setPublishGoalCount(null)
+      publishStartedAtRef.current = 0
+      toast.error(
+        `Công bố chưa hoàn tất: ${districtReadyCount}/${districtTotal} huyện đã được lưu ổn định.`
+      )
+    }
+  }, [
+    busy,
+    districtExports?.failed,
+    districtExports?.failedPublishCount,
+    districtPublishInFlight,
+    districtReadyCount,
+    districtTotal,
+    hasDistrictArtifacts,
+    item.id,
+    publishGoalCount,
+    published,
+    queryClient,
+  ])
+
+  useEffect(() => {
+    if (!busy || publishStartedAtRef.current <= 0) return
+    const elapsed = Date.now() - publishStartedAtRef.current
+    const remaining = Math.max(0, DISTRICT_PUBLISH_POLL_WINDOW_MS - elapsed)
+    const timer = window.setTimeout(() => {
+      setBusy(false)
+      setPublishGoalCount(null)
+      publishStartedAtRef.current = 0
+      publishRequestIdRef.current += 1
+      toast.warning(
+        `Đã dừng chờ sau 15 phút. Hiện có ${districtPublishedCount}/${districtTotal} huyện đã được công bố; tải lại trang để kiểm tra tiếp.`
+      )
+    }, remaining)
+    return () => window.clearTimeout(timer)
+  }, [busy, districtPublishedCount, districtTotal])
 
   // Cho phép user dismiss job đã terminal — xoá ingestJobId → dừng poll hoàn toàn
   // (nếu terminal khi mount lại panel, refetchInterval() trả false ngay nhưng vẫn
@@ -1026,23 +1730,18 @@ function SnapshotDetailPanel({ item }: { item: any }) {
       label: 'Công bố lúc',
       value: item.published_at ? formatDateTime(item.published_at) : '—',
     },
-    {
-      label: 'Bản đồ',
-      value: item.geoserver_layer ? (
-        <span className="text-emerald-700">Sẵn sàng</span>
-      ) : item.gee_tile_url || item.geeTileUrl ? (
-        <span className="text-amber-700">Tạm thời</span>
-      ) : (
-        <span className="text-muted-foreground">Đang xử lý</span>
-      ),
-    },
+
     ...(item.error_message
-      ? [{
-        label: 'Thông báo lỗi',
-        value: (
-        <span className="text-red-600">{item.error_message}</span>
-        ),
-      }]
+      ? [
+          {
+            label: 'Thông báo lỗi',
+            value: (
+              <span className="text-red-600">
+                Không thể hoàn tất kỳ dữ liệu này. Vui lòng thử lại hoặc liên hệ quản trị hệ thống.
+              </span>
+            ),
+          },
+        ]
       : []),
   ]
 
@@ -1052,68 +1751,98 @@ function SnapshotDetailPanel({ item }: { item: any }) {
           back-link vào snapshot khi xong. FE poll job 5s.
           Gate `map_layers:ingest_raster` — mirror backend. */}
       {canPublishRaster && (
-      <div className="bg-background/60 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
-        <div className="min-w-0 flex-1 text-xs">
-          <p className="font-semibold">Đưa kết quả lên bản đồ</p>
-          <p className="text-muted-foreground mt-0.5">
-            Công bố kết quả này để dùng ổn định trên trang quản trị và cổng bản đồ công khai.
-          </p>
-          {job && !terminal && (
-            <p className="mt-1 flex items-center gap-2 text-sky-700">
+        <div className="bg-background/60 flex flex-wrap items-center justify-between gap-2 rounded-md border p-3">
+          <div className="min-w-0 flex-1 text-xs">
+            <p className="font-semibold">Đưa kết quả lên bản đồ</p>
+            <p className="text-muted-foreground mt-0.5">
+              {published
+                ? hasDistrictArtifacts
+                  ? `Đã lưu ổn định ${districtReadyCount}/${districtTotal} huyện.`
+                  : 'Kết quả này đã có ảnh bản đồ ổn định.'
+                : districtExportsQuery.isLoading
+                  ? 'Đang kiểm tra ảnh và trạng thái công bố của từng huyện...'
+                  : districtExportsQuery.isError
+                    ? 'Không tải được trạng thái ảnh theo huyện. Vui lòng thử lại.'
+                    : hasDistrictArtifacts
+                      ? `${districtSourceCount}/${districtTotal} huyện có ảnh; ${districtPublishedCount}/${districtTotal} huyện đã được công bố.`
+                      : hasLegacyDownload
+                        ? 'Công bố kết quả này để dùng ổn định trên trang quản trị và cổng bản đồ công khai.'
+                        : temporaryDownloadStatus === 'expired'
+                          ? 'Liên kết tải đã hết hạn. Hãy phân tích lại để tạo liên kết mới.'
+                          : 'Kết quả này chưa có ảnh nguồn để công bố lên bản đồ.'}
+            </p>
+            {busy && hasDistrictArtifacts && (
+              <p className="mt-1 flex items-center gap-2 text-sky-700">
+                <LoadingInline size="small" />
+                <span>
+                  Đang lưu theo huyện ({districtReadyCount}/{publishGoalCount ?? districtTotal})
+                </span>
+              </p>
+            )}
+            {job && !terminal && (
+              <p className="mt-1 flex items-center gap-2 text-sky-700">
+                <LoadingInline size="small" />
+                <span>Đang cập nhật bản đồ ({job.progress}%)</span>
+              </p>
+            )}
+            {job?.status === 'completed' && job.geoserver_layer && (
+              <p className="mt-1 flex items-center gap-2 text-emerald-700">
+                <span>Đã cập nhật bản đồ thành công</span>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="xs"
+                  onClick={dismissJob}
+                  className="h-auto px-0 py-0 text-[10px] text-slate-500 hover:text-slate-700"
+                >
+                  Đóng
+                </Button>
+              </p>
+            )}
+            {(job?.status === 'failed' || job?.status === 'cancelled') && (
+              <p className="mt-1 flex items-start gap-2 text-red-600">
+                <span>Không thể cập nhật bản đồ. Vui lòng thử lại.</span>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="xs"
+                  onClick={dismissJob}
+                  className="h-auto shrink-0 px-0 py-0 text-[10px] text-slate-500 hover:text-slate-700"
+                >
+                  Đóng
+                </Button>
+              </p>
+            )}
+          </div>
+          {published ? (
+            <Badge variant="outline" className="border-emerald-300 text-emerald-700">
+              {hasDistrictArtifacts
+                ? `Ổn định ${districtReadyCount}/${districtTotal}`
+                : 'Đã công bố'}
+            </Badge>
+          ) : districtExportsQuery.isLoading ? (
+            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
               <LoadingInline size="small" />
-              <span>
-                Đang cập nhật bản đồ ({job.progress}%)
-              </span>
-            </p>
-          )}
-          {job?.status === 'completed' && job.geoserver_layer && (
-            <p className="mt-1 flex items-center gap-2 text-emerald-700">
-              <span>
-                Đã cập nhật bản đồ thành công
-              </span>
-              <Button
-                type="button"
-                variant="link"
-                size="xs"
-                onClick={dismissJob}
-                className="h-auto px-0 py-0 text-[10px] text-slate-500 hover:text-slate-700"
-              >
-                Đóng
-              </Button>
-            </p>
-          )}
-          {(job?.status === 'failed' || job?.status === 'cancelled') && (
-            <p className="mt-1 flex items-start gap-2 text-red-600">
-              <span className="break-all">
-                {job.error_log || 'Không thể cập nhật bản đồ.'}
-              </span>
-              <Button
-                type="button"
-                variant="link"
-                size="xs"
-                onClick={dismissJob}
-                className="h-auto shrink-0 px-0 py-0 text-[10px] text-slate-500 hover:text-slate-700"
-              >
-                Đóng
-              </Button>
-            </p>
+              Đang kiểm tra
+            </span>
+          ) : hasPublishSource || busy ? (
+            <Button size="sm" onClick={startPublish} disabled={!canPublish}>
+              {busy
+                ? 'Đang xử lý...'
+                : hasDistrictArtifacts
+                  ? `Đưa ${publishableDistrictCount} huyện lên bản đồ`
+                  : 'Đưa lên bản đồ'}
+            </Button>
+          ) : (
+            <span className="text-muted-foreground text-xs">
+              {districtExportsQuery.isError
+                ? 'Không kiểm tra được ảnh nguồn'
+                : temporaryDownloadStatus === 'expired'
+                  ? 'Liên kết tải đã hết hạn'
+                  : 'Chưa có ảnh nguồn'}
+            </span>
           )}
         </div>
-        <Button
-          size="sm"
-          onClick={startPublish}
-          disabled={!canPublish}
-          variant={published ? 'outline' : 'default'}
-        >
-          {published
-            ? 'Đã công bố'
-            : busy
-              ? 'Đang xử lý...'
-              : hasDownload
-                ? 'Đưa lên bản đồ'
-                : 'Chưa có dữ liệu bản đồ'}
-        </Button>
-      </div>
       )}
 
       {/* Grid metadata */}
@@ -1132,6 +1861,9 @@ function SnapshotDetailPanel({ item }: { item: any }) {
         ))}
       </div>
 
+      {/* Danh sách link mở xem trước từng huyện đã công bố — chip mở tab mới. */}
+      <FireRiskDistrictPreviewLinks districts={districts} />
+
       {/* Risk level distribution — full 0-5 breakdown */}
       <div className="space-y-2">
         <p className="text-muted-foreground text-[11px]">
@@ -1147,11 +1879,12 @@ function SnapshotDetailPanel({ item }: { item: any }) {
             return (
               <span
                 key={l}
-                className="inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs whitespace-nowrap tabular-nums"
-                style={{ color, borderColor: color, backgroundColor: `${color}18` }}
+                className="border-border text-foreground inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs whitespace-nowrap tabular-nums"
+                style={{ backgroundColor: `${color}18` }}
               >
                 <span
-                  className="inline-block h-2 w-2 shrink-0 rounded-full"
+                  aria-hidden="true"
+                  className="ring-foreground/25 inline-block h-2 w-2 shrink-0 rounded-full ring-1 ring-inset"
                   style={{ backgroundColor: color }}
                 />
                 {label} · {formatHaShort(ha)} ha ({pct.toFixed(1)}%)
@@ -1160,7 +1893,6 @@ function SnapshotDetailPanel({ item }: { item: any }) {
           })}
         </div>
       </div>
-
     </div>
   )
 }
@@ -1171,7 +1903,7 @@ function RiskLevelBar({ dist }: { dist: Record<string, number> }) {
   return (
     <div className="space-y-3">
       {/* Stacked bar */}
-      <div className="flex h-8 w-full overflow-hidden rounded-md border">
+      <div aria-hidden="true" className="flex h-8 w-full overflow-hidden rounded-md border">
         {levels.map((l) => {
           const ha = dist[String(l)] || 0
           const pct = total > 0 ? (ha / total) * 100 : 0
@@ -1193,7 +1925,8 @@ function RiskLevelBar({ dist }: { dist: Record<string, number> }) {
           return (
             <div key={l} className="flex items-start gap-2 text-xs">
               <span
-                className="mt-0.5 inline-block h-3 w-3 shrink-0 rounded-sm border"
+                aria-hidden="true"
+                className="ring-foreground/25 mt-0.5 inline-block h-3 w-3 shrink-0 rounded-sm ring-1 ring-inset"
                 style={{ backgroundColor: LEVEL_META[l].color }}
               />
               <span className="min-w-0 flex-1">
@@ -1205,6 +1938,50 @@ function RiskLevelBar({ dist }: { dist: Record<string, number> }) {
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Danh sách chip link mở xem trước từng huyện đã publish trên máy chủ bản đồ.
+ * Dùng chung cho SnapshotDetailPanel (Fire Risk) — bấm chip mở tab mới OpenLayers.
+ * Chip nào không build được preview URL (server chưa cấu hình `VITE_GEOSERVER_URL`)
+ * sẽ bị lọc, tránh link chết.
+ */
+function FireRiskDistrictPreviewLinks({ districts }: { districts: FireRiskDistrictExport[] }) {
+  const items = districts
+    .map((d) => {
+      const layer = normalizeGeoserverLayer(d.geoserverLayer)
+      if (!layer) return null
+      const url = buildGeoserverPreviewUrl(layer)
+      if (!url) return null
+      const label = d.districtName || d.districtCode || layer
+      return { key: String(d.districtCode || d.id || layer), label, url }
+    })
+    .filter((it): it is { key: string; label: string; url: string } => it !== null)
+
+  if (!items.length) return null
+
+  return (
+    <div className="rounded-md border p-3">
+      <p className="text-muted-foreground mb-2 text-xs font-semibold">
+        Mở xem trước theo huyện ({items.length})
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((it) => (
+          <a
+            key={it.key}
+            href={it.url}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="border-primary/20 hover:bg-primary/10 hover:text-primary text-foreground/80 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition-colors"
+            title={`Mở ${it.label} trên máy chủ bản đồ`}
+          >
+            <span className="max-w-40 truncate">{it.label}</span>
+            <ExternalLink size={11} />
+          </a>
+        ))}
       </div>
     </div>
   )
@@ -1321,49 +2098,26 @@ function extractFeatureCollection(payload: unknown): GeoJSON.FeatureCollection |
  *   1. Nếu snapshot có `geoserverLayer` (đã publish) + có env
  *      VITE_GEOSERVER_URL → build WMS URL bằng OGC WMS GetMap standard.
  *   2. Fallback về `snapshot.geeTileUrl` — server luôn cố sinh (không cần
- *      GCS). URL TTL ~24h nên với snapshot cũ có thể expired (404 im lặng).
+ *      GCS). URL chỉ tồn tại vài giờ nên snapshot cũ có thể đã hết hạn.
  *   3. Không có URL nào → null → chỉ vẽ vector polygon huyện.
  *
  * NOTE — chấp nhận cả camelCase (`geeTileUrl`) và snake_case (`gee_tile_url`)
  * để tương thích với response cũ / snapshot cũ trong DB.
  */
-function resolveRasterTileUrl(snapshot: any): string | null {
+function resolveRasterTileUrl(
+  snapshot: FireRiskSnapshot | null | undefined,
+  generatedAt?: string | null,
+  districtLayers: Array<string | null | undefined> = []
+): string | null {
   if (!snapshot) return null
-  const layer = snapshot.geoserverLayer ?? snapshot.geoserver_layer ?? null
-  const geoserverBase = (import.meta.env.VITE_GEOSERVER_URL as string | undefined)
-    ?.trim()
-    .replace(/\/$/, '')
-  if (layer && geoserverBase) {
-    const [workspace, layerName] = String(layer).includes(':')
-      ? String(layer).split(':')
-      : [import.meta.env.VITE_GEOSERVER_WORKSPACE || 'kontum', String(layer)]
-    const params = new URLSearchParams({
-      service: 'WMS',
-      version: '1.3.0',
-      request: 'GetMap',
-      layers: `${workspace}:${layerName}`,
-      styles: '',
-      width: '256',
-      height: '256',
-      crs: 'EPSG:3857',
-      format: 'image/png',
-      transparent: 'true',
-      tiled: 'true',
-    })
-    // Env VITE_GEOSERVER_URL có thể ở 3 dạng: `.../geoserver`, `.../geoserver/<ws>`
-    // hoặc `.../geoserver/<ws>/wms` (config trên .env deploy). Chuẩn hoá về endpoint
-    // `<root>/<ws>/wms` để tránh URL kép `.../kontum/wms/kontum/wms`.
-    const lower = geoserverBase.toLowerCase()
-    let endpoint: string
-    if (lower.endsWith('/wms')) {
-      endpoint = geoserverBase
-    } else if (lower.endsWith(`/${workspace.toLowerCase()}`)) {
-      endpoint = `${geoserverBase}/wms`
-    } else {
-      endpoint = `${geoserverBase}/${workspace}/wms`
-    }
-    return `${endpoint}?${params.toString()}&bbox={bbox-epsg-3857}`
-  }
-  const geeTile = snapshot.geeTileUrl ?? snapshot.gee_tile_url ?? null
-  return geeTile || null
+  const districtTileUrl = buildGeoserverRasterTileUrl(districtLayers)
+  if (districtTileUrl) return districtTileUrl
+
+  const geoserverTileUrl = buildGeoserverRasterTileUrl([snapshot.geoserverLayer])
+  if (geoserverTileUrl) return geoserverTileUrl
+
+  return getUsableTemporaryRasterUrl(
+    snapshot.geeTileUrl,
+    snapshot.geeTileGeneratedAt ?? generatedAt
+  )
 }

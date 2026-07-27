@@ -85,7 +85,7 @@ export default function RemoteSensingPage() {
       <div>
         <h1 className="text-2xl font-bold">Viễn thám / Ảnh vệ tinh</h1>
         <p className="text-muted-foreground text-sm">
-          Quản lý ảnh raster COG. Trạng thái xử lý cập nhật realtime qua WebSocket.
+          Quản lý ảnh viễn thám và theo dõi trạng thái xử lý theo thời gian thực.
         </p>
       </div>
 
@@ -216,7 +216,7 @@ export default function RemoteSensingPage() {
       {canUpload && (
         <Card>
           <CardContent className="space-y-3 p-6">
-            <h2 className="text-lg font-semibold">Upload ảnh mới</h2>
+            <h2 className="text-lg font-semibold">Tải ảnh mới lên</h2>
             <UploadForm />
           </CardContent>
         </Card>
@@ -249,7 +249,7 @@ function UploadForm() {
     fd.append('is_public', String(isPublic))
     mutation.mutate(fd, {
       onSuccess: () => {
-        toast.success('Đã upload')
+        toast.success('Đã tải ảnh lên')
         setName('')
         setFile(null)
       },
@@ -285,7 +285,7 @@ function UploadForm() {
       />
       <div className="md:col-span-3">
         <Button onClick={onUpload} disabled={mutation.isPending}>
-          {mutation.isPending ? 'Đang upload...' : 'Upload'}
+          {mutation.isPending ? 'Đang tải lên...' : 'Tải ảnh lên'}
         </Button>
       </div>
     </div>

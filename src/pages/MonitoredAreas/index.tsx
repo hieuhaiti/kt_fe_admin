@@ -94,8 +94,10 @@ export default function MonitoredAreasPage() {
   const items = response?.data?.items ?? []
   const pagination = (response?.metadata ?? {}) as Partial<Pagination>
   const lastPages = useRef(1)
-  if (pagination.totalPages) lastPages.current = pagination.totalPages
-  const totalPages = pagination.totalPages ?? lastPages.current
+  if (pagination.totalPages !== undefined) {
+    lastPages.current = Math.max(1, pagination.totalPages)
+  }
+  const totalPages = lastPages.current
   const total = pagination.total ?? items.length
 
   useEffect(() => {

@@ -9,6 +9,14 @@ import { formatDate } from '@/lib/date'
 import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
+const SOURCE_LABELS: Record<string, string> = {
+  field_report: 'Báo cáo thực địa',
+  ranger: 'Kiểm lâm',
+  firms: 'Nguồn cảnh báo vệ tinh',
+  citizen: 'Người dân',
+  other: 'Khác',
+}
+
 /**
  * Ground Truth card — 2 loại input:
  *   - Zones: GeoJSON MultiPolygon (paste text hoặc upload file)
@@ -36,9 +44,9 @@ export default function GroundTruthCard() {
         >
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-red-600" />
-            <h2 className="text-lg font-semibold">Ground truth (nhãn thực địa)</h2>
+            <h2 className="text-lg font-semibold">Dữ liệu xác minh thực địa</h2>
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700">
-              Boost accuracy
+              Cải thiện độ chính xác
             </span>
           </div>
           {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -67,32 +75,30 @@ function ExplanationBanner() {
     <div className="rounded-md border border-sky-300 bg-sky-50 p-3 text-xs">
       <div className="mb-1 flex items-center gap-1.5 font-semibold text-sky-900">
         <Info size={12} />
-        Cơ chế nhận Ground Truth
+        Cách sử dụng dữ liệu thực địa
       </div>
       <ul className="ml-5 list-disc space-y-1 text-sky-800">
         <li>
-          <b>Vùng</b> (GeoJSON MultiPolygon): điểm cháy đã xác nhận qua khảo sát
-          field hoặc FIRMS confirmed.
+          <b>Vùng</b>: khu vực cháy đã được xác nhận qua khảo sát hoặc nguồn cảnh
+          báo chính thức.
         </li>
         <li>
-          <b>Điểm</b>: quan sát đơn lẻ (ranger, citizen report) với lat/lng, ngày
-          giờ, mức độ 1-5.
+          <b>Điểm</b>: quan sát đơn lẻ của kiểm lâm hoặc người dân, gồm tọa độ,
+          thời gian và cấp độ 1-5.
         </li>
         <li>
-          GT được cron sáng hôm sau (06:00 VN) tự động blend vào Random Forest
-          với trọng số <b>50%</b> (không có GT chỉ blend dataset MODIS/FIRMS
-          với trọng số 60%).
+          Dữ liệu được tự động đưa vào kỳ phân tích tiếp theo lúc <b>06:00 hôm sau</b>,
+          với trọng số <b>50%</b>.
         </li>
         <li>
-          Cửa sổ mặc định: <b>30 ngày</b> trước ngày phân tích (khớp cửa sổ
-          Sentinel-2). Có thể chỉnh env <code>FIRE_RISK_GT_WINDOW_DAYS</code>.
+          Mặc định hệ thống sử dụng dữ liệu xác minh trong <b>30 ngày gần nhất</b>.
         </li>
         <li>
-          Muốn áp dụng ngay: bấm <b>"Chạy lại phân tích"</b> sau khi nhập GT.
+          Muốn áp dụng ngay: bấm <b>"Chạy lại phân tích"</b> sau khi nhập dữ liệu.
         </li>
         <li>
-          Xoá là <b>soft delete</b> (`is_active = false`) — không rewrite lịch
-          sử snapshot đã dùng GT đó.
+          Dữ liệu đã xóa không còn được dùng cho kỳ sau; kết quả lịch sử vẫn được
+          giữ nguyên.
         </li>
       </ul>
     </div>
@@ -120,7 +126,7 @@ function ZonesSection() {
     try {
       parsed = JSON.parse(geojsonText)
     } catch {
-      toast.error('GeoJSON không parse được — kiểm tra syntax.')
+      toast.error('Dữ liệu vùng không hợp lệ. Vui lòng kiểm tra lại.')
       return
     }
     // Nếu chỉ paste 1 Polygon/MultiPolygon → wrap thành FeatureCollection.
@@ -139,7 +145,7 @@ function ZonesSection() {
       parsed = { type: 'FeatureCollection', features: [parsed] }
     }
     if (parsed.type !== 'FeatureCollection') {
-      toast.error('Cần Polygon/MultiPolygon/Feature/FeatureCollection.')
+      toast.error('Dữ liệu chưa đúng định dạng vùng bản đồ được hỗ trợ.')
       return
     }
     // Set default severity/occurredAt cho features thiếu.
@@ -155,18 +161,18 @@ function ZonesSection() {
         setGeojsonText('')
         listQ.refetch()
       },
-      onError: (err: any) => toast.error(err?.message || 'Upload thất bại'),
+      onError: () => toast.error('Không thể thêm vùng cháy. Vui lòng thử lại.'),
     })
   }
 
   const onDelete = (id: number) => {
-    if (!confirm(`Xoá zone #${id}?`)) return
+    if (!confirm(`Xoá vùng #${id}?`)) return
     deleteM.mutate(id, { onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() } })
   }
 
   return (
     <div className="space-y-3 rounded-md border p-3">
-      <h3 className="text-sm font-semibold">Vùng cháy (GeoJSON)</h3>
+      <h3 className="text-sm font-semibold">Vùng cháy đã xác minh</h3>
 
       <div className="space-y-2">
         <div className="grid grid-cols-2 gap-2">
@@ -192,7 +198,7 @@ function ZonesSection() {
 
         <label className="block space-y-0.5">
           <span className="text-xs text-muted-foreground">
-            Paste GeoJSON (Polygon/MultiPolygon/FeatureCollection)
+            Dán dữ liệu vùng bản đồ (định dạng GeoJSON)
           </span>
           <textarea
             value={geojsonText}
@@ -221,8 +227,8 @@ function ZonesSection() {
         )}
         {items.map((z) => (
           <div key={z.id} className="flex items-center gap-2 rounded border p-1.5 text-xs">
-            <span className="flex-1 truncate" title={z.name || `Zone ${z.id}`}>
-              {z.name || `Zone #${z.id}`}
+            <span className="flex-1 truncate" title={z.name || `Vùng ${z.id}`}>
+              {z.name || `Vùng #${z.id}`}
             </span>
             <span className="rounded bg-orange-100 px-1 text-orange-700">C{z.severity}</span>
             <span className="text-muted-foreground">
@@ -270,7 +276,7 @@ function PointsSection() {
     const lng = Number(form.lng)
     const lat = Number(form.lat)
     if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
-      toast.error('lat/lng không hợp lệ.')
+      toast.error('Kinh độ hoặc vĩ độ không hợp lệ.')
       return
     }
     createM.mutate(
@@ -281,13 +287,13 @@ function PointsSection() {
           setForm((s) => ({ ...s, lng: '', lat: '', notes: '', reporterName: '' }))
           listQ.refetch()
         },
-        onError: (err: any) => toast.error(err?.message || 'Thất bại'),
+        onError: () => toast.error('Không thể thêm điểm quan sát. Vui lòng thử lại.'),
       },
     )
   }
 
   const onDelete = (id: number) => {
-    if (!confirm(`Xoá point #${id}?`)) return
+    if (!confirm(`Xoá điểm #${id}?`)) return
     deleteM.mutate(id, { onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() } })
   }
 
@@ -305,7 +311,7 @@ function PointsSection() {
           />
         </label>
         <label className="space-y-0.5">
-          <span className="text-xs text-muted-foreground">Lng</span>
+          <span className="text-xs text-muted-foreground">Kinh độ</span>
           <Input
             type="number"
             step="0.000001"
@@ -315,7 +321,7 @@ function PointsSection() {
           />
         </label>
         <label className="space-y-0.5">
-          <span className="text-xs text-muted-foreground">Lat</span>
+          <span className="text-xs text-muted-foreground">Vĩ độ</span>
           <Input
             type="number"
             step="0.000001"
@@ -341,9 +347,9 @@ function PointsSection() {
             onChange={(e) => setForm((s) => ({ ...s, source: e.target.value }))}
             className="h-9 w-full rounded-md border bg-background px-2 text-sm"
           >
-            <option value="field_report">Field report</option>
+            <option value="field_report">Báo cáo thực địa</option>
             <option value="ranger">Kiểm lâm</option>
-            <option value="firms">FIRMS</option>
+            <option value="firms">Nguồn cảnh báo vệ tinh</option>
             <option value="citizen">Người dân</option>
             <option value="other">Khác</option>
           </select>
@@ -375,7 +381,7 @@ function PointsSection() {
             </span>
             <span className="rounded bg-orange-100 px-1 text-orange-700">C{p.severity}</span>
             <span className="flex-1 text-muted-foreground">
-              {formatDate(p.occurred_at)} · {p.source}
+              {formatDate(p.occurred_at)} · {SOURCE_LABELS[p.source] ?? 'Khác'}
             </span>
             <button
               onClick={() => onDelete(p.id)}

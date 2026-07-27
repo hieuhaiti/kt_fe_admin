@@ -88,9 +88,11 @@ export default function DocumentPage(): JSX.Element {
   const documents: any[] = data?.items ?? data?.documents ?? []
   const pagination = (raw?.metadata ?? data?.pagination ?? {}) as Partial<Pagination>
 
-  const lastTotalPagesRef = useRef<number | null>(null)
-  if (pagination?.totalPages) lastTotalPagesRef.current = pagination.totalPages
-  const totalPages = pagination?.totalPages ?? lastTotalPagesRef.current ?? 1
+  const lastTotalPagesRef = useRef(1)
+  if (pagination.totalPages !== undefined) {
+    lastTotalPagesRef.current = Math.max(1, pagination.totalPages)
+  }
+  const totalPages = lastTotalPagesRef.current
   const total = pagination?.total ?? 0
 
   useEffect(() => {
@@ -236,7 +238,7 @@ export default function DocumentPage(): JSX.Element {
               <TableHead>Tiêu đề</TableHead>
               <TableHead className="w-40">Loại</TableHead>
               <TableHead className="w-24">Phạm vi</TableHead>
-              <TableHead className="w-40">Người upload</TableHead>
+              <TableHead className="w-40">Người tải lên</TableHead>
               <TableHead className="w-24">Kích thước</TableHead>
               <TableHead className="w-28">Ngày tạo</TableHead>
               <TableHead className="w-28 text-right">Hành động</TableHead>

@@ -53,6 +53,7 @@ export interface DashboardFireRiskBlock {
   note?: string
   snapshotId?: number | string
   analysisDate?: string
+  snapshotStatus?: string
   avgLevel?: number | null
   minLevel?: number | null
   maxLevel?: number | null
@@ -60,9 +61,16 @@ export interface DashboardFireRiskBlock {
   s2CoverageRatio?: number | null
   hotspotDistrictCount?: number
   hotspotMinLevel?: number
+  /** Legacy — luôn null với snapshot mới sau migration 040. Dùng districtRaster* + mapReady. */
   geoserverLayer?: string | null
   geeDownloadUrl?: string | null
   publishedAt?: string | null
+  /** Per-district state (migration 040 trở lên). */
+  districtRasterReady?: number
+  districtRasterTotal?: number
+  mapReady?: boolean
+  /** Danh sách huyện đã có layer bản đồ ổn định (để build link mở xem trước). */
+  publishedDistricts?: Array<{ code: string | null; name: string | null; layer: string }>
 }
 
 export interface DashboardForestClassificationBlock {
@@ -84,10 +92,17 @@ export interface DashboardForestClassificationBlock {
   testKappa?: number | null
   s2ImageCount?: number | null
   landsatImageCount?: number | null
+  /** Legacy — luôn null với snapshot mới sau migration 040. Dùng districtRaster* + mapReady. */
   geoserverLayer?: string | null
   geeDownloadUrl?: string | null
   computedAt?: string | null
   publishedAt?: string | null
+  /** Per-district state (migration 040 trở lên). */
+  districtRasterReady?: number
+  districtRasterTotal?: number
+  mapReady?: boolean
+  /** Danh sách huyện đã có layer bản đồ ổn định (để build link mở xem trước). */
+  publishedDistricts?: Array<{ code: string | null; name: string | null; layer: string }>
   comparison?: {
     previousSnapshotId: number | string
     previousYear: number

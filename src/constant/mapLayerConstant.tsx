@@ -14,8 +14,8 @@ export const ACTIVE_DOT: Record<string, string> = {
 
 // ── Published status ──────────────────────────────────────────────
 export const PUBLISHED_LABEL: Record<string, string> = {
-  true: 'Đã publish',
-  false: 'Chưa publish',
+  true: 'Đã công bố',
+  false: 'Chưa công bố',
 }
 export const PUBLISHED_CLASS: Record<string, string> = {
   true: 'bg-sky-50 text-sky-700 border-sky-200',

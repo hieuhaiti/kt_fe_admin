@@ -1,18 +1,31 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { type GeoJSONSource, type LngLatBoundsLike } from 'maplibre-gl'
+
+export type FireRiskRasterLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
+
+export interface FireRiskDistrictTile {
+  /** Mã huyện. Dùng để tạo source id ổn định qua các render. */
+  code: string
+  /** URL tile XYZ dạng {z}/{x}/{y} — đã clip theo geometry huyện. */
+  tileUrl: string
+}
 
 interface FireRiskMapProps {
   geojson: GeoJSON.FeatureCollection | null
-  /** Fallback raster tile URL — dùng khi GeoServer WMS chưa publish.
-   *  Server luôn cố sinh `snapshot.geeTileUrl` (không cần GCS). URL có TTL
-   *  ~24h → có thể expired với snapshot cũ, maplibre log 404 nhưng không crash. */
+  /** Fallback raster tile URL — dùng khi lớp chi tiết theo huyện chưa sẵn.
+   *  Server sinh `snapshot.geeTileUrl` toàn tỉnh làm dự phòng cho legacy. */
   rasterTileUrl?: string | null
+  /** Danh sách tile URL riêng cho từng huyện (mỗi huyện đã clip theo ranh giới
+   *  huyện — không bị lệch, không tràn sang huyện khác). Khi có, ưu tiên dùng
+   *  thay cho `rasterTileUrl` toàn tỉnh. */
+  perDistrictTiles?: FireRiskDistrictTile[]
   /** LayerManager điều khiển visibility + opacity của từng lớp. */
   districtVisible?: boolean
   districtOpacity?: number
   heatVisible?: boolean
   heatOpacity?: number
   heightClassName?: string
+  onRasterStatusChange?: (status: FireRiskRasterLoadStatus) => void
 }
 
 const SOURCE_ID = 'fire-risk-source'
@@ -20,6 +33,8 @@ const BASEMAP_SOURCE_ID = 'osm-basemap'
 const BASEMAP_LAYER_ID = 'osm-basemap-layer'
 const RASTER_SOURCE_ID = 'fire-risk-raster'
 const RASTER_LAYER_ID = 'fire-risk-raster-layer'
+const DISTRICT_RASTER_SOURCE_PREFIX = 'fire-risk-raster-district-'
+const DISTRICT_RASTER_LAYER_PREFIX = 'fire-risk-raster-district-layer-'
 const FILL_LAYER_ID = 'fire-risk-fill'
 const LINE_LAYER_ID = 'fire-risk-line'
 
@@ -188,9 +203,10 @@ function buildPopupHtml(props: Record<string, any>): string {
   const s2 = props.s2Coverage ?? props?.properties?.s2Coverage
   const color = LEVEL_COLORS[level] || '#64748b'
   return `
-    <div style="font-size:12px;min-width:200px">
-      <div style="font-weight:600;margin-bottom:4px">${name} <span style="color:#64748b">(${code})</span></div>
-      <div style="display:inline-block;padding:2px 6px;border-radius:4px;background:${color};color:#fff;margin-bottom:6px">
+    <div style="min-width:200px;color:hsl(var(--popover-foreground));font-size:12px">
+      <div style="font-weight:600;margin-bottom:4px">${name} <span style="color:hsl(var(--muted-foreground))">(${code})</span></div>
+      <div style="display:inline-flex;align-items:center;gap:6px;padding:3px 7px;border:1px solid hsl(var(--border));border-radius:6px;background:hsl(var(--popover));color:hsl(var(--popover-foreground));font-weight:600;margin-bottom:6px">
+        <span aria-hidden="true" style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${color};box-shadow:inset 0 0 0 1px hsl(var(--foreground) / 0.2)"></span>
         ${LEVEL_LABEL[level] || `Cấp ${level}`}
       </div>
       <div>Diện tích ở cấp cao nhất: <b>${formatHa(areaHa)}</b></div>
@@ -202,15 +218,23 @@ function buildPopupHtml(props: Record<string, any>): string {
 export default function FireRiskMap({
   geojson,
   rasterTileUrl,
+  perDistrictTiles,
   districtVisible = true,
   districtOpacity = 0.45,
   heatVisible = true,
   heatOpacity = 0.65,
   heightClassName = 'h-96',
+  onRasterStatusChange,
 }: FireRiskMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const popupRef = useRef<maplibregl.Popup | null>(null)
+  const [rasterStatus, setRasterStatus] = useState<FireRiskRasterLoadStatus>('idle')
+  const onRasterStatusChangeRef = useRef(onRasterStatusChange)
+
+  useEffect(() => {
+    onRasterStatusChangeRef.current = onRasterStatusChange
+  }, [onRasterStatusChange])
 
   // NOTE — 3 việc ở đây, đồng bộ với client MonitoringAndAlerting:
   //   1. Bỏ feature không có geometry (maplibre crash nếu geometry undefined).
@@ -225,11 +249,14 @@ export default function FireRiskMap({
   //      chỉ cần `['get', 'color']`, tránh phải match trong maplibre.
   const drawable = useMemo<GeoJSON.FeatureCollection>(() => {
     if (!geojson) return EMPTY
-    const byCode = new Map<string, {
-      geometry: GeoJSON.Geometry
-      properties: Record<string, any>
-      maxLevel: number
-    }>()
+    const byCode = new Map<
+      string,
+      {
+        geometry: GeoJSON.Geometry
+        properties: Record<string, any>
+        maxLevel: number
+      }
+    >()
     for (const f of geojson.features) {
       const geom = reprojectGeometry(f?.geometry)
       if (!geom) continue
@@ -364,54 +391,162 @@ export default function FireRiskMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawable])
 
-  // ── Fallback raster layer (WMS GeoServer hoặc GEE tile URL) ──────────────
-  // NOTE — chèn raster GIỮA basemap và fill polygon huyện: OSM ở dưới, raster
-  // cấp cháy ở giữa (mờ), vector polygon huyện ở trên cùng. Nhờ vậy user thấy
-  // cả pixel-level (raster) lẫn boundary (vector).
+  // ── Lớp ảnh chi tiết theo huyện ──────────────────────────────────────────
+  // Ưu tiên `perDistrictTiles` — mỗi huyện 1 tile URL đã clip đúng ranh giới
+  // huyện → tile pyramid đóng khung ở huyện đó, không tràn/lệch. Nếu rỗng,
+  // rơi về `rasterTileUrl` cấp tỉnh (dự phòng cho snapshot chưa có URL huyện).
   //
-  // rasterTileUrl thay đổi (URL mới, snapshot refresh, hoặc chuyển null → có)
-  // → xoá layer/source cũ, thêm lại. Không cần restart map.
-  // NOTE — dep CHỈ là rasterTileUrl, KHÔNG có heat*. Nếu để heat* ở đây,
-  // mỗi lần user kéo slider opacity thì layer bị recreate (mất tile cache
-  // + nháy màn hình). Visibility + opacity update qua effect riêng bên dưới.
+  // Chèn raster GIỮA basemap và fill polygon huyện: OSM ở dưới, ảnh chi tiết
+  // ở giữa (mờ), vector polygon huyện ở trên cùng. Nhờ vậy user thấy cả
+  // pixel-level lẫn ranh giới hành chính.
   //
-  // Vấn đề trước đó: admin không hiện raster vì `map.once('load', setup)`
-  // register callback cho lần load KẾ TIẾP; nếu map đã load rồi thì callback
-  // không bao giờ chạy. Đã guard bằng `map.isStyleLoaded()`. Thêm log để
-  // debug URL nếu vẫn không lên.
+  // Signature dep = JSON.stringify(perDistrictTiles) — mảng URL đổi khi
+  // snapshot refresh; tránh recreate khi user chỉ toggle opacity (dep riêng).
+  const districtTilesSig = useMemo(
+    () => (perDistrictTiles || [])
+      .map((t) => `${t.code}|${t.tileUrl}`)
+      .join('||'),
+    [perDistrictTiles],
+  )
+
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+
+    // Map để track layer/source hiện tại (cả cấp tỉnh và cấp huyện).
+    const currentLayerIds: string[] = []
+    const currentSourceIds: string[] = []
+    let failed = false
+
+    const updateStatus = (status: FireRiskRasterLoadStatus) => {
+      setRasterStatus(status)
+      onRasterStatusChangeRef.current?.(status)
+    }
+    const handleSourceData = (event: any) => {
+      if (failed) return
+      if (
+        event.sourceId === RASTER_SOURCE_ID
+        || event.sourceId?.startsWith(DISTRICT_RASTER_SOURCE_PREFIX)
+      ) {
+        if (event.isSourceLoaded) updateStatus('ready')
+      }
+    }
+    const handleSourceError = (event: any) => {
+      if (
+        event.sourceId === RASTER_SOURCE_ID
+        || event.sourceId?.startsWith(DISTRICT_RASTER_SOURCE_PREFIX)
+      ) {
+        failed = true
+        updateStatus('error')
+      }
+    }
+
+    const removeExistingRasters = () => {
+      // Dọn toàn bộ raster layer/source hiện có (cả tỉnh và tất cả huyện đã
+      // add ở lần trước) — sạch trạng thái trước khi setup lại.
+      const style = map.getStyle()
+      const allLayers = style.layers || []
+      for (const lyr of allLayers) {
+        if (
+          lyr.id === RASTER_LAYER_ID
+          || lyr.id.startsWith(DISTRICT_RASTER_LAYER_PREFIX)
+        ) {
+          if (map.getLayer(lyr.id)) map.removeLayer(lyr.id)
+        }
+      }
+      const allSources = Object.keys(style.sources || {})
+      for (const srcId of allSources) {
+        if (
+          srcId === RASTER_SOURCE_ID
+          || srcId.startsWith(DISTRICT_RASTER_SOURCE_PREFIX)
+        ) {
+          if (map.getSource(srcId)) map.removeSource(srcId)
+        }
+      }
+    }
+
     const setup = () => {
-      if (map.getLayer(RASTER_LAYER_ID)) map.removeLayer(RASTER_LAYER_ID)
-      if (map.getSource(RASTER_SOURCE_ID)) map.removeSource(RASTER_SOURCE_ID)
-      if (!rasterTileUrl) {
-        console.debug('[FireRiskMap] no rasterTileUrl → skip raster layer')
+      removeExistingRasters()
+
+      const tiles = (perDistrictTiles || []).filter(
+        (t) => t.code && t.tileUrl,
+      )
+      const beforeId = map.getLayer(FILL_LAYER_ID) ? FILL_LAYER_ID : undefined
+
+      if (tiles.length > 0) {
+        // Ưu tiên per-district — mỗi huyện là 1 source + 1 layer.
+        failed = false
+        updateStatus('loading')
+        try {
+          for (const t of tiles) {
+            const sourceId = `${DISTRICT_RASTER_SOURCE_PREFIX}${t.code}`
+            const layerId  = `${DISTRICT_RASTER_LAYER_PREFIX}${t.code}`
+            map.addSource(sourceId, {
+              type: 'raster',
+              tiles: [t.tileUrl],
+              tileSize: 256,
+            })
+            map.addLayer(
+              {
+                id: layerId,
+                type: 'raster',
+                source: sourceId,
+                paint: { 'raster-opacity': heatOpacity },
+                layout: { visibility: heatVisible ? 'visible' : 'none' },
+              },
+              beforeId,
+            )
+            currentSourceIds.push(sourceId)
+            currentLayerIds.push(layerId)
+          }
+        } catch {
+          failed = true
+          updateStatus('error')
+        }
         return
       }
-      console.debug('[FireRiskMap] adding raster layer:', rasterTileUrl.slice(0, 80) + '...')
-      map.addSource(RASTER_SOURCE_ID, {
-        type: 'raster',
-        tiles: [rasterTileUrl],
-        tileSize: 256,
-        attribution: 'Fire Risk raster (GeoServer WMS / Earth Engine)',
-      })
-      // beforeId = FILL_LAYER_ID → chèn dưới fill huyện, trên basemap.
-      map.addLayer(
-        {
-          id: RASTER_LAYER_ID,
+
+      if (!rasterTileUrl) {
+        updateStatus('idle')
+        return
+      }
+      // Fallback: lớp toàn tỉnh (legacy — snapshot cũ chưa có URL huyện).
+      failed = false
+      updateStatus('loading')
+      try {
+        map.addSource(RASTER_SOURCE_ID, {
           type: 'raster',
-          source: RASTER_SOURCE_ID,
-          paint: { 'raster-opacity': heatOpacity },
-          layout: { visibility: heatVisible ? 'visible' : 'none' },
-        },
-        map.getLayer(FILL_LAYER_ID) ? FILL_LAYER_ID : undefined,
-      )
+          tiles: [rasterTileUrl],
+          tileSize: 256,
+        })
+        map.addLayer(
+          {
+            id: RASTER_LAYER_ID,
+            type: 'raster',
+            source: RASTER_SOURCE_ID,
+            paint: { 'raster-opacity': heatOpacity },
+            layout: { visibility: heatVisible ? 'visible' : 'none' },
+          },
+          beforeId,
+        )
+        currentSourceIds.push(RASTER_SOURCE_ID)
+        currentLayerIds.push(RASTER_LAYER_ID)
+      } catch {
+        failed = true
+        updateStatus('error')
+      }
     }
+
+    map.on('sourcedata', handleSourceData)
+    map.on('error', handleSourceError)
     if (map.isStyleLoaded()) setup()
     else map.once('load', setup)
+    return () => {
+      map.off('sourcedata', handleSourceData)
+      map.off('error', handleSourceError)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rasterTileUrl])
+  }, [rasterTileUrl, districtTilesSig])
 
   // District layer visibility + opacity — cập nhật khi props thay đổi mà
   // không cần recreate layer/source.
@@ -432,12 +567,26 @@ export default function FireRiskMap({
   }, [districtVisible, districtOpacity])
 
   // Raster layer visibility + opacity — separate effect để không recreate
-  // khi user chỉ toggle visibility (giữ tile cache).
+  // khi user chỉ toggle visibility (giữ tile cache). Áp cho cả lớp cấp tỉnh
+  // (RASTER_LAYER_ID) lẫn N lớp per-district.
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !map.getLayer(RASTER_LAYER_ID)) return
-    map.setPaintProperty(RASTER_LAYER_ID, 'raster-opacity', heatOpacity)
-    map.setLayoutProperty(RASTER_LAYER_ID, 'visibility', heatVisible ? 'visible' : 'none')
+    if (!map) return
+    const apply = () => {
+      const style = map.getStyle()
+      const layers = style.layers || []
+      for (const lyr of layers) {
+        if (
+          lyr.id === RASTER_LAYER_ID
+          || lyr.id.startsWith(DISTRICT_RASTER_LAYER_PREFIX)
+        ) {
+          map.setPaintProperty(lyr.id, 'raster-opacity', heatOpacity)
+          map.setLayoutProperty(lyr.id, 'visibility', heatVisible ? 'visible' : 'none')
+        }
+      }
+    }
+    if (map.isStyleLoaded()) apply()
+    else map.once('load', apply)
   }, [heatVisible, heatOpacity])
 
   return (
@@ -447,17 +596,28 @@ export default function FireRiskMap({
         className={`w-full overflow-hidden rounded-md border ${heightClassName}`}
       />
       {!hasGeometry && (
-        <div className="pointer-events-none absolute inset-x-0 top-2 mx-auto w-fit rounded-md bg-amber-50/95 px-3 py-1 text-xs text-amber-800 shadow">
-          Không có polygon để hiển thị (snapshot chưa có geometry).
+        <div className="border-warning/20 bg-card/95 text-warning pointer-events-none absolute inset-x-0 top-2 mx-auto w-fit rounded-md border px-3 py-1 text-xs shadow">
+          Chưa có dữ liệu bản đồ để hiển thị.
+        </div>
+      )}
+      {hasGeometry && rasterStatus === 'loading' && (
+        <div className="pointer-events-none absolute inset-x-0 top-2 mx-auto w-fit rounded-md bg-sky-50/95 px-3 py-1 text-xs text-sky-800 shadow">
+          Đang tải ảnh chi tiết...
+        </div>
+      )}
+      {rasterStatus === 'error' && (
+        <div className="pointer-events-none absolute inset-x-0 top-2 mx-auto w-fit rounded-md bg-red-50/95 px-3 py-1 text-xs text-red-700 shadow">
+          Không tải được ảnh chi tiết; bản đồ ranh giới huyện vẫn khả dụng.
         </div>
       )}
       {/* Legend */}
-      <div className="absolute bottom-2 left-2 rounded-md bg-white/95 p-2 text-xs shadow">
+      <div className="border-border bg-popover/95 text-popover-foreground absolute bottom-2 left-2 rounded-md border p-2 text-xs shadow-lg backdrop-blur-sm">
         <div className="mb-1 font-semibold">Cấp cảnh báo</div>
         {[1, 2, 3, 4, 5].map((l) => (
           <div key={l} className="flex items-center gap-2">
             <span
-              className="inline-block h-3 w-3 rounded-sm border"
+              aria-hidden="true"
+              className="ring-foreground/25 inline-block h-3 w-3 rounded-sm ring-1 ring-inset"
               style={{ backgroundColor: LEVEL_COLORS[l] }}
             />
             <span>{LEVEL_LABEL[l]}</span>

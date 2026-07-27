@@ -26,11 +26,23 @@ export interface SatelliteAreaStats {
 }
 
 export interface SatelliteResponse {
+  resultId?: number
   tileUrl?: string
   tileUrlTemplate?: string
+  geeTileUrl?: string
   mapId?: string
   legend?: any
   statistics?: SatelliteAreaStats[]
+  stats?: any
+  metadata?: {
+    downloadUrl?: string | null
+    downloadFilename?: string | null
+    [key: string]: any
+  }
+  downloadUrl?: string | null
+  downloadFilename?: string | null
+  geoserverLayer?: string | null
+  cached?: boolean
   bbox?: [number, number, number, number]
   [key: string]: any
 }

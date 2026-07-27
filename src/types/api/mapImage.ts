@@ -12,9 +12,13 @@ export interface PdfMap {
   scale?: string | null
   region?: string | null
   fileUrl?: string
+  fileName?: string
+  mimeType?: string
   thumbnailUrl?: string | null
   isPublic?: boolean
   fileSize?: number | null
+  uploadedBy?: number | null
+  uploadedByName?: string | null
   createdBy?: number | null
   updatedBy?: number | null
   createdAt?: string
@@ -43,8 +47,7 @@ export interface PdfMap {
 export type MapImage = PdfMap
 
 export interface PdfMapListData {
-  pdfMaps: PdfMap[]
-  pagination: import('./index').Pagination
+  items: PdfMap[]
 }
 
 /** Legacy alias */

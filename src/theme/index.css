@@ -99,7 +99,12 @@
   --success: 142 76% 36%; /* #16A34A - Green 600 */
   --success-foreground: 0 0% 98%;
 
-  --warning: 38 92% 50%; /* #F59E0B - Amber 500 */
+  /*
+   * Amber 800 is intentionally used for semantic warning foregrounds and
+   * filled controls. Amber 500 remains available as --chart-4 for data
+   * visualization, but is too light for small text on white surfaces.
+   */
+  --warning: 32 83% 31%; /* #92400E - Amber 800 */
   --warning-foreground: 0 0% 98%;
 
   --info: 188 94% 43%; /* #06B6D4 - Cyan 500 */

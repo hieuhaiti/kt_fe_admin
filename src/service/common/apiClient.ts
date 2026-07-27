@@ -38,10 +38,36 @@ function getAnonymousId() {
   }
 }
 
+function toNeutralUiMessage(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+  return value
+    .replace(/Google\s+Earth\s+Engine/gi, 'nguồn xử lý ảnh')
+    .replace(/\bGeoServer\b/gi, 'dịch vụ bản đồ')
+    .replace(/\bMinIO\b/gi, 'kho dữ liệu')
+    .replace(/\bGEE\b/gi, 'nguồn xử lý ảnh')
+}
+
+function neutralizeApiMessages(body: any) {
+  if (!body || typeof body !== 'object') return body
+  if (typeof body.message === 'string') {
+    body.message = toNeutralUiMessage(body.message)
+  }
+  if (Array.isArray(body.errors)) {
+    body.errors = body.errors.map((error: any) => {
+      if (typeof error === 'string') return toNeutralUiMessage(error)
+      if (error && typeof error === 'object' && typeof error.message === 'string') {
+        return { ...error, message: toNeutralUiMessage(error.message) }
+      }
+      return error
+    })
+  }
+  return body
+}
+
 async function handleResponse<T>(res: Response, isAuthEndpoint = false): Promise<ApiResponse<T>> {
   const contentType = res.headers.get('content-type') || ''
   const isJson = contentType.includes('application/json')
-  const body = isJson ? await res.json() : undefined
+  const body = neutralizeApiMessages(isJson ? await res.json() : undefined)
 
   if (!res.ok) {
     const err: any = new Error(body?.message || res.statusText || 'Request failed')
@@ -126,6 +152,52 @@ function isAuthUrl(url: string) {
   )
 }
 
+async function rotateRefreshToken(initialRefreshToken: string): Promise<string | null> {
+  // Another tab may have completed rotation while this request was waiting for
+  // the cross-tab lock. Reuse its freshly persisted token pair in that case.
+  const currentRefreshToken = getRefreshToken()
+  if (currentRefreshToken && currentRefreshToken !== initialRefreshToken) {
+    return getAccessToken() || null
+  }
+
+  const refreshRes = await fetch(`${API_BASE}/auth/refresh?lang=${DEFAULT_LANG}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken: initialRefreshToken }),
+  })
+  if (!refreshRes.ok) {
+    // The winning tab can finish between the preflight check and this response.
+    const rotatedRefreshToken = getRefreshToken()
+    if (rotatedRefreshToken && rotatedRefreshToken !== initialRefreshToken) {
+      return getAccessToken() || null
+    }
+    return null
+  }
+
+  const refreshBody = await refreshRes.json()
+  const newAccess = refreshBody?.data?.accessToken
+  const newRefresh = refreshBody?.data?.refreshToken
+  if (!newAccess) return null
+  setTokens({ accessToken: newAccess, refreshToken: newRefresh })
+  return newAccess as string
+}
+
+async function refreshAccessToken(initialRefreshToken: string): Promise<string | null> {
+  const lockManager =
+    typeof navigator !== 'undefined'
+      ? (navigator as Navigator & {
+          locks?: {
+            request<T>(name: string, callback: () => Promise<T>): Promise<T>
+          }
+        }).locks
+      : undefined
+
+  if (!lockManager) return rotateRefreshToken(initialRefreshToken)
+  return lockManager.request('kontum-admin-auth-refresh', () =>
+    rotateRefreshToken(initialRefreshToken)
+  )
+}
+
 async function requestWithRefresh(
   url: string,
   opts: RequestInit,
@@ -144,20 +216,7 @@ async function requestWithRefresh(
 
   try {
     if (!refreshPromise) {
-      refreshPromise = fetch(`${API_BASE}/auth/refresh?lang=${DEFAULT_LANG}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      })
-        .then(async (refreshRes) => {
-          if (!refreshRes.ok) return null
-          const refreshBody = await refreshRes.json()
-          const newAccess = refreshBody?.data?.accessToken
-          const newRefresh = refreshBody?.data?.refreshToken
-          if (!newAccess) return null
-          setTokens({ accessToken: newAccess, refreshToken: newRefresh })
-          return newAccess as string
-        })
+      refreshPromise = refreshAccessToken(refreshToken)
         .finally(() => {
           refreshPromise = null
         })

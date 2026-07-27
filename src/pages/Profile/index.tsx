@@ -51,8 +51,8 @@ const profileSchema = z.object({
   avatarUrl: z
     .string()
     .trim()
-    .url('URL ảnh không hợp lệ')
-    .max(500, 'URL ảnh không được quá 500 ký tự')
+    .url('Đường dẫn ảnh không hợp lệ')
+    .max(500, 'Đường dẫn ảnh không được quá 500 ký tự')
     .optional()
     .or(z.literal('')),
 })
@@ -374,11 +374,11 @@ export default function ProfilePage() {
                     Ảnh đại diện
                   </h3>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Nhập URL ảnh đại diện (đã được upload lên máy chủ lưu trữ ảnh).
+                    Nhập đường dẫn của ảnh đại diện đã được lưu trực tuyến.
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="avatarUrl">URL ảnh đại diện</Label>
+                  <Label htmlFor="avatarUrl">Đường dẫn ảnh đại diện</Label>
                   <Input
                     id="avatarUrl"
                     {...register('avatarUrl')}
