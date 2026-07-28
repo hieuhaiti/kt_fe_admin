@@ -1055,43 +1055,6 @@ function FireRiskLayerManager({
     geoserverDownloadUrl || getUsableTemporaryRasterUrl(snapshot?.geeDownloadUrl, geeGeneratedAt)
   const districtArtifacts = districtExports?.districts ?? []
   const districtTotal = resolveDistrictTotal(districtExports, districtArtifacts)
-  const districtSourceCount =
-    readOptionalNonNegativeCount(districtExports?.sourceCount) ??
-    districtArtifacts.filter(hasDistrictSource).length
-  const districtStoredCount =
-    readOptionalNonNegativeCount(districtExports?.storedCount) ??
-    districtArtifacts.filter((district) => Boolean(district.minioKey)).length
-  const stableDistrictCount =
-    readOptionalNonNegativeCount(
-      districtExports?.publishedCount,
-      districtExports?.geoserverCount
-    ) ?? districtArtifacts.filter(isDistrictPublished).length
-  const districtReadyCount =
-    readOptionalNonNegativeCount(districtExports?.readyCount, districtExports?.ready) ??
-    districtArtifacts.filter(isDistrictReady).length
-  const fullyPublished =
-    districtExports?.fullyPublished === true ||
-    (districtTotal > 0 &&
-      stableDistrictCount >= districtTotal &&
-      districtReadyCount >= districtTotal)
-  const getDistrictDownloadUrl = (district: (typeof districtArtifacts)[number]) =>
-    district.geoserverDownloadUrl ||
-    buildGeoserverDownloadUrl(district.geoserverLayer) ||
-    getDistrictTemporaryDownloadUrl(district)
-
-  const downloadDistrictRaster = async (district: (typeof districtArtifacts)[number]) => {
-    const url = getDistrictDownloadUrl(district)
-    if (!url) return
-    const filename =
-      district.downloadFilename ||
-      district.geeDownloadFilename ||
-      `fire_risk_${district.districtCode || 'kontum'}.tif`
-    try {
-      await downloadRasterFile(url, filename)
-    } catch {
-      toast.error(`Không thể tải dữ liệu huyện ${district.districtName}.`)
-    }
-  }
 
   // Tải GeoTIFF bản đồ nhiệt. Ưu tiên `geoserverDownloadUrl` (WCS GetCoverage,
   // persistent, full-resolution) trước `geeDownloadUrl` tạm thời của GEE.
@@ -1466,9 +1429,6 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
   const districtSourceCount =
     readOptionalNonNegativeCount(districtExports?.sourceCount) ??
     districts.filter(hasDistrictSource).length
-  const districtStoredCount =
-    readOptionalNonNegativeCount(districtExports?.storedCount) ??
-    districts.filter((district) => Boolean(district.minioKey)).length
   const districtPublishedCount =
     readOptionalNonNegativeCount(
       districtExports?.publishedCount,
@@ -1489,10 +1449,6 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
   const temporaryDownloadStatus = getTemporaryRasterUrlStatus(
     item.gee_download_url ?? item.geeDownloadUrl,
     item.gee_download_generated_at ?? item.computed_at
-  )
-  const temporaryTileStatus = getTemporaryRasterUrlStatus(
-    item.gee_tile_url ?? item.geeTileUrl,
-    item.gee_tile_generated_at ?? item.computed_at
   )
   const hasLegacyDownload = temporaryDownloadStatus === 'available'
   const published = hasDistrictArtifacts
