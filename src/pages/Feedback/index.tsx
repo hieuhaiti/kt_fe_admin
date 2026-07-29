@@ -244,7 +244,7 @@ export default function FeedbackPage(): JSX.Element {
   return (
     <PageLayout
       title="Phản ánh hiện trường"
-      description="Tiếp nhận và xử lý phản ánh gửi từ WebGIS, MobileGIS"
+      description="Tiếp nhận và xử lý phản ánh do người dân gửi từ cổng bản đồ"
     >
       <Tabs value={view} onValueChange={(value) => setView(value as 'table' | 'map')}>
         <TabsList className="mb-3">

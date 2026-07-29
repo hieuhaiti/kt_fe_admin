@@ -7,17 +7,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import type {
-  SatelliteRgbBody,
-  SatelliteNdviBody,
-  SatelliteHeatMapBody,
-  SatelliteClassifiedBody,
-} from '@/types/api'
+import type { SatelliteRgbBody, SatelliteNdviBody, SatelliteHeatMapBody } from '@/types/api'
 import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import { buildGeoserverPreviewUrl } from '@/lib/geoserver'
 
-type Mode = 'rgb' | 'ndvi' | 'heat' | 'classified'
+type Mode = 'rgb' | 'ndvi' | 'heat'
 const MODES: { value: Mode; label: string; help: string }[] = [
   {
     value: 'rgb',
@@ -30,11 +25,6 @@ const MODES: { value: Mode; label: string; help: string }[] = [
     help: 'Đánh giá mức độ xanh của thảm thực vật',
   },
   { value: 'heat', label: 'Nhiệt độ bề mặt', help: 'Phân bố nhiệt độ bề mặt' },
-  {
-    value: 'classified',
-    label: 'Phân loại 13 lớp',
-    help: 'Kết quả phân loại lớp phủ tại Kon Tum',
-  },
 ]
 
 export default function SatellitePage() {
@@ -63,8 +53,6 @@ export default function SatellitePage() {
         return satelliteService.ndvi(body as SatelliteNdviBody) as any
       case 'heat':
         return satelliteService.heatMap(body as SatelliteHeatMapBody) as any
-      case 'classified':
-        return satelliteService.classified(body as SatelliteClassifiedBody) as any
     }
   })
 
@@ -161,12 +149,12 @@ export default function SatellitePage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="flex-1 space-y-6 overflow-y-auto p-6">
       <div>
         <h1 className="text-2xl font-bold">Ảnh vệ tinh theo yêu cầu</h1>
         <p className="text-muted-foreground text-sm">
-          Chọn chế độ và khoảng thời gian để phân tích ảnh vệ tinh, tính toán diện tích và
-          tạo bản xem trước. Kết quả có thể được công bố lên bản đồ dùng chung.
+          Chọn chế độ và khoảng thời gian để phân tích ảnh vệ tinh, tính toán diện tích và tạo bản
+          xem trước. Kết quả có thể được công bố lên bản đồ dùng chung.
         </p>
       </div>
 
@@ -192,7 +180,12 @@ export default function SatellitePage() {
             <LabeledInput label="Từ ngày" value={start} onChange={setStart} type="date" />
             <LabeledInput label="Đến ngày" value={end} onChange={setEnd} type="date" />
             {mode !== 'heat' && (
-              <LabeledInput label="Cloud cover (%)" value={cloud} onChange={setCloud} type="number" />
+              <LabeledInput
+                label="Tỷ lệ mây tối đa (%)"
+                value={cloud}
+                onChange={setCloud}
+                type="number"
+              />
             )}
             {mode === 'ndvi' && (
               <LabeledInput
@@ -273,8 +266,8 @@ export default function SatellitePage() {
                   <div className="min-w-0 flex-1 text-xs">
                     <p className="font-semibold">Công bố lên bản đồ</p>
                     <p className="text-muted-foreground mt-0.5">
-                      Lưu kết quả ổn định để sử dụng trên toàn hệ thống. Cập nhật lại nếu
-                      muốn thay thế kết quả đã công bố.
+                      Lưu kết quả ổn định để sử dụng trên toàn hệ thống. Cập nhật lại nếu muốn thay
+                      thế kết quả đã công bố.
                     </p>
 
                     {/* Đã publish sẵn (từ cache) */}
@@ -347,12 +340,7 @@ export default function SatellitePage() {
                   <Button
                     size="sm"
                     onClick={onPublish}
-                    disabled={
-                      !resultId ||
-                      !downloadUrl ||
-                      publishBusy ||
-                      (job && !terminal)
-                    }
+                    disabled={!resultId || !downloadUrl || publishBusy || (job && !terminal)}
                     title={
                       !resultId
                         ? 'Chưa có kết quả'
@@ -399,15 +387,24 @@ export default function SatellitePage() {
 
 function statusVi(s?: string) {
   switch (s) {
-    case 'pending':      return 'chờ xử lý'
-    case 'downloading':  return 'đang tải ảnh'
-    case 'validating':   return 'đang kiểm tra'
-    case 'uploading':    return 'đang lưu dữ liệu'
-    case 'publishing':   return 'đang cập nhật bản đồ'
-    case 'completed':    return 'hoàn tất'
-    case 'failed':       return 'thất bại'
-    case 'cancelled':    return 'đã hủy'
-    default:             return s || 'đang xử lý'
+    case 'pending':
+      return 'chờ xử lý'
+    case 'downloading':
+      return 'đang tải ảnh'
+    case 'validating':
+      return 'đang kiểm tra'
+    case 'uploading':
+      return 'đang lưu dữ liệu'
+    case 'publishing':
+      return 'đang cập nhật bản đồ'
+    case 'completed':
+      return 'hoàn tất'
+    case 'failed':
+      return 'thất bại'
+    case 'cancelled':
+      return 'đã hủy'
+    default:
+      return s || 'đang xử lý'
   }
 }
 

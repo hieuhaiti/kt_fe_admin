@@ -15,7 +15,10 @@ export interface SatelliteHeatMapBody {
   endDate: string
 }
 
-export interface SatelliteClassifiedBody extends SatelliteBaseBody {}
+export interface SatelliteClassifiedBody extends SatelliteBaseBody {
+  /** Tháng neo mô hình (1-12); bỏ trống để dùng tháng của endDate. */
+  month?: number
+}
 
 export interface SatelliteAreaStats {
   className?: string

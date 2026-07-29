@@ -214,7 +214,13 @@ export async function downloadRasterFile(url: string, filename: string): Promise
   anchor.href = objectUrl
   anchor.download = withExtension(filename, extension)
   document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 5000)
+  try {
+    anchor.click()
+    // Giải phóng tệp hiện tại trước khi lượt tải tuần tự tiếp theo bắt đầu,
+    // tránh giữ nhiều ảnh dung lượng lớn trong bộ nhớ trình duyệt cùng lúc.
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 250))
+  } finally {
+    anchor.remove()
+    URL.revokeObjectURL(objectUrl)
+  }
 }

@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { StatusDotBadge } from '@/components/common/StatusDotBadge'
 import { ACTIVE_LABEL, ACTIVE_CLASS, ACTIVE_DOT } from '@/constant/mapLayerConstant'
 import ToolTableCustom from '@/components/features/ToolTableCustom'
@@ -37,12 +38,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Eye, EyeOff, Pen, Trash2 } from 'lucide-react'
+import { CloudOff, CloudUpload, Eye, EyeOff, Pen, Trash2 } from 'lucide-react'
 import PageLayout from '@/layout/pageLayout'
 import MapLayerDetailDialog from './MapLayerDetailDialog'
 import MapLayerFormDialog from './MapLayerFormDialog'
 import { formatDate } from '@/lib/date'
-import { can } from '@/lib/permissions'
+import { can, hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
 function getLayerItems(data: unknown): MapLayer[] {
@@ -64,7 +65,9 @@ export default function MapLayerPage(): JSX.Element {
   const canCreate = can(user, 'map-layers:create')
   const canUpdate = can(user, 'map-layers:update')
   const canDelete = can(user, 'map-layers:delete')
-  const showActions = canUpdate || canDelete
+  const canPublish = hasPerm(user, 'map_layers', 'publish')
+  const canUnpublish = hasPerm(user, 'map_layers', 'unpublish')
+  const showActions = canUpdate || canDelete || canPublish || canUnpublish
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [limit, setLimit] = useState<number>(10)
   const [searchValue, setSearchValue] = useState<string>('')
@@ -107,6 +110,8 @@ export default function MapLayerPage(): JSX.Element {
   const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [layerToDelete, setLayerToDelete] = useState<MapLayer | null>(null)
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false)
+  const [layerToPublish, setLayerToPublish] = useState<MapLayer | null>(null)
 
   const createMutation = useApiMutation(
     (payload: CreateMapLayerBody) => mapLayerService.create(payload),
@@ -134,7 +139,8 @@ export default function MapLayerPage(): JSX.Element {
   )
 
   const toggleStatusMutation = useApiMutation(
-    (id: number) => mapLayerService.toggleStatus(String(id)),
+    (payload: { code: string; isActive: boolean }) =>
+      mapLayerService.setActive(payload.code, { is_active: !payload.isActive }),
     {
       onSuccess: () => {
         dbQuery.refetch()
@@ -144,12 +150,27 @@ export default function MapLayerPage(): JSX.Element {
   )
 
   const deleteMutation = useApiMutation(
-    (id: number) => mapLayerService.delete(String(id)),
+    (code: string) => mapLayerService.delete(code),
     {
       onSuccess: () => {
         dbQuery.refetch()
         setDeleteDialogOpen(false)
         setLayerToDelete(null)
+      },
+    },
+    true
+  )
+
+  const publishMutation = useApiMutation(
+    (payload: { code: string; published: boolean }) =>
+      payload.published
+        ? mapLayerService.unpublish(payload.code)
+        : mapLayerService.publish(payload.code),
+    {
+      onSuccess: () => {
+        dbQuery.refetch()
+        setPublishDialogOpen(false)
+        setLayerToPublish(null)
       },
     },
     true
@@ -165,6 +186,11 @@ export default function MapLayerPage(): JSX.Element {
   function openDeleteDialog(mapLayer: MapLayer) {
     setLayerToDelete(mapLayer)
     setDeleteDialogOpen(true)
+  }
+
+  function openPublishDialog(mapLayer: MapLayer) {
+    setLayerToPublish(mapLayer)
+    setPublishDialogOpen(true)
   }
 
   function openAddDialog() {
@@ -186,7 +212,15 @@ export default function MapLayerPage(): JSX.Element {
   }
 
   function handleDelete() {
-    if (layerToDelete?.id != null) deleteMutation.mutate(layerToDelete.id)
+    if (layerToDelete?.code) deleteMutation.mutate(layerToDelete.code)
+  }
+
+  function handlePublish() {
+    if (!layerToPublish?.code) return
+    publishMutation.mutate({
+      code: layerToPublish.code,
+      published: Boolean(layerToPublish.geoserver_layer),
+    })
   }
 
   return (
@@ -273,6 +307,8 @@ export default function MapLayerPage(): JSX.Element {
               <TableHead>Nhóm lớp</TableHead>
               <TableHead>Kiểu</TableHead>
               <TableHead>Trạng thái</TableHead>
+              <TableHead>Công bố</TableHead>
+              <TableHead>Phạm vi</TableHead>
               <TableHead>Ngày tạo</TableHead>
               {showActions && <TableHead className="text-right">Hành động</TableHead>}
             </TableRow>
@@ -280,7 +316,7 @@ export default function MapLayerPage(): JSX.Element {
           <TableBody>
             {layers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 7 : 6} className="text-center">
+                <TableCell colSpan={showActions ? 9 : 8} className="text-center">
                   Không có dữ liệu
                 </TableCell>
               </TableRow>
@@ -304,6 +340,16 @@ export default function MapLayerPage(): JSX.Element {
                       dotClass={ACTIVE_DOT[String(layer.is_active)]}
                     />
                   </TableCell>
+                  <TableCell>
+                    <Badge variant={layer.geoserver_layer ? 'default' : 'outline'}>
+                      {layer.geoserver_layer ? 'Đã công bố' : 'Chưa công bố'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={layer.is_public ? 'secondary' : 'outline'}>
+                      {layer.is_public ? 'Công khai' : 'Nội bộ'}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{layer.created_at ? formatDate(layer.created_at) : '-'}</TableCell>
                   {showActions && (
                     <TableCell className="text-right">
@@ -326,7 +372,10 @@ export default function MapLayerPage(): JSX.Element {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                if (layer.id != null) toggleStatusMutation.mutate(layer.id)
+                                toggleStatusMutation.mutate({
+                                  code: layer.code,
+                                  isActive: Boolean(layer.is_active),
+                                })
                               }}
                               title={layer.is_active ? 'Nhấn để ngừng hoạt động' : 'Nhấn để kích hoạt'}
                             >
@@ -337,6 +386,34 @@ export default function MapLayerPage(): JSX.Element {
                               )}
                             </Button>
                           </>
+                        )}
+                        {((layer.geoserver_layer && canUnpublish) ||
+                          (!layer.geoserver_layer && canPublish)) && (
+                          <Button
+                            variant={layer.geoserver_layer ? 'outline' : 'default'}
+                            size="sm"
+                            disabled={
+                              publishMutation.isPending ||
+                              (!layer.geoserver_layer && !layer.is_active)
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openPublishDialog(layer)
+                            }}
+                            title={
+                              layer.geoserver_layer
+                                ? 'Gỡ lớp khỏi dịch vụ bản đồ'
+                                : layer.is_active
+                                  ? 'Công bố lớp lên dịch vụ bản đồ'
+                                  : 'Cần kích hoạt lớp trước khi công bố'
+                            }
+                          >
+                            {layer.geoserver_layer ? (
+                              <CloudOff className="size-4" />
+                            ) : (
+                              <CloudUpload className="size-4" />
+                            )}
+                          </Button>
                         )}
                         {canDelete && (
                           <Button
@@ -379,8 +456,9 @@ export default function MapLayerPage(): JSX.Element {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa lớp "{layerToDelete?.name}"? Hành động này không thể hoàn
-              tác.
+              Bạn có chắc chắn muốn xóa lớp "
+              {layerToDelete?.name_vi || layerToDelete?.name || layerToDelete?.code}"? Hành động
+              này không thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -391,6 +469,31 @@ export default function MapLayerPage(): JSX.Element {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? 'Đang xóa...' : 'Xóa'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {layerToPublish?.geoserver_layer ? 'Xác nhận gỡ công bố' : 'Xác nhận công bố'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {layerToPublish?.geoserver_layer
+                ? `Lớp "${layerToPublish.name_vi || layerToPublish.name || layerToPublish.code}" sẽ bị gỡ khỏi dịch vụ bản đồ và không còn hiển thị trên WebGIS.`
+                : `Lớp "${layerToPublish?.name_vi || layerToPublish?.name || layerToPublish?.code}" sẽ được publish lên dịch vụ bản đồ. Chỉ lớp có phạm vi "Công khai" mới xuất hiện với người dân.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePublish} disabled={publishMutation.isPending}>
+              {publishMutation.isPending
+                ? 'Đang xử lý...'
+                : layerToPublish?.geoserver_layer
+                  ? 'Gỡ công bố'
+                  : 'Công bố'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -5,11 +5,13 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  Download,
   ExternalLink,
   Eye,
   EyeOff,
   Image as ImageIcon,
   Layers,
+  Loader2,
 } from 'lucide-react'
 import { fireRiskService, useApiQuery, useApiMutation } from '@/service'
 import { useQueryClient } from '@tanstack/react-query'
@@ -53,6 +55,8 @@ import type {
   FireRiskSnapshot,
 } from '@/types/api'
 import FireRiskMap, { type FireRiskRasterLoadStatus } from '@/components/features/FireRiskMap'
+import GeeProcessingStatus from '@/components/features/GeeProcessingStatus'
+import AnalysisAccuracyNotice from '@/components/features/AnalysisAccuracyNotice'
 import LoadingInline from '@/components/common/LoadingInline'
 import { PaginationCustom } from '@/components/features/PaginationCustom'
 import GroundTruthCard from './GroundTruthCard'
@@ -97,9 +101,11 @@ const LEVEL_META: Record<number, { color: string; label: string }> = {
 // Ngưỡng cảnh báo cứng = 1 (xem toàn bộ). User đã yêu cầu bỏ filter phía UI,
 // query API vẫn cần param này để server pre-filter polygon nếu cần.
 const DEFAULT_MIN_RISK_LEVEL = 1
-const DISTRICT_RASTER_POLL_INTERVAL_MS = 5_000
+const ANALYSIS_POLL_INTERVAL_MS = 20_000
+const DISTRICT_RASTER_POLL_INTERVAL_MS = 15_000
 const DISTRICT_RASTER_POLL_WINDOW_MS = 5 * 60 * 1_000
 const DISTRICT_PUBLISH_POLL_WINDOW_MS = 15 * 60 * 1_000
+let fireRiskImageDownloadActive = false
 const isRasterProcessingStatus = (status?: string) =>
   ['pending', 'computing', 'exporting'].includes(String(status || '').toLowerCase())
 const ACTIVE_RASTER_INGEST_STATUSES = new Set([
@@ -115,6 +121,34 @@ const getDistrictTemporaryDownloadUrl = (district: FireRiskDistrictExport) =>
     district.geeDownloadUrl,
     district.geeGeneratedAt ?? district.completedAt
   )
+
+const getDistrictDownloadUrl = (district: FireRiskDistrictExport) =>
+  district.geoserverDownloadUrl ||
+  buildGeoserverDownloadUrl(district.geoserverLayer) ||
+  getDistrictTemporaryDownloadUrl(district)
+
+const getDistrictDownloadFilename = (
+  district: FireRiskDistrictExport,
+  analysisDate?: string | null
+) => {
+  const dateSuffix = String(analysisDate || '')
+    .slice(0, 10)
+    .replace(/-/g, '')
+  return (
+    district.downloadFilename ||
+    district.geeDownloadFilename ||
+    `fire_risk_${district.districtCode || 'kontum'}${dateSuffix ? `_${dateSuffix}` : ''}.tif`
+  )
+}
+
+async function downloadDistrictFile(
+  district: FireRiskDistrictExport,
+  analysisDate?: string | null
+): Promise<void> {
+  const url = getDistrictDownloadUrl(district)
+  if (!url) throw new Error('DISTRICT_DOWNLOAD_NOT_READY')
+  await downloadRasterFile(url, getDistrictDownloadFilename(district, analysisDate))
+}
 
 const hasDistrictSource = (district: FireRiskDistrictExport) =>
   Boolean(
@@ -354,6 +388,12 @@ export default function FireRiskPage() {
   const [expandedDistrict, setExpandedDistrict] = useState<string | null>(null)
   // Cùng cơ chế cho bảng lịch sử — mở 1 snapshot để xem chi tiết đầy đủ.
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
+  const [quickDownloadProgress, setQuickDownloadProgress] = useState<{
+    snapshotId: string
+    completed: number
+    total: number
+  } | null>(null)
+  const quickDownloadLockRef = useRef(false)
   // Layer manager state — visibility + opacity từng lớp trên map.
   const [districtVisible, setDistrictVisible] = useState(true)
   const [districtOpacity, setDistrictOpacity] = useState(0.45)
@@ -374,11 +414,20 @@ export default function FireRiskPage() {
   // Truyền `false` để bỏ qua bước export raster khi GCS chưa cấu hình → tránh
   // pipeline fail trên deployed code cũ (code cũ throw thay vì graceful).
   const refreshMutation = useApiMutation(
-    (body: { analysisDate?: string; submitExport?: boolean }) => fireRiskService.refresh(body)
+    (body: { analysisDate?: string; submitExport?: boolean }) => fireRiskService.refresh(body),
+    {},
+    false
   )
 
   const latest = latestQuery.data?.data
   const snapshot = latest?.snapshot
+  const processing = latest?.processing
+  const isPipelineBusy =
+    processing?.queue.status === 'queued' || processing?.queue.status === 'running'
+  const shouldPollProcessing =
+    isPipelineBusy ||
+    processing?.state === 'exporting' ||
+    isRasterProcessingStatus(snapshot?.status)
   const snapshotId = snapshot?.id ?? null
   const isSnapshotDone = snapshot?.status === 'completed' || snapshot?.status === 'published'
   const districtPollingRef = useRef({ snapshotId: '', startedAt: 0 })
@@ -450,6 +499,16 @@ export default function FireRiskPage() {
   const hasRasterTile = perDistrictTiles.length > 0 || Boolean(rasterTileUrl)
 
   useEffect(() => {
+    if (!shouldPollProcessing) return
+    const timer = window.setInterval(() => {
+      latestQuery.refetch()
+      mapQuery.refetch()
+      historyQuery.refetch()
+    }, ANALYSIS_POLL_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [historyQuery, latestQuery, mapQuery, shouldPollProcessing])
+
+  useEffect(() => {
     if (page > historyTotalPages) setPage(historyTotalPages)
   }, [page, historyTotalPages])
 
@@ -469,8 +528,18 @@ export default function FireRiskPage() {
     refreshMutation.mutate(
       { submitExport: false },
       {
-        onSuccess: () => {
-          toast.success('Yêu cầu đã được tiếp nhận và đang xử lý.')
+        onSuccess: (response) => {
+          const run = response?.data?.run
+          const queueState = run?.processing?.queue
+          if (run?.deduplicated) {
+            toast.info('Yêu cầu này đã có trong hàng chờ xử lý, hệ thống không tạo thêm lượt chạy.')
+          } else {
+            toast.success(
+              queueState?.status === 'queued' && queueState?.position
+                ? `Yêu cầu đã vào hàng chờ xử lý ở vị trí ${queueState.position}.`
+                : 'Yêu cầu đã được tiếp nhận và đang xử lý.'
+            )
+          }
           setRefreshDialogOpen(false)
           // BUG-FIX (2026-07-19): trước đây chỉ refetch `latestQuery` → history
           // table không thấy row mới cho tới khi user F5. Giờ refetch cả 3 query
@@ -482,12 +551,82 @@ export default function FireRiskPage() {
             historyQuery.refetch()
           }, 2000)
         },
-        onError: () => {
-          toast.error('Không thể chạy lại phân tích. Vui lòng thử lại.')
+        onError: (error) => {
+          if (!error?.body?.message) {
+            toast.error('Không thể chạy lại phân tích. Vui lòng thử lại.')
+          }
           setRefreshDialogOpen(false)
         },
       }
     )
+  }
+
+  const onQuickDownloadDistricts = async (item: FireRiskHistoryItem) => {
+    if (quickDownloadLockRef.current || fireRiskImageDownloadActive) {
+      toast.info('Một lượt tải ảnh huyện đang được thực hiện. Vui lòng chờ hoàn tất.')
+      return
+    }
+
+    const snapshotId = String(item.id)
+    const analysisDate = item.analysis_date || item.analysisDate
+    quickDownloadLockRef.current = true
+    fireRiskImageDownloadActive = true
+    setQuickDownloadProgress({ snapshotId, completed: 0, total: 0 })
+
+    try {
+      const response = await fireRiskService.getDistrictExports(item.id)
+      const payload = response.data
+      const districts = payload?.districts ?? []
+      const availableDistricts = districts.filter((district) =>
+        Boolean(getDistrictDownloadUrl(district))
+      )
+      const expectedTotal = resolveDistrictTotal(payload, districts) || availableDistricts.length
+
+      if (!availableDistricts.length) {
+        toast.info(`Ngày ${formatDate(analysisDate)} chưa có ảnh huyện để tải.`)
+        return
+      }
+
+      setQuickDownloadProgress({ snapshotId, completed: 0, total: expectedTotal })
+      let downloadedCount = 0
+      let failedCount = 0
+
+      for (const district of availableDistricts) {
+        try {
+          await downloadDistrictFile(district, analysisDate)
+          downloadedCount += 1
+        } catch {
+          failedCount += 1
+        } finally {
+          setQuickDownloadProgress({
+            snapshotId,
+            completed: downloadedCount + failedCount,
+            total: expectedTotal,
+          })
+        }
+      }
+
+      const unavailableCount = Math.max(0, expectedTotal - availableDistricts.length)
+      const notDownloadedCount = unavailableCount + failedCount
+      if (downloadedCount === expectedTotal && notDownloadedCount === 0) {
+        toast.success(`Đã tải đủ ${downloadedCount}/${expectedTotal} huyện.`)
+      } else if (downloadedCount > 0) {
+        toast.warning(
+          `Đã tải ${downloadedCount}/${expectedTotal} huyện; ${notDownloadedCount} huyện chưa có ảnh hoặc tải chưa thành công.`
+        )
+      } else {
+        toast.error(`Không thể tải ảnh huyện của ngày ${formatDate(analysisDate)}.`)
+      }
+    } catch (error) {
+      const requestError = error as { body?: { message?: string } }
+      if (!requestError.body?.message) {
+        toast.error(`Không thể lấy danh sách ảnh huyện của ngày ${formatDate(analysisDate)}.`)
+      }
+    } finally {
+      quickDownloadLockRef.current = false
+      fireRiskImageDownloadActive = false
+      setQuickDownloadProgress(null)
+    }
   }
 
   // NOTE — nguồn cho bảng huyện:
@@ -571,9 +710,15 @@ export default function FireRiskPage() {
           <Button
             className="w-full md:w-auto md:shrink-0"
             onClick={() => setRefreshDialogOpen(true)}
-            disabled={isRefreshing}
+            disabled={isRefreshing || isPipelineBusy}
           >
-            {isRefreshing ? 'Đang phân tích...' : 'Phân tích lại'}
+            {isRefreshing
+              ? 'Đang gửi yêu cầu...'
+              : isPipelineBusy
+                ? processing?.queue.status === 'queued'
+                  ? 'Đang chờ cập nhật'
+                  : 'Đang cập nhật'
+                : 'Cập nhật dữ liệu'}
           </Button>
         )}
       </div>
@@ -590,22 +735,22 @@ export default function FireRiskPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isRefreshing ? 'Đang phân tích cháy rừng...' : 'Phân tích lại dữ liệu cháy rừng?'}
+              {isRefreshing ? 'Đang cập nhật dữ liệu...' : 'Cập nhật dữ liệu cháy rừng?'}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 {isRefreshing ? (
                   <>
-                    <p>Hệ thống đang cập nhật dữ liệu nguy cơ cháy cho toàn tỉnh.</p>
+                    <p>Hệ thống đang tạo số liệu và bản đồ mới cho toàn tỉnh.</p>
                     <p className="text-muted-foreground text-xs">
-                      Bạn có thể đóng cửa sổ này sau khi hoàn tất — kết quả tự cập nhật.
+                      Bạn có thể đóng cửa sổ này. Kết quả sẽ tự hiển thị khi hoàn tất.
                     </p>
                   </>
                 ) : (
                   <>
                     <p>
-                      Hệ thống sẽ dùng dữ liệu mới nhất để tính lại cấp nguy cơ cho toàn tỉnh và
-                      từng huyện. Thời gian dự kiến 3-5 phút.
+                      Hệ thống sẽ dùng dữ liệu mới nhất để cập nhật cấp nguy cơ cho toàn tỉnh và
+                      từng huyện.
                     </p>
                     <p className="text-muted-foreground text-xs">
                       Dữ liệu hiện tại vẫn được giữ nguyên cho đến khi kết quả mới hoàn tất.
@@ -618,11 +763,15 @@ export default function FireRiskPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isRefreshing}>Huỷ</AlertDialogCancel>
             <AlertDialogAction onClick={onConfirmRefresh} disabled={isRefreshing}>
-              {isRefreshing ? 'Đang xử lý...' : 'Bắt đầu phân tích'}
+              {isRefreshing ? 'Đang cập nhật...' : 'Bắt đầu cập nhật'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <GeeProcessingStatus processing={processing} />
+
+      <AnalysisAccuracyNotice resultLabel="diện tích và cấp cảnh báo" />
 
       {/* ── Ground truth (collapsible) ─────────────── */}
       <GroundTruthCard />
@@ -668,14 +817,23 @@ export default function FireRiskPage() {
                 />
               </div>
 
-              {latest?.stale && (
-                <div className="border-warning/30 bg-warning/10 text-warning rounded-md border p-3 text-sm">
-                  Dữ liệu đã cũ. Nên chạy phân tích lại để cập nhật bản đồ.
+              {latest?.stale && !isPipelineBusy && (
+                <div
+                  className="border-warning/30 bg-warning/10 rounded-md border p-3"
+                  role="status"
+                >
+                  <p className="text-warning text-sm font-medium">
+                    Bản đồ chưa có dữ liệu mới nhất
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs leading-5">
+                    Dữ liệu đang hiển thị được cập nhật ngày {formatDate(snapshot.analysisDate)}.
+                    Chọn “Cập nhật dữ liệu” để làm mới.
+                  </p>
                 </div>
               )}
-              {latest?.computing && (
+              {latest?.computing && !processing && (
                 <div className="rounded-md border border-sky-400 bg-sky-50 p-3 text-sm text-sky-800">
-                  Đang tạo kết quả mới. Bản đồ hiện vẫn dùng dữ liệu gần nhất.
+                  Đang cập nhật dữ liệu mới. Bạn vẫn có thể xem bản đồ hiện tại trong lúc chờ.
                 </div>
               )}
             </>
@@ -766,7 +924,7 @@ export default function FireRiskPage() {
                   <TableHead>Tên huyện</TableHead>
                   <TableHead>Cấp cao nhất</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Diện tích (ha)</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">S2 phủ</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Ảnh hợp lệ</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -848,10 +1006,11 @@ export default function FireRiskPage() {
                   <TableHead className="whitespace-nowrap">Ngày phân tích</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Cấp cao nhất</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Cấp TB</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">S2 phủ</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Cấp trung bình</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Ảnh hợp lệ</TableHead>
                   <TableHead className="whitespace-nowrap">Bản đồ</TableHead>
                   <TableHead className="whitespace-nowrap">Cập nhật lúc</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Tải theo huyện</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -878,6 +1037,11 @@ export default function FireRiskPage() {
                           : districtArtifacts.available
                             ? 'district-sources'
                             : 'none'
+                  const canQuickDownload = ['completed', 'published'].includes(
+                    String(h.status || '').toLowerCase()
+                  )
+                  const rowDownloadProgress =
+                    quickDownloadProgress?.snapshotId === rowKey ? quickDownloadProgress : null
                   return (
                     <Fragment key={h.id}>
                       <TableRow
@@ -956,10 +1120,43 @@ export default function FireRiskPage() {
                         <TableCell className="text-xs whitespace-nowrap">
                           {h.computed_at ? formatDateTime(h.computed_at) : '—'}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="outline"
+                            className="h-8 whitespace-nowrap"
+                            disabled={!canQuickDownload || quickDownloadProgress !== null}
+                            title={
+                              canQuickDownload
+                                ? `Tải ảnh 10 huyện của ngày ${formatDate(h.analysis_date || h.analysisDate)}`
+                                : 'Có thể tải sau khi kết quả phân tích hoàn thành'
+                            }
+                            aria-label={`Tải ảnh 10 huyện của ngày ${formatDate(h.analysis_date || h.analysisDate)}`}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void onQuickDownloadDistricts(h)
+                            }}
+                          >
+                            {rowDownloadProgress ? (
+                              <>
+                                <Loader2 size={13} className="mr-1.5 animate-spin" />
+                                {rowDownloadProgress.total > 0
+                                  ? `Đang tải ${rowDownloadProgress.completed}/${rowDownloadProgress.total}`
+                                  : 'Đang chuẩn bị...'}
+                              </>
+                            ) : (
+                              <>
+                                <Download size={13} className="mr-1.5" />
+                                Tải 10 huyện
+                              </>
+                            )}
+                          </Button>
+                        </TableCell>
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
-                          <TableCell colSpan={8} className="py-3">
+                          <TableCell colSpan={9} className="py-3">
                             <SnapshotDetailPanel item={h} />
                           </TableCell>
                         </TableRow>
@@ -969,7 +1166,7 @@ export default function FireRiskPage() {
                 })}
                 {!history.length && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-muted-foreground text-center">
+                    <TableCell colSpan={9} className="text-muted-foreground text-center">
                       Chưa có bản ghi.
                     </TableCell>
                   </TableRow>
@@ -1045,6 +1242,12 @@ function FireRiskLayerManager({
   onHeatOpacityChange: (v: number) => void
 }) {
   const [open, setOpen] = useState(true)
+  const [districtDownloadState, setDistrictDownloadState] = useState<
+    | { kind: 'batch'; completed: number; total: number }
+    | { kind: 'district'; districtCode: string }
+    | null
+  >(null)
+  const districtDownloadLockRef = useRef(false)
   const geoserverDownloadUrl =
     snapshot?.geoserverDownloadUrl || buildGeoserverDownloadUrl(snapshot?.geoserverLayer)
   const temporaryDownloadStatus = getTemporaryRasterUrlStatus(
@@ -1055,6 +1258,78 @@ function FireRiskLayerManager({
     geoserverDownloadUrl || getUsableTemporaryRasterUrl(snapshot?.geeDownloadUrl, geeGeneratedAt)
   const districtArtifacts = districtExports?.districts ?? []
   const districtTotal = resolveDistrictTotal(districtExports, districtArtifacts)
+  const availableDistricts = districtArtifacts.filter((district) =>
+    Boolean(getDistrictDownloadUrl(district))
+  )
+
+  const downloadOneDistrict = async (district: FireRiskDistrictExport) => {
+    if (districtDownloadLockRef.current || fireRiskImageDownloadActive) {
+      toast.info('Một lượt tải ảnh đang được thực hiện. Vui lòng chờ hoàn tất.')
+      return
+    }
+
+    const districtCode = String(district.districtCode || district.id)
+    districtDownloadLockRef.current = true
+    fireRiskImageDownloadActive = true
+    setDistrictDownloadState({ kind: 'district', districtCode })
+    try {
+      await downloadDistrictFile(district, snapshot?.analysisDate)
+      toast.success(`Đã tải ảnh ${district.districtName || district.districtCode}.`)
+    } catch {
+      toast.error(`Không thể tải ảnh ${district.districtName || district.districtCode}.`)
+    } finally {
+      districtDownloadLockRef.current = false
+      fireRiskImageDownloadActive = false
+      setDistrictDownloadState(null)
+    }
+  }
+
+  const downloadAllDistricts = async () => {
+    if (districtDownloadLockRef.current || fireRiskImageDownloadActive) {
+      toast.info('Một lượt tải ảnh đang được thực hiện. Vui lòng chờ hoàn tất.')
+      return
+    }
+    if (!availableDistricts.length) {
+      toast.info('Chưa có ảnh huyện nào sẵn sàng để tải.')
+      return
+    }
+
+    districtDownloadLockRef.current = true
+    fireRiskImageDownloadActive = true
+    setDistrictDownloadState({ kind: 'batch', completed: 0, total: districtTotal })
+    let downloadedCount = 0
+    let failedCount = 0
+    try {
+      for (const district of availableDistricts) {
+        try {
+          await downloadDistrictFile(district, snapshot?.analysisDate)
+          downloadedCount += 1
+        } catch {
+          failedCount += 1
+        } finally {
+          setDistrictDownloadState({
+            kind: 'batch',
+            completed: downloadedCount + failedCount,
+            total: districtTotal,
+          })
+        }
+      }
+
+      const unavailableCount = Math.max(0, districtTotal - availableDistricts.length)
+      const notDownloadedCount = unavailableCount + failedCount
+      if (downloadedCount === districtTotal && notDownloadedCount === 0) {
+        toast.success(`Đã tải đủ ${downloadedCount}/${districtTotal} huyện.`)
+      } else {
+        toast.warning(
+          `Đã tải ${downloadedCount}/${districtTotal} huyện; ${notDownloadedCount} huyện chưa có ảnh hoặc tải chưa thành công.`
+        )
+      }
+    } finally {
+      districtDownloadLockRef.current = false
+      fireRiskImageDownloadActive = false
+      setDistrictDownloadState(null)
+    }
+  }
 
   // Tải GeoTIFF bản đồ nhiệt. Ưu tiên `geoserverDownloadUrl` (WCS GetCoverage,
   // persistent, full-resolution) trước `geeDownloadUrl` tạm thời của GEE.
@@ -1062,13 +1337,20 @@ function FireRiskLayerManager({
   // trước đây Windows Explorer prompt "invalid archive" khi double-click).
   const downloadHeatRaster = async () => {
     if (!downloadUrl) return
+    if (districtDownloadLockRef.current || fireRiskImageDownloadActive) {
+      toast.info('Một lượt tải ảnh đang được thực hiện. Vui lòng chờ hoàn tất.')
+      return
+    }
     const filename =
       snapshot?.downloadFilename ||
       `fire_risk_kontum_${(snapshot?.analysisDate || '').slice(0, 10).replace(/-/g, '')}.tif`
+    fireRiskImageDownloadActive = true
     try {
       await downloadRasterFile(downloadUrl, filename)
     } catch {
       toast.error('Không thể tải dữ liệu cảnh báo cháy rừng.')
+    } finally {
+      fireRiskImageDownloadActive = false
     }
   }
 
@@ -1174,7 +1456,128 @@ function FireRiskLayerManager({
               <LoadingInline size="small" />
               <span>Đang tải danh sách ảnh theo huyện...</span>
             </div>
-          ) : districtArtifacts.length > 0 ? null : (
+          ) : districtArtifacts.length > 0 ? (
+            <div className="space-y-2 rounded-md border p-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">Ảnh tải xuống theo huyện</p>
+                  <p className="text-muted-foreground text-xs">
+                    {availableDistricts.length}/{districtTotal} huyện đã sẵn sàng
+                  </p>
+                </div>
+                <Badge variant="outline">
+                  {availableDistricts.length}/{districtTotal}
+                </Badge>
+              </div>
+
+              <Button
+                type="button"
+                size="xs"
+                variant="outline"
+                className="h-8 w-full"
+                disabled={districtDownloadState !== null || availableDistricts.length === 0}
+                onClick={() => void downloadAllDistricts()}
+              >
+                {districtDownloadState?.kind === 'batch' ? (
+                  <>
+                    <Loader2 size={13} className="mr-1.5 animate-spin" />
+                    Đang tải {districtDownloadState.completed}/{districtDownloadState.total}
+                  </>
+                ) : (
+                  <>
+                    <Download size={13} className="mr-1.5" />
+                    {availableDistricts.length === districtTotal
+                      ? `Tải đủ ${districtTotal} huyện`
+                      : `Tải ${availableDistricts.length}/${districtTotal} huyện đã sẵn sàng`}
+                  </>
+                )}
+              </Button>
+
+              <div className="max-h-56 space-y-1 overflow-y-auto">
+                {districtArtifacts.map((district) => {
+                  const districtCode = String(district.districtCode || district.id)
+                  const canDownload = Boolean(getDistrictDownloadUrl(district))
+                  const isDownloading =
+                    districtDownloadState?.kind === 'district' &&
+                    districtDownloadState.districtCode === districtCode
+                  const stableLayer = normalizeGeoserverLayer(district.geoserverLayer)
+                  const previewUrl = stableLayer ? buildGeoserverPreviewUrl(stableLayer) : null
+                  const temporaryStatus = getTemporaryRasterUrlStatus(
+                    district.geeDownloadUrl,
+                    district.geeGeneratedAt ?? district.completedAt
+                  )
+                  const unavailableLabel =
+                    temporaryStatus === 'expired'
+                      ? 'Liên kết đã hết hạn'
+                      : isRasterProcessingStatus(district.status)
+                        ? 'Đang chuẩn bị'
+                        : district.status === 'failed'
+                          ? 'Chưa hoàn tất'
+                          : 'Chưa có ảnh'
+
+                  return (
+                    <div
+                      key={districtCode}
+                      className="hover:bg-muted/40 flex items-center gap-2 rounded-md border p-1.5 text-xs"
+                    >
+                      <span
+                        className={`h-2 w-2 shrink-0 rounded-full ${
+                          canDownload
+                            ? 'bg-success'
+                            : isRasterProcessingStatus(district.status)
+                              ? 'bg-info'
+                              : district.status === 'failed'
+                                ? 'bg-destructive'
+                                : 'bg-muted-foreground'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0 flex-1 truncate">
+                        {district.districtName || district.districtCode}
+                      </span>
+
+                      {previewUrl ? (
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant="ghost"
+                          asChild
+                          title={`Mở xem trước ${district.districtName || district.districtCode}`}
+                          aria-label={`Mở xem trước ${district.districtName || district.districtCode}`}
+                        >
+                          <a href={previewUrl} target="_blank" rel="noreferrer noopener">
+                            <ExternalLink size={12} />
+                          </a>
+                        </Button>
+                      ) : null}
+
+                      {canDownload ? (
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant="ghost"
+                          disabled={districtDownloadState !== null}
+                          onClick={() => void downloadOneDistrict(district)}
+                          title={`Tải ảnh ${district.districtName || district.districtCode}`}
+                          aria-label={`Tải ảnh ${district.districtName || district.districtCode}`}
+                        >
+                          {isDownloading ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Download size={12} />
+                          )}
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground shrink-0 text-[10px]">
+                          {unavailableLabel}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
             <p className="text-muted-foreground rounded-md border p-2 text-xs">
               Chưa có ảnh theo huyện cho lần phân tích này.
             </p>
@@ -1296,12 +1699,12 @@ function Stat({
 
 function StatusBadge({ status }: { status: string }) {
   const labels: Record<string, string> = {
-    completed: 'Hoàn thành',
+    completed: 'Đã cập nhật',
     published: 'Đã công bố',
-    computing: 'Đang phân tích',
-    exporting: 'Đang tạo bản đồ',
-    pending: 'Đang chờ',
-    failed: 'Thất bại',
+    computing: 'Đang cập nhật',
+    exporting: 'Đang hoàn thiện bản đồ',
+    pending: 'Đang chờ cập nhật',
+    failed: 'Chưa hoàn tất',
     cancelled: 'Đã hủy',
   }
   const variant: 'default' | 'secondary' | 'destructive' | 'outline' =
@@ -1363,7 +1766,7 @@ function DistrictLevelBreakdown({
                 className="ring-foreground/25 inline-block h-2 w-2 shrink-0 rounded-full ring-1 ring-inset"
                 style={{ backgroundColor: meta?.color }}
               />
-              {meta?.label ?? `Cấp ${c.level}`} · {formatHaShort(c.ha)} ha
+              {meta?.label ?? `Cấp ${c.level}`} · {formatHaShort(c.ha)}
             </span>
           )
         })}
@@ -1540,7 +1943,7 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
     }
   }
 
-  // Poll job status mỗi 5s. DỪNG khi terminal — trước đây refetchInterval là
+  // Poll job status mỗi 15s. DỪNG khi terminal — trước đây refetchInterval là
   // số fix nên poll mãi kể cả sau failed → UI nháy + server spam log.
   const jobQuery = useApiQuery(
     ['raster-ingest-job', ingestJobId],
@@ -1549,7 +1952,9 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
       enabled: ingestJobId != null,
       refetchInterval: (data: any) => {
         const st = data?.data?.data?.status ?? data?.data?.status
-        return st && ['completed', 'failed', 'cancelled'].includes(st) ? false : 5000
+        return st && ['completed', 'failed', 'cancelled'].includes(st)
+          ? false
+          : DISTRICT_RASTER_POLL_INTERVAL_MS
       },
       refetchOnWindowFocus: false,
     } as any,
@@ -1843,7 +2248,7 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
                   className="ring-foreground/25 inline-block h-2 w-2 shrink-0 rounded-full ring-1 ring-inset"
                   style={{ backgroundColor: color }}
                 />
-                {label} · {formatHaShort(ha)} ha ({pct.toFixed(1)}%)
+                {label} · {formatHaShort(ha)} ({pct.toFixed(1)}%)
               </span>
             )
           })}
@@ -1888,7 +2293,7 @@ function RiskLevelBar({ dist }: { dist: Record<string, number> }) {
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{LEVEL_META[l].label}</span>
                 <span className="text-muted-foreground tabular-nums">
-                  {formatHaShort(ha)} ha ({pct.toFixed(1)}%)
+                  {formatHaShort(ha)} ({pct.toFixed(1)}%)
                 </span>
               </span>
             </div>
@@ -2019,14 +2424,25 @@ function formatHa(v?: number | string | null): string {
   if (v == null || v === '') return '—'
   const n = Number(v)
   if (!isFinite(n)) return '—'
-  return `${n.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} ha`
+  // Từ 100 ha trở lên đổi sang km² (1 km² = 100 ha) — thống nhất với client.
+  if (Math.abs(n) >= 100) {
+    return `${(n / 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km²`
+  }
+  return `${n.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} ha`
 }
 
+// Compact variant dùng cho badge/legend hẹp — luôn nhả kèm đơn vị (km²/ha) để
+// caller không phải append thủ công. Không dùng suffix `k`/`M` nữa vì đã
+// chuyển sang km² khi >= 100 ha nên số hiếm khi quá lớn.
 function formatHaShort(v?: number | string | null): string {
   if (v == null || v === '') return '—'
   const n = Number(v)
   if (!isFinite(n)) return '—'
-  return n.toLocaleString('vi-VN', { maximumFractionDigits: 0 })
+  if (Math.abs(n) >= 100) {
+    const km2 = n / 100
+    return `${km2.toLocaleString('vi-VN', { maximumFractionDigits: km2 >= 100 ? 0 : 1 })} km²`
+  }
+  return `${Math.round(n).toLocaleString('vi-VN')} ha`
 }
 
 /**

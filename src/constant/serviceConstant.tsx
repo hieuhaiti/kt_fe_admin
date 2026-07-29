@@ -33,6 +33,7 @@ export const serviceMapImagePath = '/pdf-maps'
 export const serviceMapLayerPath = '/map/layers'
 export const serviceMapImportJobPath = '/map/import-jobs'
 export const serviceMapRasterHarvestPath = '/map/rasters'
+export const serviceLayerSeriesPath = '/map/layer-groups'
 
 // Map APIs (third-party sharing)
 export const serviceMapApiPath = '/map-apis'
@@ -60,7 +61,7 @@ export const serviceSatellitePath = '/satellite'
 // Forest Classification
 export const serviceForestClassificationPath = '/forest-classification'
 
-// MobileGIS field measurements
+// Field measurements
 export const serviceFieldMeasurementPath = '/field-measurements'
 export const serviceMonitoredAreaPath = '/monitored-areas'
 

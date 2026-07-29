@@ -16,6 +16,8 @@ import {
 import { mapLayerService, useApiMutation } from '@/service'
 import { toast } from 'react-toastify'
 import { CheckCircle2, Download, FileJson, Info } from 'lucide-react'
+import { hasPerm } from '@/lib/permissions'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 const categoryOptions = [
   { value: 'forest', label: 'Rừng' },
@@ -77,9 +79,13 @@ function downloadGeoJsonSample() {
 }
 
 export default function ImportGeoJsonPage(): JSX.Element {
+  const user = useAuthStore((state) => state.user)
+  const canPublish = hasPerm(user, 'map_layers', 'publish')
   const [category, setCategory] = useState<string>('forest')
   const [name, setName] = useState<string>('')
-  const [isActive, setIsActive] = useState<'true' | 'false'>('true')
+  const [publishAfterImport, setPublishAfterImport] = useState<'true' | 'false'>(
+    canPublish ? 'true' : 'false'
+  )
   const [file, setFile] = useState<File | null>(null)
   const [previewGeoJson, setPreviewGeoJson] = useState<GeoJSON.GeoJSON | null>(null)
   const [previewError, setPreviewError] = useState<string>('')
@@ -90,7 +96,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
       onSuccess: () => {
         setName('')
         setCategory('forest')
-        setIsActive('true')
+        setPublishAfterImport(canPublish ? 'true' : 'false')
         setFile(null)
         setPreviewGeoJson(null)
         setPreviewError('')
@@ -156,8 +162,8 @@ export default function ImportGeoJsonPage(): JSX.Element {
     fd.append('srid_input', '4326')
     fd.append('category', category)
     fd.append('layer_kind', 'overlay')
-    fd.append('is_public', 'false')
-    fd.append('auto_publish', isActive)
+    fd.append('is_public', publishAfterImport)
+    fd.append('auto_publish', publishAfterImport)
 
     importMutation.mutate(fd)
   }
@@ -202,15 +208,27 @@ export default function ImportGeoJsonPage(): JSX.Element {
 
             <div className="space-y-2">
               <Label>Trạng thái sau import</Label>
-              <Select value={isActive} onValueChange={(v) => setIsActive(v as 'true' | 'false')}>
+              <Select
+                value={publishAfterImport}
+                onValueChange={(v) => setPublishAfterImport(v as 'true' | 'false')}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="true">Tự công bố sau khi nhập thành công</SelectItem>
+                  {canPublish && (
+                    <SelectItem value="true">
+                      Công khai trên WebGIS sau khi nhập thành công
+                    </SelectItem>
+                  )}
                   <SelectItem value="false">Chỉ tạo lớp, chưa công bố</SelectItem>
                 </SelectContent>
               </Select>
+              {!canPublish && (
+                <p className="text-muted-foreground text-xs">
+                  Tài khoản hiện tại không có quyền công bố lớp lên WebGIS.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -240,7 +258,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
                 onClick={() => {
                   setName('')
                   setCategory('forest')
-                  setIsActive('true')
+                  setPublishAfterImport(canPublish ? 'true' : 'false')
                   setFile(null)
                   setPreviewGeoJson(null)
                   setPreviewError('')

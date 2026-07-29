@@ -81,7 +81,7 @@ export default function RemoteSensingPage() {
   )
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="flex-1 space-y-6 overflow-y-auto p-6">
       <div>
         <h1 className="text-2xl font-bold">Viễn thám / Ảnh vệ tinh</h1>
         <p className="text-muted-foreground text-sm">

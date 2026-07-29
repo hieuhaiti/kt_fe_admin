@@ -41,10 +41,15 @@ function getAnonymousId() {
 function toNeutralUiMessage(value: unknown): unknown {
   if (typeof value !== 'string') return value
   return value
-    .replace(/Google\s+Earth\s+Engine/gi, 'nguồn xử lý ảnh')
+    .replace(/Google\s+Earth\s+Engine/gi, 'hệ thống xử lý')
     .replace(/\bGeoServer\b/gi, 'dịch vụ bản đồ')
     .replace(/\bMinIO\b/gi, 'kho dữ liệu')
-    .replace(/\bGEE\b/gi, 'nguồn xử lý ảnh')
+    .replace(/\bGeoTIFF\b/gi, 'dữ liệu bản đồ')
+    .replace(/\bCOG\b/gi, 'dữ liệu bản đồ')
+    .replace(/\bWMS\b/gi, 'dịch vụ bản đồ')
+    .replace(/\bWCS\b/gi, 'dịch vụ tải bản đồ')
+    .replace(/\braster\b/gi, 'dữ liệu bản đồ')
+    .replace(/\bGEE\b/gi, 'hệ thống xử lý')
 }
 
 function neutralizeApiMessages(body: any) {

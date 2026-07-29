@@ -285,7 +285,7 @@ export default function MonitoredAreasPage() {
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
           <DialogTitle>Thêm khu vực theo dõi</DialogTitle>
           <DialogDescription>
-            Tạo vùng tham chiếu để liên kết các phiên đo MobileGIS
+            Tạo khu vực tham chiếu để liên kết các phiên đo ngoài hiện trường
           </DialogDescription>
           <form
             onSubmit={form.handleSubmit((values) => createMutation.mutate(values))}

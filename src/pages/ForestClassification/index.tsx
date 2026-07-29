@@ -71,6 +71,12 @@ import type {
   ForestClassLatestData,
 } from '@/types/api'
 import ForestMap, { type RasterLoadStatus } from '@/components/features/ForestMap'
+import GeeProcessingStatus from '@/components/features/GeeProcessingStatus'
+import AnalysisAccuracyNotice from '@/components/features/AnalysisAccuracyNotice'
+import {
+  ForestAnalysisPeriodNotice,
+  ForestComparisonPeriodNotice,
+} from '@/components/features/ForestAnalysisPeriodNotice'
 import LoadingInline from '@/components/common/LoadingInline'
 import { PaginationCustom } from '@/components/features/PaginationCustom'
 import ForestGroundTruthCard from './ForestGroundTruthCard'
@@ -129,15 +135,23 @@ const CLASS_HELP: Record<number, string> = {
   11: 'Gồm trảng cỏ, cây bụi thấp và đất khoanh nuôi tái sinh chưa đạt tiêu chí thành rừng.',
 }
 
+// Từ 100 ha trở lên đổi sang km² (1 km² = 100 ha) — thống nhất với client.
 const formatHa = (v?: number | null) => {
   if (v == null || !Number.isFinite(v)) return '—'
-  return `${Math.round(v).toLocaleString('vi')} ha`
+  if (Math.abs(v) >= 100) {
+    return `${(v / 100).toLocaleString('vi', { maximumFractionDigits: 2 })} km²`
+  }
+  return `${v.toLocaleString('vi', { maximumFractionDigits: 1 })} ha`
 }
+// Compact variant dùng cho ô bảng/badge hẹp — luôn nhả kèm đơn vị (km²/ha) để
+// caller không phải append thủ công.
 const formatHaShort = (v?: number | null) => {
   if (v == null || !Number.isFinite(v)) return '—'
-  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
-  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(1)}k`
-  return Math.round(v).toLocaleString('vi')
+  if (Math.abs(v) >= 100) {
+    const km2 = v / 100
+    return `${km2.toLocaleString('vi', { maximumFractionDigits: km2 >= 100 ? 0 : 1 })} km²`
+  }
+  return `${Math.round(v).toLocaleString('vi')} ha`
 }
 const formatPct = (v?: number | null, decimals = 1) => {
   if (v == null || !Number.isFinite(v)) return '—'
@@ -150,7 +164,7 @@ const formatAreaChange = (metric?: ForestClassAreaComparisonMetric | null) => {
     metric.changePct == null
       ? ''
       : ` (${metric.changePct > 0 ? '+' : ''}${metric.changePct.toFixed(1)}%)`
-  return `${sign}${Math.round(metric.deltaHa).toLocaleString('vi')} ha${pct}`
+  return `${sign}${formatHa(metric.deltaHa)}${pct}`
 }
 const formatPeriod = (year: number, month: number) => `${year}-${String(month).padStart(2, '0')}`
 const isSamePeriod = (
@@ -163,6 +177,30 @@ const isSamePeriod = (
     Number(first.year) === Number(second.year) &&
     Number(first.month) === Number(second.month)
   )
+const getPeriodOrdinal = (period: Pick<ForestClassHistoryItem, 'year' | 'month'>) =>
+  Number(period.year) * 12 + Number(period.month) - 1
+
+function findRecommendedReferencePeriod(
+  periods: ForestClassHistoryItem[],
+  current?: ForestClassHistoryItem | null
+) {
+  if (!current) return periods[1] ?? null
+
+  const sameMonthLastYear = periods.find(
+    (item) =>
+      Number(item.year) === Number(current.year) - 1 && Number(item.month) === Number(current.month)
+  )
+  if (sameMonthLastYear) return sameMonthLastYear
+
+  const currentOrdinal = getPeriodOrdinal(current)
+  return (
+    periods
+      .filter((item) => getPeriodOrdinal(item) < currentOrdinal)
+      .sort((first, second) => getPeriodOrdinal(second) - getPeriodOrdinal(first))[0] ??
+    periods.find((item) => !isSamePeriod(item, current)) ??
+    null
+  )
+}
 
 function createAreaComparison(
   currentHa: number,
@@ -260,7 +298,8 @@ function buildSelectedPeriodComparison(
 
 const MIN_ANALYSIS_YEAR = 2015
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1)
-const DISTRICT_RASTER_POLL_INTERVAL_MS = 5_000
+const ANALYSIS_POLL_INTERVAL_MS = 20_000
+const DISTRICT_RASTER_POLL_INTERVAL_MS = 15_000
 const DISTRICT_RASTER_POLL_WINDOW_MS = 5 * 60 * 1_000
 const DISTRICT_PUBLISH_POLL_WINDOW_MS = 15 * 60 * 1_000
 const isRasterProcessingStatus = (status?: string) =>
@@ -278,6 +317,22 @@ const getDistrictTemporaryDownloadUrl = (district: ForestClassDistrictExport) =>
     district.geeDownloadUrl,
     district.geeGeneratedAt ?? district.completedAt
   )
+
+const getDistrictDownloadUrl = (district: ForestClassDistrictExport) =>
+  district.geoserverDownloadUrl ||
+  buildGeoserverDownloadUrl(district.geoserverLayer) ||
+  getDistrictTemporaryDownloadUrl(district)
+
+const getDistrictDownloadFilename = (district: ForestClassDistrictExport) =>
+  district.downloadFilename ||
+  district.geeDownloadFilename ||
+  `forest_class_${district.districtCode || 'kontum'}.tif`
+
+async function downloadDistrictFile(district: ForestClassDistrictExport): Promise<void> {
+  const url = getDistrictDownloadUrl(district)
+  if (!url) throw new Error('DISTRICT_DOWNLOAD_NOT_READY')
+  await downloadRasterFile(url, getDistrictDownloadFilename(district))
+}
 
 const hasDistrictSource = (district: ForestClassDistrictExport) =>
   Boolean(
@@ -377,18 +432,24 @@ function StatusBadge({ status }: { status?: string }) {
   const s = String(status || '').toLowerCase()
   const map: Record<string, { label: string; className: string }> = {
     completed: {
-      label: 'Hoàn thành',
+      label: 'Đã cập nhật',
       className: 'bg-emerald-100 text-emerald-800 border-emerald-300',
     },
     published: {
       label: 'Đã công bố',
       className: 'bg-emerald-200 text-emerald-900 border-emerald-400',
     },
-    computing: { label: 'Đang phân tích', className: 'bg-sky-100 text-sky-800 border-sky-300' },
-    exporting: { label: 'Đang tạo bản đồ', className: 'bg-sky-100 text-sky-800 border-sky-300' },
-    pending: { label: 'Đang chờ', className: 'bg-slate-100 text-slate-800 border-slate-300' },
+    computing: { label: 'Đang cập nhật', className: 'bg-sky-100 text-sky-800 border-sky-300' },
+    exporting: {
+      label: 'Đang hoàn thiện bản đồ',
+      className: 'bg-sky-100 text-sky-800 border-sky-300',
+    },
+    pending: {
+      label: 'Đang chờ cập nhật',
+      className: 'bg-slate-100 text-slate-800 border-slate-300',
+    },
     cancelled: { label: 'Đã hủy', className: 'bg-slate-100 text-slate-800 border-slate-300' },
-    failed: { label: 'Thất bại', className: 'bg-red-100 text-red-800 border-red-300' },
+    failed: { label: 'Chưa hoàn tất', className: 'bg-red-100 text-red-800 border-red-300' },
   }
   const meta = map[s] || {
     label: status ? 'Chưa xác định' : '—',
@@ -418,6 +479,12 @@ export default function ForestClassificationPage() {
   const [analysisYear, setAnalysisYear] = useState(latestAllowedYear)
   const [analysisMonth, setAnalysisMonth] = useState(latestAllowedMonth)
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null)
+  const [quickDownloadProgress, setQuickDownloadProgress] = useState<{
+    snapshotId: string
+    completed: number
+    total: number
+  } | null>(null)
+  const quickDownloadLockRef = useRef(false)
   const [heatVisible, setHeatVisible] = useState(true)
   const [heatOpacity, setHeatOpacity] = useState(0.75)
   const [rasterLoadStatus, setRasterLoadStatus] = useState<RasterLoadStatus>('idle')
@@ -449,22 +516,31 @@ export default function ForestClassificationPage() {
     { enabled: compareMode && Boolean(comparePreviousId) },
     false
   )
-  const refreshMutation = useApiMutation((body: any) => forestClassificationService.refresh(body))
+  const refreshMutation = useApiMutation(
+    (body: any) => forestClassificationService.refresh(body),
+    {},
+    false
+  )
 
   const latest = latestQuery.data?.data
   const snapshot = (latest?.snapshot || null) as ForestClassSnapshot | null
+  const processing = latest?.processing
+  const isPipelineBusy =
+    processing?.queue.status === 'queued' || processing?.queue.status === 'running'
   const districtAreas = (latest?.districtAreas || []) as ForestClassDistrictArea[]
   const comparison = (latest?.comparison || null) as ForestClassComparison | null
 
-  // Snapshot đang xử lý → poll latest mỗi 15s. Auto-stop khi status vào completed/published/failed.
+  // Snapshot đang xử lý → kiểm tra mỗi 20s. Tự dừng khi đã hoàn tất hoặc thất bại.
   const activeStatus =
-    snapshot?.status && ['pending', 'computing', 'exporting'].includes(snapshot.status)
+    isPipelineBusy ||
+    processing?.state === 'exporting' ||
+    Boolean(snapshot?.status && ['pending', 'computing', 'exporting'].includes(snapshot.status))
   useEffect(() => {
     if (!activeStatus) return
     const timer = setInterval(() => {
       latestQuery.refetch()
       historyQuery.refetch()
-    }, 15_000)
+    }, ANALYSIS_POLL_INTERVAL_MS)
     return () => clearInterval(timer)
   }, [activeStatus, latestQuery, historyQuery])
 
@@ -540,9 +616,7 @@ export default function ForestClassificationPage() {
       !ids.includes(comparePreviousId) ||
       isSamePeriod(selectedPreviousPeriod, nextCurrentPeriod)
     ) {
-      const fallbackPrevious = comparisonPeriods.find(
-        (item) => !isSamePeriod(item, nextCurrentPeriod)
-      )
+      const fallbackPrevious = findRecommendedReferencePeriod(comparisonPeriods, nextCurrentPeriod)
       setComparePreviousId(fallbackPrevious ? String(fallbackPrevious.id) : '')
     }
   }, [compareCurrentId, compareMode, comparePreviousId, comparisonPeriods])
@@ -560,6 +634,13 @@ export default function ForestClassificationPage() {
   const comparePreviousPeriod = comparisonPeriods.find(
     (item) => String(item.id) === comparePreviousId
   )
+  const sameMonthLastYearPeriod = compareCurrentPeriod
+    ? comparisonPeriods.find(
+        (item) =>
+          Number(item.year) === Number(compareCurrentPeriod.year) - 1 &&
+          Number(item.month) === Number(compareCurrentPeriod.month)
+      )
+    : null
   const analysisYears = Array.from(
     { length: latestAllowedYear - MIN_ANALYSIS_YEAR + 1 },
     (_, index) => latestAllowedYear - index
@@ -629,10 +710,18 @@ export default function ForestClassificationPage() {
     refreshMutation.mutate(
       { year: analysisYear, month: analysisMonth },
       {
-        onSuccess: () => {
-          toast.success(
-            `Đã tiếp nhận yêu cầu phân loại kỳ ${formatPeriod(analysisYear, analysisMonth)}. Hệ thống đang xử lý.`
-          )
+        onSuccess: (response) => {
+          const run = response?.data?.run
+          const queueState = run?.processing?.queue
+          if (run?.deduplicated) {
+            toast.info('Kỳ này đã có trong hàng chờ xử lý, hệ thống không tạo thêm lượt chạy.')
+          } else {
+            toast.success(
+              queueState?.status === 'queued' && queueState?.position
+                ? `Kỳ ${formatPeriod(analysisYear, analysisMonth)} đã vào hàng chờ xử lý ở vị trí ${queueState.position}.`
+                : `Đã tiếp nhận yêu cầu phân loại kỳ ${formatPeriod(analysisYear, analysisMonth)}. Hệ thống đang xử lý.`
+            )
+          }
           setRefreshDialogOpen(false)
           setPage(1)
           setTimeout(() => {
@@ -640,11 +729,77 @@ export default function ForestClassificationPage() {
             historyQuery.refetch()
           }, 2000)
         },
-        onError: () => {
-          toast.error('Không thể chạy phân loại. Vui lòng thử lại.')
+        onError: (error) => {
+          if (!error?.body?.message) {
+            toast.error('Không thể chạy phân loại. Vui lòng thử lại.')
+          }
         },
       }
     )
+  }
+
+  const onQuickDownloadDistricts = async (item: ForestClassHistoryItem) => {
+    if (quickDownloadLockRef.current) return
+
+    const snapshotId = String(item.id)
+    quickDownloadLockRef.current = true
+    setQuickDownloadProgress({ snapshotId, completed: 0, total: 0 })
+
+    try {
+      const response = await forestClassificationService.getDistrictExports(item.id)
+      const payload = response.data
+      const districts = payload?.districts ?? []
+      const availableDistricts = districts.filter((district) =>
+        Boolean(getDistrictDownloadUrl(district))
+      )
+      const expectedTotal = resolveDistrictTotal(payload, districts) || availableDistricts.length
+
+      if (!availableDistricts.length) {
+        toast.info(`Kỳ ${formatPeriod(item.year, item.month)} chưa có dữ liệu huyện để tải.`)
+        return
+      }
+
+      setQuickDownloadProgress({ snapshotId, completed: 0, total: expectedTotal })
+      let downloadedCount = 0
+      let failedCount = 0
+
+      for (const district of availableDistricts) {
+        try {
+          await downloadDistrictFile(district)
+          downloadedCount += 1
+        } catch {
+          failedCount += 1
+        } finally {
+          setQuickDownloadProgress({
+            snapshotId,
+            completed: downloadedCount + failedCount,
+            total: expectedTotal,
+          })
+        }
+      }
+
+      const unavailableCount = Math.max(0, expectedTotal - availableDistricts.length)
+      const notDownloadedCount = unavailableCount + failedCount
+      if (downloadedCount === expectedTotal && notDownloadedCount === 0) {
+        toast.success(
+          `Đã tải đủ ${downloadedCount}/${expectedTotal} huyện của kỳ ${formatPeriod(item.year, item.month)}.`
+        )
+      } else if (downloadedCount > 0) {
+        toast.warning(
+          `Đã tải ${downloadedCount}/${expectedTotal} huyện của kỳ ${formatPeriod(item.year, item.month)}; ${notDownloadedCount} huyện chưa tải được.`
+        )
+      } else {
+        toast.error(`Không thể tải dữ liệu huyện của kỳ ${formatPeriod(item.year, item.month)}.`)
+      }
+    } catch (error) {
+      const requestError = error as { body?: { message?: string } }
+      if (!requestError.body?.message) {
+        toast.error(`Không thể lấy danh sách huyện của kỳ ${formatPeriod(item.year, item.month)}.`)
+      }
+    } finally {
+      quickDownloadLockRef.current = false
+      setQuickDownloadProgress(null)
+    }
   }
 
   return (
@@ -660,12 +815,13 @@ export default function ForestClassificationPage() {
             Phân loại lớp phủ rừng
           </h1>
           <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
-            Theo dõi 11 nhóm lớp phủ, diện tích rừng và biến động theo tháng trên toàn tỉnh.
+            Theo dõi 11 nhóm lớp phủ và diện tích rừng; kết quả được cập nhật mỗi tháng từ ảnh của
+            12 tháng gần nhất.
           </p>
           {snapshot && (
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
               <span>
-                Kỳ dữ liệu: <span>{formatPeriod(snapshot.year, snapshot.month)}</span>
+                Kết quả cập nhật đến: <span>{formatPeriod(snapshot.year, snapshot.month)}</span>
               </span>
               <StatusBadge status={snapshot.status} />
               <span
@@ -694,9 +850,15 @@ export default function ForestClassificationPage() {
           <Button
             className="w-full md:w-auto md:shrink-0"
             onClick={() => setRefreshDialogOpen(true)}
-            disabled={isRefreshing}
+            disabled={isRefreshing || isPipelineBusy}
           >
-            {isRefreshing ? 'Đang phân loại...' : 'Phân loại lại'}
+            {isRefreshing
+              ? 'Đang gửi yêu cầu...'
+              : isPipelineBusy
+                ? processing?.queue.status === 'queued'
+                  ? 'Đang chờ cập nhật'
+                  : 'Đang cập nhật'
+                : 'Cập nhật dữ liệu'}
           </Button>
         )}
       </div>
@@ -712,23 +874,21 @@ export default function ForestClassificationPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isRefreshing ? 'Đang phân loại dữ liệu...' : 'Phân loại lại lớp phủ rừng?'}
+              {isRefreshing ? 'Đang cập nhật dữ liệu...' : 'Cập nhật dữ liệu lớp phủ rừng?'}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 {isRefreshing ? (
                   <>
-                    <p>Hệ thống đang cập nhật 11 nhóm lớp phủ cho kỳ đã chọn.</p>
+                    <p>Hệ thống đang tạo số liệu và bản đồ mới cho kỳ đã chọn.</p>
                     <p className="flex items-center gap-2 text-sky-700">
                       <LoadingInline size="small" />
-                      <span>Đang xử lý, kết quả sẽ tự động cập nhật.</span>
+                      <span>Kết quả sẽ tự hiển thị khi hoàn tất.</span>
                     </p>
                   </>
                 ) : (
                   <>
-                    <p>
-                      Chọn kỳ dữ liệu cần cập nhật. Kết quả mới sẽ thay thế kết quả của cùng kỳ.
-                    </p>
+                    <p>Chọn tháng cần cập nhật. Kết quả mới sẽ thay thế kết quả của cùng kỳ.</p>
                     <div className="grid grid-cols-2 gap-3 py-2">
                       <label className="space-y-1 text-xs font-medium">
                         <span>Năm</span>
@@ -782,6 +942,7 @@ export default function ForestClassificationPage() {
                         </Select>
                       </label>
                     </div>
+                    <ForestAnalysisPeriodNotice year={analysisYear} month={analysisMonth} compact />
                     <p className="text-muted-foreground text-xs">
                       Dữ liệu hiện tại vẫn được giữ nguyên cho đến khi quá trình hoàn tất.
                     </p>
@@ -794,21 +955,18 @@ export default function ForestClassificationPage() {
             <AlertDialogCancel disabled={isRefreshing}>Huỷ</AlertDialogCancel>
             <AlertDialogAction onClick={onConfirmRefresh} disabled={isRefreshing}>
               {isRefreshing
-                ? 'Đang chạy...'
-                : `Chạy kỳ ${formatPeriod(analysisYear, analysisMonth)}`}
+                ? 'Đang cập nhật...'
+                : `Cập nhật kỳ ${formatPeriod(analysisYear, analysisMonth)}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Progress banner khi có job đang chạy ─────── */}
-      {activeStatus && snapshot && (
-        <ForestAnalysisProgressBanner
-          snapshot={snapshot}
-          districtExports={districtExports}
-          isRefreshing={isRefreshing}
-        />
-      )}
+      <GeeProcessingStatus processing={processing} />
+
+      <AnalysisAccuracyNotice resultLabel="diện tích và nhóm lớp phủ" />
+
+      {snapshot && <ForestAnalysisPeriodNotice year={snapshot.year} month={snapshot.month} />}
 
       {/* ── Ground truth (collapsible) ─────────────── */}
       <ForestGroundTruthCard />
@@ -822,7 +980,8 @@ export default function ForestClassificationPage() {
                 So sánh hai kỳ
               </h2>
               <p className="text-muted-foreground mt-1 text-xs">
-                Chọn hai kỳ đã công bố để xem chênh lệch diện tích lớp phủ.
+                Chọn kỳ cần xem và kỳ đối chiếu. Cùng tháng giữa hai năm thường dễ đánh giá hơn vì
+                ít bị ảnh hưởng bởi mùa.
               </p>
             </div>
             <Button
@@ -860,11 +1019,14 @@ export default function ForestClassificationPage() {
                           const nextPeriod = comparisonPeriods.find(
                             (item) => String(item.id) === value
                           )
-                          if (isSamePeriod(nextPeriod, comparePreviousPeriod)) {
-                            toast.warning('Hai kỳ so sánh không được trùng nhau.')
-                            return
-                          }
                           setCompareCurrentId(value)
+                          const recommendedReference = findRecommendedReferencePeriod(
+                            comparisonPeriods,
+                            nextPeriod
+                          )
+                          setComparePreviousId(
+                            recommendedReference ? String(recommendedReference.id) : ''
+                          )
                         }}
                       >
                         <SelectTrigger className="w-full">
@@ -916,6 +1078,23 @@ export default function ForestClassificationPage() {
                       </Select>
                     </label>
                   </div>
+
+                  {sameMonthLastYearPeriod &&
+                    String(sameMonthLastYearPeriod.id) !== comparePreviousId && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setComparePreviousId(String(sameMonthLastYearPeriod.id))}
+                      >
+                        So sánh với cùng tháng năm trước
+                      </Button>
+                    )}
+
+                  <ForestComparisonPeriodNotice
+                    current={compareCurrentPeriod}
+                    reference={comparePreviousPeriod}
+                  />
 
                   {compareCurrentQuery.isLoading || comparePreviousQuery.isLoading ? (
                     <div className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -1142,6 +1321,7 @@ export default function ForestClassificationPage() {
                   <TableHead className="text-right">Tổng ha</TableHead>
                   <TableHead className="text-right">Rừng ha</TableHead>
                   <TableHead>Cập nhật lúc</TableHead>
+                  <TableHead className="text-right">Tải theo huyện</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1158,6 +1338,11 @@ export default function ForestClassificationPage() {
                   const attempt = (h as any).attempt as number | undefined
                   // Show attempt badge chỉ khi >1 (attempt=1 là mặc định, không cần chú thích).
                   const showAttempt = attempt != null && attempt > 1
+                  const canQuickDownload = ['completed', 'published'].includes(
+                    String(h.status || '').toLowerCase()
+                  )
+                  const rowDownloadProgress =
+                    quickDownloadProgress?.snapshotId === key ? quickDownloadProgress : null
                   return (
                     <Fragment key={key}>
                       <TableRow
@@ -1200,10 +1385,43 @@ export default function ForestClassificationPage() {
                         <TableCell className="text-xs">
                           {h.computed_at ? formatDateTime(h.computed_at) : '—'}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="outline"
+                            className="h-8 whitespace-nowrap"
+                            disabled={!canQuickDownload || quickDownloadProgress !== null}
+                            title={
+                              canQuickDownload
+                                ? `Tải dữ liệu 10 huyện của kỳ ${formatPeriod(h.year, h.month)}`
+                                : 'Có thể tải sau khi kỳ dữ liệu được cập nhật xong'
+                            }
+                            aria-label={`Tải dữ liệu 10 huyện của kỳ ${formatPeriod(h.year, h.month)}`}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void onQuickDownloadDistricts(h)
+                            }}
+                          >
+                            {rowDownloadProgress ? (
+                              <>
+                                <Loader2 size={13} className="mr-1.5 animate-spin" />
+                                {rowDownloadProgress.total > 0
+                                  ? `Đang tải ${rowDownloadProgress.completed}/${rowDownloadProgress.total}`
+                                  : 'Đang chuẩn bị...'}
+                              </>
+                            ) : (
+                              <>
+                                <Download size={13} className="mr-1.5" />
+                                Tải 10 huyện
+                              </>
+                            )}
+                          </Button>
+                        </TableCell>
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="bg-muted/20">
-                          <TableCell colSpan={7}>
+                          <TableCell colSpan={8}>
                             <SnapshotDetailPanel item={h} />
                           </TableCell>
                         </TableRow>
@@ -1241,108 +1459,6 @@ export default function ForestClassificationPage() {
 }
 
 // ── Small components ─────────────────────────────────────────────────────────
-
-/**
- * Banner hiển thị tiến độ khi snapshot đang pending / computing / exporting.
- * Poll snapshot mới nhất (đã set up ở page-level useEffect 15s) — banner tự
- * biến mất khi status vào completed/published/failed.
- *
- * Nội dung:
- *   - Kỳ + trạng thái + attempt (giúp phân biệt run lần 2 cùng ngày)
- *   - Tiến độ per-district (nếu backend đã seed rows: X/Y huyện hoàn tất)
- *   - Loading spinner + text mô tả stage hiện tại
- */
-function ForestAnalysisProgressBanner({
-  snapshot,
-  districtExports,
-  isRefreshing,
-}: {
-  snapshot: ForestClassSnapshot
-  districtExports: {
-    total: number
-    completed: number
-    failed: number
-    skipped: number
-    pending: number
-  } | null
-  isRefreshing: boolean
-}) {
-  const stageDescription = (() => {
-    switch (snapshot.status) {
-      case 'pending':
-        return 'Đang chuẩn bị dữ liệu vệ tinh cho kỳ được yêu cầu...'
-      case 'computing':
-        return 'Đang phân tích ảnh vệ tinh và phân loại 13 nhóm lớp phủ.'
-      case 'exporting':
-        return 'Đang tạo và lưu bản đồ kết quả. Sắp hoàn tất.'
-      default:
-        return 'Đang xử lý...'
-    }
-  })()
-
-  const pct =
-    districtExports && districtExports.total > 0
-      ? Math.round(
-          ((districtExports.completed + districtExports.failed + districtExports.skipped) /
-            districtExports.total) *
-            100
-        )
-      : 0
-
-  return (
-    <Card className="border-sky-300 bg-sky-50/60">
-      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:p-5">
-        <div className="flex items-center gap-3">
-          <div className="rounded-full bg-sky-100 p-2">
-            <Loader2 className="h-5 w-5 animate-spin text-sky-700" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold text-sky-900">
-                Đang phân loại kỳ {formatPeriod(snapshot.year, snapshot.month)}
-              </p>
-              <StatusBadge status={snapshot.status} />
-              {(snapshot as any).attempt != null && (
-                <Badge
-                  variant="outline"
-                  className="border-sky-300 bg-white text-[10px] text-sky-800"
-                  title="Số lần đã chạy trong cùng kỳ này"
-                >
-                  Lần chạy #{(snapshot as any).attempt}
-                </Badge>
-              )}
-            </div>
-            <p className="mt-0.5 text-xs text-sky-800/80">{stageDescription}</p>
-          </div>
-        </div>
-
-        {districtExports && districtExports.total > 0 && (
-          <div className="min-w-45 flex-1 sm:max-w-md">
-            <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-sky-900">
-              <span>
-                {districtExports.completed}/{districtExports.total} huyện hoàn tất
-              </span>
-              <span>{pct}%</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-sky-200">
-              <div
-                className="h-full rounded-full bg-sky-600 transition-all"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            {districtExports.failed > 0 && (
-              <p className="text-warning mt-1 text-[11px]">
-                {districtExports.failed} huyện thất bại — hệ thống sẽ tự thử lại.
-              </p>
-            )}
-          </div>
-        )}
-
-        {isRefreshing && <p className="text-[11px] text-sky-800">Đang gửi yêu cầu chạy lại...</p>}
-      </CardContent>
-    </Card>
-  )
-}
 
 function Stat({
   label,
@@ -1771,35 +1887,20 @@ function LayerManager({
   const [batchBusy, setBatchBusy] = useState(false)
 
   const districts = districtExports?.districts ?? []
-  const getDistrictDownloadUrl = (district: ForestClassDistrictExport) =>
-    district.geoserverDownloadUrl ||
-    buildGeoserverDownloadUrl(district.geoserverLayer) ||
-    getDistrictTemporaryDownloadUrl(district)
   const availableDistricts = districts.filter((district) =>
     Boolean(getDistrictDownloadUrl(district))
   )
-  const sourceDistrictCount =
-    readOptionalNonNegativeCount(districtExports?.sourceCount) ??
-    districts.filter(hasDistrictSource).length
-  const publishedDistrictCount =
-    readOptionalNonNegativeCount(districtExports?.publishedCount) ??
-    districts.filter(isDistrictPublished).length
   const expectedDistrictTotal = resolveDistrictTotal(districtExports, districts)
   const provinceDownloadUrl = buildGeoserverDownloadUrl(snapshotGeoserverLayer)
   const hasDownloadArtifacts = Boolean(provinceDownloadUrl || availableDistricts.length)
 
   const downloadOneDistrict = async (d: ForestClassDistrictExport): Promise<boolean> => {
-    const url = getDistrictDownloadUrl(d)
-    const filename =
-      d.downloadFilename ||
-      d.geeDownloadFilename ||
-      `forest_class_${d.districtCode || 'kontum'}.tif`
-    if (!url) {
+    if (!getDistrictDownloadUrl(d)) {
       toast.error(`Huyện ${d.districtName || d.districtCode}: chưa có bản đồ tải xuống.`)
       return false
     }
     try {
-      await downloadRasterFile(url, filename)
+      await downloadDistrictFile(d)
       return true
     } catch {
       toast.error(`Không thể tải dữ liệu huyện ${d.districtName}.`)
@@ -1840,7 +1941,7 @@ function LayerManager({
         {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </Button>
       {open && (
-        <div className="space-y-3 border-t p-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+        <div className="flex flex-col gap-3 border-t p-3 lg:min-h-0 lg:flex-1">
           <div
             className={`rounded-md border p-2 transition-opacity ${
               rasterAvailable && heatVisible ? '' : 'opacity-60'
@@ -1909,7 +2010,7 @@ function LayerManager({
               </div>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-md border">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border">
               <Button
                 type="button"
                 variant="ghost"
@@ -1933,30 +2034,11 @@ function LayerManager({
                 {downloadOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </Button>
               {downloadOpen && (
-                <div className="space-y-2 border-t p-2 text-xs">
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto border-t p-2 text-xs">
                   {isLoadingDistricts && (
                     <div className="text-muted-foreground flex items-center gap-2">
                       <Loader2 size={12} className="animate-spin" />
                       <span>Đang tải danh sách huyện...</span>
-                    </div>
-                  )}
-
-                  {districtExports && expectedDistrictTotal > 0 && (
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div className="border-warning/20 bg-warning/10 rounded-md border p-1.5">
-                        <p className="text-muted-foreground text-[9px] uppercase">
-                          Dữ liệu theo huyện
-                        </p>
-                        <p className="text-warning font-semibold">
-                          {sourceDistrictCount}/{expectedDistrictTotal} huyện
-                        </p>
-                      </div>
-                      <div className="rounded-md border bg-emerald-50/50 p-1.5">
-                        <p className="text-muted-foreground text-[9px] uppercase">Đã công bố</p>
-                        <p className="font-semibold text-emerald-800">
-                          {publishedDistrictCount}/{expectedDistrictTotal} huyện
-                        </p>
-                      </div>
                     </div>
                   )}
 
@@ -2006,7 +2088,7 @@ function LayerManager({
                   )}
 
                   {districts.length > 0 && (
-                    <div className="max-h-56 space-y-1 overflow-y-auto">
+                    <div className="max-h-56 space-y-1 overflow-y-auto lg:max-h-none">
                       {districts.map((district) => {
                         const geoserverLayer = normalizeGeoserverLayer(district.geoserverLayer)
                         const temporaryDownloadStatus = getTemporaryRasterUrlStatus(
@@ -2112,7 +2194,7 @@ function DistrictStatusDot({ status }: { status: string }) {
     return <Loader2 size={10} className="shrink-0 animate-spin text-sky-600" />
   }
   if (status === 'failed') {
-    return <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title="Thất bại" />
+    return <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" title="Chưa hoàn tất" />
   }
   if (status === 'skipped') {
     return <span className="h-2 w-2 shrink-0 rounded-full bg-slate-400" title="Bỏ qua" />
@@ -2291,7 +2373,9 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
       enabled: ingestJobId != null,
       refetchInterval: (data: any) => {
         const st = data?.data?.data?.status ?? data?.data?.status
-        return st && ['completed', 'failed', 'cancelled'].includes(st) ? false : 5000
+        return st && ['completed', 'failed', 'cancelled'].includes(st)
+          ? false
+          : DISTRICT_RASTER_POLL_INTERVAL_MS
       },
       refetchOnWindowFocus: false,
     } as any,

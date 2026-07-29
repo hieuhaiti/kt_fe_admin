@@ -187,7 +187,11 @@ function getBounds(fc: GeoJSON.FeatureCollection): LngLatBoundsLike | null {
 function formatHa(v: unknown): string {
   const n = Number(v)
   if (!isFinite(n)) return '—'
-  return `${n.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} ha`
+  // Từ 100 ha trở lên đổi sang km² (1 km² = 100 ha) — thống nhất với client.
+  if (Math.abs(n) >= 100) {
+    return `${(n / 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 })} km²`
+  }
+  return `${n.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} ha`
 }
 
 // NOTE — sau bước dedupe trong drawable, mỗi polygon = 1 huyện với maxLevel

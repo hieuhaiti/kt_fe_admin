@@ -5,6 +5,8 @@
 //   - byClass: { [classId: 0..12]: haNumber }
 //   - totalHa: number
 
+import type { GeeDistrictExportProgress, GeeProcessingState } from './geeProcessing'
+
 export interface ForestClassProvinceSummary {
   byClass?: Record<string, number>
   totalHa?: number
@@ -27,6 +29,10 @@ export interface ForestClassSnapshot {
   downloadFilename?: string | null
   computedAt?: string | null
   errorMessage?: string | null
+  districtExportSummary?: GeeDistrictExportProgress | Record<string, unknown> | null
+  retryCount?: number
+  nextRetryAt?: string | null
+  lastRetryError?: string | null
   [key: string]: any
 }
 
@@ -87,6 +93,7 @@ export interface ForestClassLatestData {
   geeTileUrl?: string | null
   stale?: boolean
   computing?: boolean
+  processing?: GeeProcessingState
 }
 
 export interface ForestClassDistrictExport {
@@ -241,7 +248,9 @@ export interface ForestClassRefreshData {
   run: {
     year: number
     month: number
-    status: 'queued'
+    status: 'queued' | 'computing'
+    deduplicated: boolean
+    processing: GeeProcessingState
   }
 }
 

@@ -53,6 +53,7 @@ export const mapLayerSchema = z.object({
   ]),
   properties: z.record(z.string(), z.any()).nullable().optional(),
   is_active: z.boolean().optional(),
+  is_public: z.boolean().optional(),
 })
 
 function stringifyJson(value: unknown): string {
@@ -139,7 +140,7 @@ function toApiGeometryType(type: GeometryType): CreateMapLayerBody['geometry_typ
   return type
 }
 
-function toFormGeometryType(type?: GeometryType): 'point' | 'line' | 'polygon' {
+function toFormGeometryType(type?: GeometryType | null): 'point' | 'line' | 'polygon' {
   if (type === 'POINT' || type === 'MULTIPOINT' || type === 'point') return 'point'
   if (type === 'LINESTRING' || type === 'MULTILINESTRING' || type === 'line') return 'line'
   return 'polygon'
@@ -156,6 +157,7 @@ export default function MapLayerFormDialog({
   const [name, setName] = useState<string>('')
   const [geometryType, setGeometryType] = useState<'point' | 'line' | 'polygon'>('polygon')
   const [isActive, setIsActive] = useState<'true' | 'false'>('true')
+  const [isPublic, setIsPublic] = useState<'true' | 'false'>('false')
   const [latitude, setLatitude] = useState<string>('')
   const [longitude, setLongitude] = useState<string>('')
   const [geometryDataText, setGeometryDataText] = useState<string>('')
@@ -183,6 +185,7 @@ export default function MapLayerFormDialog({
       setName('')
       setGeometryType('polygon')
       setIsActive('true')
+      setIsPublic('false')
       setLatitude('')
       setLongitude('')
       setGeometryDataText('')
@@ -195,6 +198,7 @@ export default function MapLayerFormDialog({
       setName(layer.name_vi || layer.name || '')
       setGeometryType(toFormGeometryType(layer.geometry_type))
       setIsActive(layer.is_active ? 'true' : 'false')
+      setIsPublic(layer.is_public ? 'true' : 'false')
       const point = extractPointCoordinates(layer.geometry_data)
       if (toFormGeometryType(layer.geometry_type) === 'point' && point) {
         setLatitude(String(point.lat))
@@ -288,6 +292,7 @@ export default function MapLayerFormDialog({
       geometry_data: geometryData,
       properties: properties ?? null,
       is_active: isActive === 'true',
+      is_public: isPublic === 'true',
     })
     if (!fullValidation.success) {
       const first = fullValidation.error.issues[0]
@@ -295,17 +300,18 @@ export default function MapLayerFormDialog({
       return
     }
 
-    const code = toLayerCode(name.trim())
+    const code = isEdit && layer?.code ? layer.code : toLayerCode(name.trim())
     onSubmit({
       code,
       name_vi: name.trim(),
-      table_name: code,
+      table_name: isEdit && layer?.table_name ? layer.table_name : code,
+      schema_name: isEdit ? layer?.schema_name || 'gis' : 'gis',
       category,
       layer_kind: 'overlay',
       geometry_type: toApiGeometryType(geometryType),
       epsg_code: 4326,
       is_active: isActive === 'true',
-      is_public: false,
+      is_public: isPublic === 'true',
       is_editable: true,
     })
   }
@@ -376,6 +382,19 @@ export default function MapLayerFormDialog({
               <SelectContent>
                 <SelectItem value="true">Đang hoạt động</SelectItem>
                 <SelectItem value="false">Ngừng hoạt động</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Phạm vi hiển thị</Label>
+            <Select value={isPublic} onValueChange={(v) => setIsPublic(v as 'true' | 'false')}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="false">Nội bộ</SelectItem>
+                <SelectItem value="true">Công khai trên WebGIS</SelectItem>
               </SelectContent>
             </Select>
           </div>

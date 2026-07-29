@@ -8,7 +8,7 @@ import type { User, UserRoleCode } from '@/types/api'
  * - citizen: xem công khai + gửi phản ánh
  *
  * Ma trận phân quyền tuân theo tài liệu
- * "Danh mục chức năng WebGIS / MobileGIS Kon Tum".
+ * "Danh mục chức năng WebGIS và đo đạc hiện trường Kon Tum".
  */
 export const ROLES = {
   SYSTEM_ADMIN: 'system_admin',
@@ -141,7 +141,7 @@ export const MODULE_PERMISSIONS: Record<string, Role[]> = {
   'stats:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
   'stats:manage': [ROLES.SYSTEM_ADMIN],
 
-  // ── Đo đạc thực địa MobileGIS ──
+  // ── Đo đạc thực địa ──
   'field-measurements:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
   'field-measurements:manage': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
 

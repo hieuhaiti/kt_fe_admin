@@ -46,7 +46,11 @@ interface LandcoverResponse {
 
 function formatHa(v?: number) {
   if (v == null) return '—'
-  return v.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' ha'
+  // Từ 100 ha trở lên đổi sang km² (1 km² = 100 ha) — thống nhất với client.
+  if (Math.abs(v) >= 100) {
+    return (v / 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 }) + ' km²'
+  }
+  return v.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' ha'
 }
 
 function formatPct(v?: number) {

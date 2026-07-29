@@ -4,6 +4,7 @@ import {
   Cloud,
   FileText,
   Flame,
+  History,
   Key,
   LayoutDashboard,
   Map,
@@ -38,6 +39,12 @@ export const navConfig: NavItem[] = [
         permission: 'map-layers:import',
       },
     ],
+  },
+  {
+    icon: <History />,
+    name: 'Ảnh theo thời gian',
+    path: '/layer-series',
+    permission: 'map-layers:view',
   },
   {
     icon: <Key />,

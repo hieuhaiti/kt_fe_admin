@@ -1,4 +1,6 @@
 /** Response từ GET /fire-risk/latest — trùng shape với fire-risk.controller#getLatest. */
+import type { GeeDistrictExportProgress, GeeProcessingState } from './geeProcessing'
+
 export interface FireRiskProvinceSummary {
   maxLevel?: number
   avgRiskLevel?: number | null
@@ -47,13 +49,19 @@ export interface FireRiskSnapshot {
   downloadFilename?: string | null
   computedAt?: string | null
   publishedAt?: string | null
+  districtExportSummary?: GeeDistrictExportProgress | Record<string, unknown> | null
+  errorMessage?: string | null
+  retryCount?: number
+  nextRetryAt?: string | null
+  lastRetryError?: string | null
 }
 
 export interface FireRiskLatestData {
-  snapshot: FireRiskSnapshot
+  snapshot: FireRiskSnapshot | null
   features: FireRiskFeature[]
   stale?: boolean
   computing?: boolean
+  processing?: GeeProcessingState
 }
 
 export interface FireRiskDistrictExport {
@@ -216,7 +224,9 @@ export interface FireRiskRefreshBody {
 export interface FireRiskRefreshData {
   run: {
     analysisDate: string
-    status: 'queued'
+    status: 'queued' | 'computing'
+    deduplicated: boolean
+    processing: GeeProcessingState
   }
 }
 

@@ -20,6 +20,7 @@ export { default as mapImageService } from './mapImageService'
 export { default as pdfMapService } from './mapImageService'
 export { default as mapLayerService } from './mapLayerService'
 export { default as mapLayerApiService } from './mapLayerApiService'
+export { default as layerSeriesService } from './layerSeriesService'
 // Alias matching Postman naming
 export { default as mapApiService } from './mapLayerApiService'
 

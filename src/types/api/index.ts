@@ -31,10 +31,12 @@ export type * from './citizenFeedback'
 export type * from './mapImage'
 export type * from './mapLayer'
 export type * from './mapLayerApi'
+export type * from './layerSeries'
 
 // GEE / satellite / weather / fire risk / mobile
 export type * from './weather'
 export type * from './remoteSensing'
+export type * from './geeProcessing'
 export type * from './fireRisk'
 export type * from './satellite'
 export type * from './forestClassification'

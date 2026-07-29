@@ -279,7 +279,7 @@ export default function FieldMeasurementsPage() {
   return (
     <PageLayout
       title="Đo đạc thực địa"
-      description="Xác minh phiên đo GPS gửi từ MobileGIS và xuất dữ liệu đã duyệt"
+      description="Xác minh kết quả đo đạc gửi từ thiết bị ngoài hiện trường và xuất dữ liệu đã duyệt"
     >
       <ToolTableCustom
         searchValue={search}

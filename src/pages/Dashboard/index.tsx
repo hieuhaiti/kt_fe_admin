@@ -43,7 +43,11 @@ const FEEDBACK_STATUS_CLASS: Record<string, string> = {
 
 function formatHa(v?: number) {
   if (v == null) return '—'
-  return v.toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' ha'
+  // Từ 100 ha trở lên đổi sang km² (1 km² = 100 ha) — thống nhất với client.
+  if (Math.abs(v) >= 100) {
+    return (v / 100).toLocaleString('vi-VN', { maximumFractionDigits: 2 }) + ' km²'
+  }
+  return v.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' ha'
 }
 
 function formatPct(v?: number) {
@@ -65,19 +69,12 @@ export default function DashboardPage() {
   const forestClassification = data.forestClassification
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="flex-1 space-y-6 overflow-y-auto p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Bảng điều khiển</h1>
           <p className="text-muted-foreground text-sm">
             Tổng hợp phân loại rừng, phản ánh và cảnh báo cháy toàn tỉnh Kon Tum
-            {data.year != null && (
-              <>
-                {' '}
-                — dữ liệu năm <strong>{data.year}</strong>
-              </>
-            )}
-            .
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -205,7 +202,6 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
     fireAlerts.mapReady === true ||
     (drTotal > 0 && drReady === drTotal) ||
     Boolean(fireAlerts.geoserverLayer)
-  const mapPending = !mapReady && (drReady > 0 || Boolean(fireAlerts.geeDownloadUrl))
 
   return (
     <Card className={isHigh ? 'border-red-400' : ''}>
@@ -216,10 +212,6 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
           {mapReady ? (
             <span className="ml-auto rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
               {drTotal > 0 ? `Bản đồ sẵn sàng · ${drReady}/${drTotal} huyện` : 'Bản đồ sẵn sàng'}
-            </span>
-          ) : mapPending ? (
-            <span className="border-warning/20 bg-warning/10 text-warning ml-auto rounded border px-2 py-0.5 text-[10px] font-medium">
-              {drTotal > 0 ? `Đang công bố ${drReady}/${drTotal} huyện` : 'Chờ công bố'}
             </span>
           ) : null}
         </div>
@@ -247,7 +239,7 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
           </div>
         </div>
 
-        {/* Meta: ngày phân tích + hotspot */}
+        {/* Meta: ngày phân tích + tỷ lệ ảnh hợp lệ */}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <span className="text-muted-foreground">
             Ngày phân tích:{' '}
@@ -256,10 +248,6 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
                 ? new Date(fireAlerts.analysisDate).toLocaleDateString('vi-VN')
                 : '—'}
             </strong>
-          </span>
-          <span className="text-muted-foreground">
-            Điểm nóng (huyện ≥ C{fireAlerts.hotspotMinLevel ?? 3}):{' '}
-            <strong className="text-red-600">{fireAlerts.hotspotDistrictCount ?? 0}</strong>
           </span>
           {fireAlerts.s2CoverageRatio != null && (
             <span className="text-muted-foreground">
@@ -316,7 +304,6 @@ function ForestClassificationDashboardCard({
   const drReady = data.districtRasterReady ?? 0
   const mapReady =
     data.mapReady === true || (drTotal > 0 && drReady === drTotal) || Boolean(data.geoserverLayer)
-  const mapPending = !mapReady && (drReady > 0 || Boolean(data.geeDownloadUrl))
 
   return (
     <Card>
@@ -327,10 +314,6 @@ function ForestClassificationDashboardCard({
           {mapReady ? (
             <span className="bg-success/10 text-success ml-auto rounded px-2 py-0.5 text-[10px] font-medium">
               {drTotal > 0 ? `Bản đồ sẵn sàng · ${drReady}/${drTotal} huyện` : 'Bản đồ sẵn sàng'}
-            </span>
-          ) : mapPending ? (
-            <span className="border-warning/20 bg-warning/10 text-warning ml-auto rounded border px-2 py-0.5 text-[10px] font-medium">
-              {drTotal > 0 ? `Đang công bố ${drReady}/${drTotal} huyện` : 'Chờ công bố'}
             </span>
           ) : null}
         </div>

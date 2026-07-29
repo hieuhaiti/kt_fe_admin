@@ -104,7 +104,7 @@ export default function FeedbackDetailDialog({
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogTitle>Chi tiết phản ánh</DialogTitle>
         <DialogDescription>
-          Thông tin phản ánh hiện trường gửi từ WebGIS, MobileGIS
+          Thông tin phản ánh hiện trường gửi từ thiết bị di động
         </DialogDescription>
 
         {dbQuery.isLoading ? (
