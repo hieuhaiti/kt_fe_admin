@@ -22,21 +22,24 @@ export const navConfig: NavItem[] = [
     icon: <LayoutDashboard />,
     name: 'Tổng quan',
     path: '/dashboard',
-    subpath: '/',
-    permission: 'stats:view',
+    permission: { resource: 'statistics', action: 'dashboard' },
   },
   // ── GIS ──
   {
     icon: <Map />,
     name: 'Lớp bản đồ',
     path: '/map-layers',
-    permission: 'map-layers:view',
+    permission: { resource: 'map_layers', action: 'read' },
     subItems: [
-      { name: 'Quản lý lớp dữ liệu', path: '/map-layers', permission: 'map-layers:view' },
+      {
+        name: 'Quản lý lớp dữ liệu',
+        path: '/map-layers',
+        permission: { resource: 'map_layers', action: 'read' },
+      },
       {
         name: 'Nhập file GIS',
         path: '/map-layers/import-geojson',
-        permission: 'map-layers:import',
+        permission: { resource: 'map_layers', action: 'create' },
       },
     ],
   },
@@ -44,55 +47,59 @@ export const navConfig: NavItem[] = [
     icon: <History />,
     name: 'Ảnh theo thời gian',
     path: '/layer-series',
-    permission: 'map-layers:view',
+    permission: { resource: 'map_layers', action: 'read' },
   },
   {
     icon: <Key />,
     name: 'API bản đồ',
     path: '/map-apis',
-    permission: 'map-apis:view',
+    permission: { resource: 'map_apis', action: 'read' },
   },
 
   {
     icon: <Image />,
     name: 'Ảnh bản đồ',
     path: '/map-images',
-    permission: 'pdf-maps:view',
+    permission: { resource: 'pdf_maps', action: 'read' },
   },
   {
     icon: <Trees />,
     name: 'Phân loại rừng',
     path: '/forest-classification',
-    permission: 'forest-classification:view',
+    permission: { resource: 'forest_classification', action: 'read' },
   },
   {
     icon: <Flame />,
     name: 'Cảnh báo cháy rừng',
     path: '/fire-risk',
-    permission: 'fire-risk:view',
+    permission: { resource: 'fire_risk', action: 'read' },
   },
   {
     icon: <Cloud />,
     name: 'Thời tiết',
     path: '/weather',
-    permission: 'weather:view',
+    permission: { resource: 'weather', action: 'read' },
   },
   // ── Nội dung ──
   {
     icon: <Newspaper />,
     name: 'Tin tức',
     path: '/news',
-    permission: 'news:view',
+    permission: { resource: 'news', action: 'read' },
     subItems: [
-      { name: 'Tin tức', path: '/news', permission: 'news:view' },
-      { name: 'Bình luận', path: '/news-comments', permission: 'news:moderate-comments' },
+      { name: 'Tin tức', path: '/news', permission: { resource: 'news', action: 'read' } },
+      {
+        name: 'Bình luận',
+        path: '/news-comments',
+        permission: { resource: 'comments', action: 'approve' },
+      },
     ],
   },
   {
     icon: <FileText />,
     name: 'Báo cáo / Văn bản',
     path: '/documents',
-    permission: 'documents:view',
+    permission: { resource: 'documents', action: 'read' },
   },
 
   // ── Vận hành ──
@@ -100,23 +107,23 @@ export const navConfig: NavItem[] = [
     icon: <AlertTriangle />,
     name: 'Phản ánh hiện trường',
     path: '/feedbacks',
-    permission: 'feedback:view',
+    permission: { resource: 'feedback', action: 'read' },
   },
   {
     icon: <Ruler />,
     name: 'Đo đạc thực địa',
     path: '/field-measurements',
-    permission: 'field-measurements:view',
+    permission: { resource: 'field_measurements', action: 'read' },
     subItems: [
       {
         name: 'Phiên đo thực địa',
         path: '/field-measurements',
-        permission: 'field-measurements:view',
+        permission: { resource: 'field_measurements', action: 'read' },
       },
       {
         name: 'Khu vực theo dõi',
         path: '/monitored-areas',
-        permission: 'field-measurements:view',
+        permission: { resource: 'field_measurements', action: 'read' },
       },
     ],
   },
@@ -124,7 +131,7 @@ export const navConfig: NavItem[] = [
     icon: <Bell />,
     name: 'Gửi thông báo',
     path: '/notifications/send',
-    permission: 'notifications:send',
+    permission: { resource: 'notifications', action: 'send' },
   },
 
   // ── Quản trị ──
@@ -132,7 +139,7 @@ export const navConfig: NavItem[] = [
     icon: <Users />,
     name: 'Người dùng',
     path: '/users',
-    permission: 'users:view',
+    permission: { resource: 'users', action: 'read' },
   },
   {
     icon: <MessageSquare />,

@@ -21,7 +21,7 @@ import { formatDate } from '@/lib/date'
 import type { RemoteImageListParams, SatelliteSource } from '@/types/api'
 import { ChevronDown } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { can } from '@/lib/permissions'
+import { hasAnyPerm, hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
 const SATELLITES: SatelliteSource[] = [
@@ -55,9 +55,10 @@ export default function RemoteSensingPage() {
   const [page, setPage] = useState(1)
   const [satellite, setSatellite] = useState<SatelliteSource | ''>('')
   const [status, setStatus] = useState('')
-  const canUpload = can(user, 'remote-sensing:upload')
-  const canDelete = can(user, 'remote-sensing:delete')
-  const canProcess = can(user, 'remote-sensing:process')
+  const canUpload = hasPerm(user, 'remote_sensing', 'create')
+  // so_nnmt chỉ có delete_own (mig 007 giữ nguyên sau 024) — nút hiện, server kiểm ownership.
+  const canDelete = hasAnyPerm(user, 'remote_sensing', ['delete', 'delete_own'])
+  const canProcess = hasPerm(user, 'remote_sensing', 'process')
 
   const params: RemoteImageListParams = {
     page,

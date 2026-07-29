@@ -1,4 +1,4 @@
-import type { Role } from '@/lib/permissions'
+import type { PermissionCheck, Role } from '@/lib/permissions'
 
 export type NavItem = {
   name: string
@@ -7,12 +7,12 @@ export type NavItem = {
   subpath?: string
   /** Role codes allowed to see this item. If undefined → visible to any admin panel role. */
   roles?: Role[]
-  /** Permission key from lib/permissions#MODULE_PERMISSIONS */
-  permission?: string
+  /** Server RBAC check: `{ resource, action }` — action là string hoặc mảng (OR). */
+  permission?: PermissionCheck
   subItems?: {
     name: string
     path: string
     roles?: Role[]
-    permission?: string
+    permission?: PermissionCheck
   }[]
 }

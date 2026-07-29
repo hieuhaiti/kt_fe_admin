@@ -40,7 +40,7 @@ import type {
   Pagination,
 } from '@/types/api'
 import { formatDateTime } from '@/lib/date'
-import { can } from '@/lib/permissions'
+import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
 const polygonSchema = z.object({
@@ -74,7 +74,7 @@ function formatArea(value?: number | string | null) {
 
 export default function MonitoredAreasPage() {
   const user = useAuthStore((state) => state.user)
-  const canCreate = can(user, 'field-measurements:manage')
+  const canCreate = hasPerm(user, 'field_measurements', 'create')
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(10)
   const [communeCode, setCommuneCode] = useState('')

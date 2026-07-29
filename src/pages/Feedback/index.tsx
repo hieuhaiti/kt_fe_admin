@@ -46,7 +46,7 @@ import FeedbackDetailDialog from './FeedbackDetailDialog'
 import FeedbackUpdateDialog from './FeedbackUpdateDialog'
 import { StatusDotBadge } from '@/components/common/StatusDotBadge'
 import { formatDate } from '@/lib/date'
-import { can, getUserRole, ROLES } from '@/lib/permissions'
+import { getUserRole, hasPerm, ROLES } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import FeedbackMap from './FeedbackMap'
 
@@ -66,7 +66,7 @@ function userNameOf(item: CitizenFeedback) {
 
 export default function FeedbackPage(): JSX.Element {
   const user = useAuthStore((s) => s.user)
-  const canHandle = can(user, 'feedback:handle')
+  const canHandle = hasPerm(user, 'feedback', 'update_status')
   const canOverrideTransitions = getUserRole(user) === ROLES.SYSTEM_ADMIN
   const showActions = canHandle
   const [currentPage, setCurrentPage] = useState(1)

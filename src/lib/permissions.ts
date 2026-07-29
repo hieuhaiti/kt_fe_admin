@@ -1,14 +1,12 @@
 import type { User, UserRoleCode } from '@/types/api'
 
 /**
- * Vai trò được định nghĩa trong server:
- * - system_admin: toàn quyền
- * - ubnd_tinh: xem dashboard, báo cáo, phê duyệt (chủ yếu read)
- * - so_nnmt: nghiệp vụ chính (nhập dữ liệu, quản lý trạm/vùng, xử lý cảnh báo)
- * - citizen: xem công khai + gửi phản ánh
+ * Vai trò định nghĩa trong server (000_init_schema.sql):
+ *   system_admin | ubnd_tinh | so_nnmt | citizen
  *
- * Ma trận phân quyền tuân theo tài liệu
- * "Danh mục chức năng WebGIS và đo đạc hiện trường Kon Tum".
+ * Frontend authorization là ánh xạ 1-1 với JSONB `auth.roles.permissions` seed
+ * trên server: gate mọi UI qua `hasPerm(user, resource, action)`. Không maintain
+ * bảng permission hard-code ở frontend — server là single source of truth.
  */
 export const ROLES = {
   SYSTEM_ADMIN: 'system_admin',
@@ -33,20 +31,13 @@ export function hasRole(user: User | null | undefined, roles: Role[]): boolean {
 }
 
 /**
- * Kiểm tra quyền chi tiết theo (resource, action) — mirror middleware server
- * `requirePermission(resource, action)`. Đọc trực tiếp từ `user.role.permissions`
- * (JSONB seed từ server) → single source of truth, không drift khi server đổi
- * migration seed. `system_admin` được bypass toàn quyền, giống backend.
+ * Mirror middleware server `requirePermission(resource, action)`: đọc trực tiếp
+ * từ `user.role.permissions` JSONB. `system_admin` được bypass giống backend.
  *
- * Tên `resource` dùng snake_case đúng như server: `map_layers`, `news`, `documents`,
+ * Tên `resource`/`action` dùng đúng như JSONB seed: `map_layers`, `news`,
  * `forest_classification`, `fire_risk`, `weather`, `satellite`, `pdf_maps`,
  * `remote_sensing`, `map_apis`, `field_measurements`, `notifications`, `users`,
- * `comments`, `feedback`, `statistics`, `spatial`, `roles`.
- *
- * Ví dụ:
- *   hasPerm(user, 'news', 'create')          // POST /news
- *   hasPerm(user, 'forest_classification', 'manage')
- *   hasPerm(user, 'users', 'change_role')
+ * `comments`, `feedback`, `statistics`, `spatial`, `roles`, `documents`.
  */
 export function hasPerm(
   user: User | null | undefined,
@@ -74,91 +65,21 @@ export function hasAnyPerm(
 }
 
 /**
- * Danh mục quyền theo module — mỗi entry là tập vai trò được phép truy cập
- * trang tương ứng trên admin panel (citizen không có mặt trên admin panel).
+ * Khai báo permission dạng object cho props (routes/nav): `action` có thể là
+ * chuỗi đơn hoặc mảng (OR — có bất kỳ action nào cũng qua).
  */
-export const MODULE_PERMISSIONS: Record<string, Role[]> = {
-  // ── Người dùng ──
-  'users:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'users:create': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'users:delete': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'users:reset-password': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'users:set-active': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'users:change-role': [ROLES.SYSTEM_ADMIN],
-
-  // ── Bản đồ ──
-  'map-layers:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'map-layers:create': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'map-layers:update': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'map-layers:delete': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'map-layers:publish': [ROLES.SYSTEM_ADMIN],
-  'map-layers:import': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── API bản đồ ──
-  'map-apis:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'map-apis:manage': [ROLES.SYSTEM_ADMIN],
-
-  // ── PDF Maps / Ảnh vệ tinh tĩnh ──
-  'pdf-maps:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'pdf-maps:manage': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── Viễn thám / Ảnh vệ tinh COG ──
-  'remote-sensing:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'remote-sensing:upload': [ROLES.SYSTEM_ADMIN],
-  'remote-sensing:delete': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'remote-sensing:process': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── Ảnh vệ tinh theo yêu cầu (GEE) ──
-  'satellite:run': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-
-  // ── Phân loại rừng ──
-  'forest-classification:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'forest-classification:manage': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── Cháy rừng ──
-  'fire-risk:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'fire-risk:manage': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── Thời tiết ──
-  'weather:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'weather:manage': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── Tin tức ──
-  'news:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'news:manage': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'news:moderate-comments': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── Văn bản ──
-  'documents:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'documents:manage': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── Phản ánh ──
-  'feedback:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'feedback:handle': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-  'feedback:delete': [ROLES.SYSTEM_ADMIN],
-
-  // ── Thống kê ──
-  'stats:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'stats:manage': [ROLES.SYSTEM_ADMIN],
-
-  // ── Đo đạc thực địa ──
-  'field-measurements:view': [ROLES.SYSTEM_ADMIN, ROLES.UBND_TINH, ROLES.SO_NNMT],
-  'field-measurements:manage': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
-
-  // ── Nhật ký hệ thống ──
-  'audit-logs:view': [ROLES.SYSTEM_ADMIN],
-
-  // ── Thông báo ──
-  'notifications:send': [ROLES.SYSTEM_ADMIN, ROLES.SO_NNMT],
+export type PermissionCheck = {
+  resource: string
+  action: string | string[]
 }
 
-export function can(
+export function checkPermission(
   user: User | null | undefined,
-  permission: keyof typeof MODULE_PERMISSIONS | string
+  check: PermissionCheck | null | undefined
 ): boolean {
-  const allowed = MODULE_PERMISSIONS[permission as string]
-  if (!allowed) return false
-  return hasRole(user, allowed)
+  if (!check) return true
+  if (Array.isArray(check.action)) return hasAnyPerm(user, check.resource, check.action)
+  return hasPerm(user, check.resource, check.action)
 }
 
 export const ROLE_LABELS: Record<string, string> = {

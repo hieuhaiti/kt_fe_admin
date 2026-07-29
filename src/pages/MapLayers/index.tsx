@@ -43,7 +43,7 @@ import PageLayout from '@/layout/pageLayout'
 import MapLayerDetailDialog from './MapLayerDetailDialog'
 import MapLayerFormDialog from './MapLayerFormDialog'
 import { formatDate } from '@/lib/date'
-import { can, hasPerm } from '@/lib/permissions'
+import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
 function getLayerItems(data: unknown): MapLayer[] {
@@ -62,9 +62,9 @@ function getPagination(data: unknown): Partial<Pagination> {
 
 export default function MapLayerPage(): JSX.Element {
   const user = useAuthStore((s) => s.user)
-  const canCreate = can(user, 'map-layers:create')
-  const canUpdate = can(user, 'map-layers:update')
-  const canDelete = can(user, 'map-layers:delete')
+  const canCreate = hasPerm(user, 'map_layers', 'create')
+  const canUpdate = hasPerm(user, 'map_layers', 'update')
+  const canDelete = hasPerm(user, 'map_layers', 'delete')
   const canPublish = hasPerm(user, 'map_layers', 'publish')
   const canUnpublish = hasPerm(user, 'map_layers', 'unpublish')
   const showActions = canUpdate || canDelete || canPublish || canUnpublish

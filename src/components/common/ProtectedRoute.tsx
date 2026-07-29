@@ -1,13 +1,13 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import { toast } from 'react-toastify'
-import { can, hasRole, type Role } from '@/lib/permissions'
+import { checkPermission, hasRole, type PermissionCheck, type Role } from '@/lib/permissions'
 
 interface ProtectedRouteProps {
   /** Optional list of role codes allowed to access this route */
   roles?: Role[]
-  /** Optional permission key from lib/permissions#MODULE_PERMISSIONS */
-  permission?: string
+  /** Server RBAC check: `{ resource, action }` — action là string hoặc mảng (OR). */
+  permission?: PermissionCheck
 }
 
 /**
@@ -44,7 +44,7 @@ export function ProtectedRoute({ roles, permission }: ProtectedRouteProps = {}) 
     return <Navigate to="/403" replace />
   }
 
-  if (permission && !can(user, permission)) {
+  if (permission && !checkPermission(user, permission)) {
     return <Navigate to="/403" replace />
   }
 

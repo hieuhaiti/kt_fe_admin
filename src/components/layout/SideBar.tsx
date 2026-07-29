@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { navConfig } from '@/constant/common'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/common/useAuthStore'
-import { can, hasRole } from '@/lib/permissions'
+import { checkPermission, hasRole } from '@/lib/permissions'
 import type { NavItem } from '@/types/common'
 
 function isPathActive(pathname: string, item: Pick<NavItem, 'path' | 'subpath'>): boolean {
@@ -194,7 +194,7 @@ export function SideBar() {
 
 function allowNav(item: Pick<NavItem, 'roles' | 'permission'>, user: any): boolean {
   if (item.roles && !hasRole(user, item.roles)) return false
-  if (item.permission && !can(user, item.permission)) return false
+  if (item.permission && !checkPermission(user, item.permission)) return false
   return true
 }
 

@@ -41,6 +41,7 @@ const ForestClassificationPage = lazy(() => import('@/pages/ForestClassification
 const FieldMeasurementsPage = lazy(() => import('@/pages/FieldMeasurements'))
 const MonitoredAreasPage = lazy(() => import('@/pages/MonitoredAreas'))
 const NotificationSendPage = lazy(() => import('@/pages/NotificationSend'))
+const LandingPage = lazy(() => import('@/pages/Landing'))
 
 function App() {
   const location = useLocation()
@@ -83,36 +84,36 @@ function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
-              <Route path="/" element={<DashboardPage />} />
+              <Route path="/" element={<LandingPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
 
               {/* Users */}
-              <Route element={<ProtectedRoute permission="users:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'users', action: 'read' }} />}>
                 <Route path="/users" element={<UserPage />} />
               </Route>
 
               {/* Content */}
-              <Route element={<ProtectedRoute permission="news:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'news', action: 'read' }} />}>
                 <Route path="/news" element={<NewsPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="news:moderate-comments" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'comments', action: 'approve' }} />}>
                 <Route path="/news-comments" element={<NewsCommentsPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="documents:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'documents', action: 'read' }} />}>
                 <Route path="/documents" element={<DocumentPage />} />
               </Route>
 
               {/* GIS */}
-              <Route element={<ProtectedRoute permission="map-layers:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'map_layers', action: 'read' }} />}>
                 <Route path="/map-layers" element={<MapLayerPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="map-layers:import" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'map_layers', action: 'create' }} />}>
                 <Route path="/map-layers/import-geojson" element={<ImportGeoJsonPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="map-layers:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'map_layers', action: 'read' }} />}>
                 <Route path="/layer-series" element={<LayerSeriesPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="map-apis:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'map_apis', action: 'read' }} />}>
                 <Route path="/map-apis/*" element={<MapLayerApisPage />} />
               </Route>
               <Route path="/public/map-apis" element={<MapLayerApiPublicPage />} />
@@ -121,30 +122,30 @@ function App() {
                 path="/public/map-layer-apis"
                 element={<Navigate to="/public/map-apis" replace />}
               />
-              <Route element={<ProtectedRoute permission="pdf-maps:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'pdf_maps', action: 'read' }} />}>
                 <Route path="/map-images" element={<MapImagePage />} />
               </Route>
 
               {/* Phân loại rừng / cháy rừng / thời tiết */}
-              <Route element={<ProtectedRoute permission="forest-classification:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'forest_classification', action: 'read' }} />}>
                 <Route path="/forest-classification" element={<ForestClassificationPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="fire-risk:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'fire_risk', action: 'read' }} />}>
                 <Route path="/fire-risk" element={<FireRiskPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="weather:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'weather', action: 'read' }} />}>
                 <Route path="/weather" element={<WeatherPage />} />
               </Route>
 
               {/* Vận hành */}
-              <Route element={<ProtectedRoute permission="feedback:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'feedback', action: 'read' }} />}>
                 <Route path="/feedbacks" element={<FeedbackPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="field-measurements:view" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'field_measurements', action: 'read' }} />}>
                 <Route path="/field-measurements" element={<FieldMeasurementsPage />} />
                 <Route path="/monitored-areas" element={<MonitoredAreasPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission="notifications:send" />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'notifications', action: 'send' }} />}>
                 <Route path="/notifications/send" element={<NotificationSendPage />} />
               </Route>
 
