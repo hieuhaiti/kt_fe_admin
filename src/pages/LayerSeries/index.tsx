@@ -255,6 +255,7 @@ export default function LayerSeriesPage(): JSX.Element {
       <GroupFormDialog
         key={openForm === 'create' ? 'create' : (openForm?.code ?? 'closed')}
         value={openForm}
+        existingGroups={groups}
         onClose={() => setOpenForm(null)}
       />
       <AddImageDialog
@@ -411,9 +412,11 @@ function TimelineDialog({
 
 function GroupFormDialog({
   value,
+  existingGroups,
   onClose,
 }: {
   value: LayerSeriesGroup | 'create' | null
+  existingGroups: LayerSeriesGroup[]
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
@@ -425,9 +428,45 @@ function GroupFormDialog({
   const [nameEn, setNameEn] = useState(editing?.name_en ?? '')
   const [store, setStore] = useState(editing?.geoserver_store ?? '')
   const [layer, setLayer] = useState(editing?.geoserver_layer ?? '')
-  const [style, setStyle] = useState(editing?.geoserver_style ?? editing?.default_style ?? '')
+  const [style, setStyle] = useState(
+    (typeof editing?.default_style === 'string'
+      ? editing.default_style
+      : editing?.geoserver_style) ?? ''
+  )
   const [isActive, setIsActive] = useState(editing?.is_active ?? true)
   const [isPublic, setIsPublic] = useState(editing?.is_public ?? true)
+
+  const rasterLayersQuery = useApiQuery(
+    ['layer-series-raster-options'],
+    () => mapLayerService.getAll({ page: 1, limit: 200 }),
+    { enabled: open },
+    false
+  )
+  const rasterLayers = extractMapLayers(rasterLayersQuery.data).filter(
+    (l) => String(l.geometry_type).toUpperCase() === 'RASTER'
+  )
+
+  const storeOptions = Array.from(
+    new Set([
+      ...existingGroups.map((g) => g.geoserver_store).filter(Boolean),
+      ...rasterLayers.map((l) => l.geoserver_store).filter(Boolean),
+    ] as string[])
+  ).sort()
+
+  const layerOptions = Array.from(
+    new Set([
+      ...existingGroups.map((g) => g.geoserver_layer).filter(Boolean),
+      ...rasterLayers.map((l) => l.geoserver_layer).filter(Boolean),
+    ] as string[])
+  ).sort()
+
+  const styleOptions = Array.from(
+    new Set(
+      existingGroups
+        .map((g) => (typeof g.default_style === 'string' ? g.default_style : g.geoserver_style))
+        .filter(Boolean) as string[]
+    )
+  ).sort()
 
   const hydrate = () => {
     setCode(editing?.code ?? '')
@@ -435,7 +474,11 @@ function GroupFormDialog({
     setNameEn(editing?.name_en ?? '')
     setStore(editing?.geoserver_store ?? '')
     setLayer(editing?.geoserver_layer ?? '')
-    setStyle(editing?.geoserver_style ?? editing?.default_style ?? '')
+    setStyle(
+      (typeof editing?.default_style === 'string'
+        ? editing.default_style
+        : editing?.geoserver_style) ?? ''
+    )
     setIsActive(editing?.is_active ?? true)
     setIsPublic(editing?.is_public ?? true)
   }
@@ -537,23 +580,51 @@ function GroupFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="group-store">Mã nguồn dữ liệu *</Label>
-              <Input id="group-store" value={store} onChange={(e) => setStore(e.target.value)} />
+              <Label htmlFor="group-store">Mã nguồn dữ liệu (store) *</Label>
+              <Input
+                id="group-store"
+                list="group-store-options"
+                value={store}
+                onChange={(e) => setStore(e.target.value)}
+                placeholder="kontum_raster_store"
+              />
+              <datalist id="group-store-options">
+                {storeOptions.map((opt) => (
+                  <option key={opt} value={opt} />
+                ))}
+              </datalist>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="group-layer">Tên nguồn bản đồ *</Label>
+              <Label htmlFor="group-layer">Tên nguồn bản đồ (workspace:layer) *</Label>
               <Input
                 id="group-layer"
+                list="group-layer-options"
                 value={layer}
                 onChange={(e) => setLayer(e.target.value)}
                 placeholder="kontum:lop_phu"
               />
+              <datalist id="group-layer-options">
+                {layerOptions.map((opt) => (
+                  <option key={opt} value={opt} />
+                ))}
+              </datalist>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="group-style">Kiểu hiển thị</Label>
-            <Input id="group-style" value={style} onChange={(e) => setStyle(e.target.value)} />
+            <Label htmlFor="group-style">Kiểu hiển thị (SLD style)</Label>
+            <Input
+              id="group-style"
+              list="group-style-options"
+              value={style}
+              onChange={(e) => setStyle(e.target.value)}
+              placeholder="Để trống nếu dùng style mặc định"
+            />
+            <datalist id="group-style-options">
+              {styleOptions.map((opt) => (
+                <option key={opt} value={opt} />
+              ))}
+            </datalist>
           </div>
 
           <div className="flex flex-wrap gap-4 text-sm">

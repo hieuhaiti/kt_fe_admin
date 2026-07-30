@@ -120,6 +120,7 @@ export default function MapLayerApiFormDialog({
               mode={isEdit ? 'edit' : 'create'}
               initialData={initialData}
               submitting={createMutation.isPending || updateMutation.isPending}
+              onCancel={() => onOpenChange(false)}
               onSubmitCreate={(payload) => {
                 const parsed = validateCreatePayload(payload)
                 if (!parsed.success) {

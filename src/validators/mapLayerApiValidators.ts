@@ -15,6 +15,11 @@ export const createMapLayerApiSchema = z.object({
   expires_at: z.string().datetime({ offset: true }).nullable().optional(),
 })
 
+/** Schema dùng cho form edit: `layer_id` không sửa được nên bỏ ràng buộc min(1) để tránh block submit khi API detail không trả layer_id. */
+export const editMapLayerApiFormSchema = createMapLayerApiSchema.extend({
+  layer_id: z.number().int().optional(),
+})
+
 export const updateMapLayerApiSchema = createMapLayerApiSchema.partial().refine(
   (value) => Object.values(value).some((field) => field !== undefined),
   { message: 'Cần ít nhất 1 trường thay đổi' }
