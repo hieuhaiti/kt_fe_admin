@@ -107,9 +107,7 @@ export default function LandingPage() {
             icon={<Flame className="h-5 w-5 text-orange-500" />}
             label="Cấp cháy cao nhất"
             value={fireRisk?.maxLevel != null ? `Cấp ${fireRisk.maxLevel}` : '—'}
-            hint={
-              fireRisk?.analysisDate ? `Cập nhật ${fireRisk.analysisDate}` : 'Chưa có snapshot'
-            }
+            hint={fireRisk?.analysisDate ? `Cập nhật ${fireRisk.analysisDate}` : 'Chưa có snapshot'}
           />
           <KpiCard
             icon={<MessageSquareWarning className="h-5 w-5 text-blue-500" />}
@@ -130,7 +128,7 @@ export default function LandingPage() {
             hint={
               classification?.forestCoveragePct != null
                 ? `Che phủ ${formatPct(classification.forestCoveragePct)}`
-                : classification?.note ?? undefined
+                : (classification?.note ?? undefined)
             }
           />
         </section>
@@ -141,9 +139,7 @@ export default function LandingPage() {
         <div className="mb-3 flex items-end justify-between">
           <div>
             <h2 className="text-xl font-semibold">Truy cập nhanh</h2>
-            <p className="text-muted-foreground text-sm">
-              Các module bạn có quyền sử dụng.
-            </p>
+            <p className="text-muted-foreground text-sm">Các module bạn có quyền sử dụng.</p>
           </div>
         </div>
         {quickLinks.length === 0 ? (
@@ -158,14 +154,13 @@ export default function LandingPage() {
               <Link
                 key={item.path}
                 to={item.path}
-                className="group hover:border-primary/40 hover:bg-primary/5 flex items-center gap-3 rounded-lg border bg-card p-4 transition-colors"
+                className="group hover:border-primary/40 hover:bg-primary/5 bg-card flex items-center gap-3 rounded-lg border p-4 transition-colors"
               >
                 <div className="bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-md">
                   {item.icon}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-foreground font-medium">{item.name}</div>
-                  <div className="text-muted-foreground truncate text-xs">{item.path}</div>
                 </div>
                 <ArrowRight className="text-muted-foreground group-hover:text-primary h-4 w-4 transition-colors" />
               </Link>
@@ -175,7 +170,7 @@ export default function LandingPage() {
       </section>
 
       {/* Contact / Docs footer */}
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <section className="grid grid-cols-2 gap-4">
         <Card>
           <CardContent className="space-y-2 p-6">
             <div className="text-primary mb-2 flex items-center gap-2">
@@ -183,29 +178,9 @@ export default function LandingPage() {
               <CardTitle className="text-base">Đơn vị vận hành</CardTitle>
             </div>
             <div className="text-sm font-medium">Sở Nông nghiệp &amp; Môi trường tỉnh Kon Tum</div>
-            <CardDescription>
-              Địa chỉ: Số 168 Bà Triệu, TP. Kon Tum, tỉnh Kon Tum.
-            </CardDescription>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="space-y-2 p-6">
-            <div className="text-primary mb-2 flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              <CardTitle className="text-base">Hỗ trợ kỹ thuật</CardTitle>
-            </div>
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Phone className="h-3.5 w-3.5" />
-              <span>0260 xxx xxxx</span>
-            </div>
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Mail className="h-3.5 w-3.5" />
-              <a href="mailto:support@kontumgis.vn" className="hover:underline">
-                support@kontumgis.vn
-              </a>
-            </div>
-          </CardContent>
-        </Card>
+
         <Card>
           <CardContent className="space-y-2 p-6">
             <div className="text-primary mb-2 flex items-center gap-2">
