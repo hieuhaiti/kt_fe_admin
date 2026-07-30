@@ -13,9 +13,7 @@ import {
   Building2,
   Flame,
   LayoutDashboard,
-  Mail,
   MessageSquareWarning,
-  Phone,
   Trees,
 } from 'lucide-react'
 
