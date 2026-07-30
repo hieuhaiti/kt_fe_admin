@@ -28,17 +28,19 @@ interface MapLayerFormDialogProps {
 type MapLayerDetailData = MapLayer | { mapLayer?: MapLayer }
 
 const categoryOptions = [
-  { value: 'forest', label: 'Rừng' },
-  { value: 'land_cover', label: 'Lớp phủ đất' },
-  { value: 'administrative', label: 'Hành chính' },
-  { value: 'hydrology', label: 'Thủy văn' },
-  { value: 'transport', label: 'Giao thông' },
-  { value: 'remote_sensing', label: 'Viễn thám' },
-  { value: 'other', label: 'Khác' },
+  'land_cover',
+  'fire_risk_district',
+  'remote_sensing',
+  'forest_district',
+  'hanh_chinh',
+  'thuy_van',
+  'giao_thong',
+  'other',
 ]
 
 export const mapLayerSchema = z.object({
   category: z.string().trim().min(1, { message: 'Vui lòng chọn nhóm lớp' }).max(60),
+  layer_group: z.string().trim().max(80).optional().or(z.literal('')),
   name: z
     .string({ message: 'Tên lớp bản đồ là bắt buộc' })
     .trim()
@@ -153,7 +155,8 @@ export default function MapLayerFormDialog({
   onSubmit,
   isLoading = false,
 }: MapLayerFormDialogProps) {
-  const [category, setCategory] = useState<string>('forest')
+  const [category, setCategory] = useState<string>('forest_district')
+  const [layerGroup, setLayerGroup] = useState<string>('')
   const [name, setName] = useState<string>('')
   const [geometryType, setGeometryType] = useState<'point' | 'line' | 'polygon'>('polygon')
   const [isActive, setIsActive] = useState<'true' | 'false'>('true')
@@ -181,7 +184,8 @@ export default function MapLayerFormDialog({
   useEffect(() => {
     if (!open) return
     if (!isEdit) {
-      setCategory('forest')
+      setCategory('forest_district')
+      setLayerGroup('')
       setName('')
       setGeometryType('polygon')
       setIsActive('true')
@@ -194,7 +198,8 @@ export default function MapLayerFormDialog({
     }
 
     if (layer) {
-      setCategory(layer.category || 'forest')
+      setCategory(layer.category || 'forest_district')
+      setLayerGroup(layer.layer_group || '')
       setName(layer.name_vi || layer.name || '')
       setGeometryType(toFormGeometryType(layer.geometry_type))
       setIsActive(layer.is_active ? 'true' : 'false')
@@ -287,6 +292,7 @@ export default function MapLayerFormDialog({
 
     const fullValidation = mapLayerSchema.safeParse({
       category,
+      layer_group: layerGroup.trim(),
       name: name.trim(),
       geometry_type: geometryType,
       geometry_data: geometryData,
@@ -301,6 +307,7 @@ export default function MapLayerFormDialog({
     }
 
     const code = isEdit && layer?.code ? layer.code : toLayerCode(name.trim())
+    const trimmedLayerGroup = layerGroup.trim()
     onSubmit({
       code,
       name_vi: name.trim(),
@@ -308,6 +315,7 @@ export default function MapLayerFormDialog({
       schema_name: isEdit ? layer?.schema_name || 'gis' : 'gis',
       category,
       layer_kind: 'overlay',
+      layer_group: trimmedLayerGroup ? trimmedLayerGroup : null,
       geometry_type: toApiGeometryType(geometryType),
       epsg_code: 4326,
       is_active: isActive === 'true',
@@ -337,12 +345,23 @@ export default function MapLayerFormDialog({
               </SelectTrigger>
               <SelectContent>
                 {categoryOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                  <SelectItem key={option} value={option}>
+                    {option}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="map-layer-group">Nhóm phụ (layer_group)</Label>
+            <Input
+              id="map-layer-group"
+              value={layerGroup}
+              onChange={(e) => setLayerGroup(e.target.value)}
+              placeholder="Ví dụ: nhiet_do_be_mat"
+              maxLength={80}
+            />
           </div>
 
           <div className="space-y-2">

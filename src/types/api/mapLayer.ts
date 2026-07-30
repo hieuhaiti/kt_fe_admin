@@ -96,6 +96,7 @@ export interface CreateMapLayerBody {
   epsg_code?: number
   category?: string
   layer_kind?: LayerKind
+  layer_group?: string | null
   is_active?: boolean
   is_public?: boolean
   is_editable?: boolean

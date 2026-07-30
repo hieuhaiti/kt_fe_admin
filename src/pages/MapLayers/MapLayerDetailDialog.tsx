@@ -159,8 +159,8 @@ export default function MapLayerDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] w-[calc(100%_-_2rem)] max-w-5xl gap-0 overflow-hidden p-0">
-        <div className="border-b px-6 py-5 pr-12">
+      <DialogContent className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+        <div className="shrink-0 border-b px-6 py-5 pr-12">
           <DialogTitle>Chi tiết lớp dữ liệu bản đồ</DialogTitle>
           <DialogDescription className="mt-1">
             Thông tin metadata, nguồn dữ liệu và cấu hình công bố của lớp đã chọn
@@ -186,7 +186,7 @@ export default function MapLayerDetailDialog({
             </Button>
           </div>
         ) : layer ? (
-          <div className="min-h-0 overflow-y-auto px-6 py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             <div className="mb-5">
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                 <div className="min-w-0">

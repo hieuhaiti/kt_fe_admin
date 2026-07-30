@@ -20,13 +20,14 @@ import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
 const categoryOptions = [
-  { value: 'forest', label: 'Rừng' },
-  { value: 'land_cover', label: 'Lớp phủ đất' },
-  { value: 'administrative', label: 'Hành chính' },
-  { value: 'hydrology', label: 'Thủy văn' },
-  { value: 'transport', label: 'Giao thông' },
-  { value: 'remote_sensing', label: 'Viễn thám' },
-  { value: 'other', label: 'Khác' },
+  'land_cover',
+  'fire_risk_district',
+  'remote_sensing',
+  'forest_district',
+  'hanh_chinh',
+  'thuy_van',
+  'giao_thong',
+  'other',
 ]
 
 function extractGeoJson(raw: any): GeoJSON.GeoJSON | null {
@@ -81,7 +82,7 @@ function downloadGeoJsonSample() {
 export default function ImportGeoJsonPage(): JSX.Element {
   const user = useAuthStore((state) => state.user)
   const canPublish = hasPerm(user, 'map_layers', 'publish')
-  const [category, setCategory] = useState<string>('forest')
+  const [category, setCategory] = useState<string>('forest_district')
   const [name, setName] = useState<string>('')
   const [publishAfterImport, setPublishAfterImport] = useState<'true' | 'false'>(
     canPublish ? 'true' : 'false'
@@ -95,7 +96,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
     {
       onSuccess: () => {
         setName('')
-        setCategory('forest')
+        setCategory('forest_district')
         setPublishAfterImport(canPublish ? 'true' : 'false')
         setFile(null)
         setPreviewGeoJson(null)
@@ -186,8 +187,8 @@ export default function ImportGeoJsonPage(): JSX.Element {
                 </SelectTrigger>
                 <SelectContent>
                   {categoryOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                    <SelectItem key={option} value={option}>
+                      {option}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -257,7 +258,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
                 variant="outline"
                 onClick={() => {
                   setName('')
-                  setCategory('forest')
+                  setCategory('forest_district')
                   setPublishAfterImport(canPublish ? 'true' : 'false')
                   setFile(null)
                   setPreviewGeoJson(null)
