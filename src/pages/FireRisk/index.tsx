@@ -1743,9 +1743,6 @@ function DistrictLevelBreakdown({
   }
   return (
     <div className="space-y-2">
-      <p className="text-muted-foreground text-[11px]">
-        Breakdown theo cấp cảnh báo (mọi cấp có ha &gt; 0):
-      </p>
       <div className="flex flex-wrap gap-1.5">
         {chips.map((c) => {
           const meta = LEVEL_META[c.level]
