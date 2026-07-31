@@ -110,7 +110,7 @@ export default function MapLayerPage(): JSX.Element {
     if (currentPage > totalPages) setCurrentPage(totalPages)
   }, [currentPage, totalPages])
 
-  const [selectedLayerId, setSelectedLayerId] = useState<number | null>(null)
+  const [selectedLayerCode, setSelectedLayerCode] = useState<string | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -124,20 +124,20 @@ export default function MapLayerPage(): JSX.Element {
       onSuccess: () => {
         dbQuery.refetch()
         setFormDialogOpen(false)
-        setSelectedLayerId(null)
+        setSelectedLayerCode(null)
       },
     },
     true
   )
 
   const updateMutation = useApiMutation(
-    (payload: { id: number; data: CreateMapLayerBody }) =>
-      mapLayerService.update(String(payload.id), payload.data as any),
+    (payload: { code: string; data: CreateMapLayerBody }) =>
+      mapLayerService.update(payload.code, payload.data as any),
     {
       onSuccess: () => {
         dbQuery.refetch()
         setFormDialogOpen(false)
-        setSelectedLayerId(null)
+        setSelectedLayerCode(null)
       },
     },
     true
@@ -182,8 +182,8 @@ export default function MapLayerPage(): JSX.Element {
   )
 
   function openDetails(mapLayer: MapLayer) {
-    if (mapLayer?.id != null) {
-      setSelectedLayerId(mapLayer.id)
+    if (mapLayer?.code) {
+      setSelectedLayerCode(mapLayer.code)
       setDetailDialogOpen(true)
     }
   }
@@ -199,18 +199,18 @@ export default function MapLayerPage(): JSX.Element {
   }
 
   function openAddDialog() {
-    setSelectedLayerId(null)
+    setSelectedLayerCode(null)
     setFormDialogOpen(true)
   }
 
   function openEditDialog(mapLayer: MapLayer) {
-    setSelectedLayerId(mapLayer.id ?? null)
+    setSelectedLayerCode(mapLayer.code ?? null)
     setFormDialogOpen(true)
   }
 
   function handleFormSubmit(data: CreateMapLayerBody) {
-    if (selectedLayerId) {
-      updateMutation.mutate({ id: selectedLayerId, data })
+    if (selectedLayerCode) {
+      updateMutation.mutate({ code: selectedLayerCode, data })
       return
     }
     createMutation.mutate(data)
@@ -307,13 +307,10 @@ export default function MapLayerPage(): JSX.Element {
         <Table className="relative">
           <TableHeader className="sticky top-0 z-20">
             <TableRow>
-              <TableHead>ID</TableHead>
               <TableHead>Tên lớp</TableHead>
               <TableHead>Nhóm lớp</TableHead>
               <TableHead>Kiểu</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead>Công bố</TableHead>
-              <TableHead>Phạm vi</TableHead>
               <TableHead>Ngày tạo</TableHead>
               {showActions && <TableHead className="text-right">Hành động</TableHead>}
             </TableRow>
@@ -321,7 +318,7 @@ export default function MapLayerPage(): JSX.Element {
           <TableBody>
             {layers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={showActions ? 9 : 8} className="text-center">
+                <TableCell colSpan={showActions ? 6 : 5} className="text-center">
                   Không có dữ liệu
                 </TableCell>
               </TableRow>
@@ -332,28 +329,28 @@ export default function MapLayerPage(): JSX.Element {
                   className="hover:cursor-pointer"
                   onClick={() => openDetails(layer)}
                 >
-                  <TableCell>{layer.id}</TableCell>
                   <TableCell className="max-w-64 font-medium">
                     <span className="line-clamp-2">{layer.name_vi || layer.name || layer.code}</span>
+                    <span className="text-muted-foreground block truncate font-mono text-xs">
+                      {layer.code}
+                    </span>
                   </TableCell>
                   <TableCell>{getMapLayerCategoryLabel(layer.category)}</TableCell>
                   <TableCell className="uppercase">{layer.geometry_type || '-'}</TableCell>
                   <TableCell>
-                    <StatusDotBadge
-                      label={ACTIVE_LABEL[String(layer.is_active)]}
-                      badgeClass={ACTIVE_CLASS[String(layer.is_active)]}
-                      dotClass={ACTIVE_DOT[String(layer.is_active)]}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={layer.geoserver_layer ? 'default' : 'outline'}>
-                      {layer.geoserver_layer ? 'Đã công bố' : 'Chưa công bố'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={layer.is_public ? 'secondary' : 'outline'}>
-                      {layer.is_public ? 'Công khai' : 'Nội bộ'}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <StatusDotBadge
+                        label={ACTIVE_LABEL[String(layer.is_active)]}
+                        badgeClass={ACTIVE_CLASS[String(layer.is_active)]}
+                        dotClass={ACTIVE_DOT[String(layer.is_active)]}
+                      />
+                      <Badge variant={layer.geoserver_layer ? 'default' : 'outline'}>
+                        {layer.geoserver_layer ? 'Đã công bố' : 'Chưa công bố'}
+                      </Badge>
+                      <Badge variant={layer.is_public ? 'secondary' : 'outline'}>
+                        {layer.is_public ? 'Công khai' : 'Nội bộ'}
+                      </Badge>
+                    </div>
                   </TableCell>
                   <TableCell>{layer.created_at ? formatDate(layer.created_at) : '-'}</TableCell>
                   {showActions && (
@@ -446,12 +443,12 @@ export default function MapLayerPage(): JSX.Element {
       <MapLayerDetailDialog
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        layerId={selectedLayerId}
+        layerCode={selectedLayerCode}
       />
       <MapLayerFormDialog
         open={formDialogOpen}
         onOpenChange={setFormDialogOpen}
-        layerId={selectedLayerId}
+        layerCode={selectedLayerCode}
         onSubmit={handleFormSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />

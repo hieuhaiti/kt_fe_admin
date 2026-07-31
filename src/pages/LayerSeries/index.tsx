@@ -1,10 +1,27 @@
 import type { JSX } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { useQueryClient } from '@tanstack/react-query'
-import { DndContext, type DragEndEvent, useDraggable, useDroppable } from '@dnd-kit/core'
+import { DndContext, type DragEndEvent, closestCenter } from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Clock, GripVertical, ImagePlus, Layers, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import {
+  Check,
+  CircleHelp,
+  Clock,
+  GripVertical,
+  ImagePlus,
+  Layers,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import PageLayout from '@/layout/pageLayout'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -45,6 +62,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import LoadingInline from '@/components/common/LoadingInline'
 import { layerSeriesService, mapLayerService, useApiMutation, useApiQuery } from '@/service'
 import type {
@@ -174,7 +192,7 @@ export default function LayerSeriesPage(): JSX.Element {
                   <TableHead>Tên</TableHead>
                   <TableHead className="text-right">Số bước</TableHead>
                   <TableHead className="text-right">Khoảng năm</TableHead>
-                  <TableHead>Nguồn bản đồ</TableHead>
+                  <TableHead className="text-center">Trạng thái</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -184,15 +202,21 @@ export default function LayerSeriesPage(): JSX.Element {
                     <TableCell className="font-mono text-xs">{group.code}</TableCell>
                     <TableCell>
                       <p className="font-medium">{group.name_vi}</p>
-                      {group.name_en && (
-                        <p className="text-muted-foreground text-xs">{group.name_en}</p>
-                      )}
                     </TableCell>
                     <TableCell className="text-right">{group.step_count ?? 0}</TableCell>
                     <TableCell className="text-right">
                       {group.min_year ?? '—'} – {group.max_year ?? '—'}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{group.geoserver_layer}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex flex-wrap items-center justify-center gap-1">
+                        <Badge variant={group.is_active ? 'default' : 'secondary'}>
+                          {group.is_active ? 'Hoạt động' : 'Tắt'}
+                        </Badge>
+                        <Badge variant={group.is_public ? 'default' : 'outline'}>
+                          {group.is_public ? 'Công khai' : 'Nội bộ'}
+                        </Badge>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         {canAddImage && (
@@ -253,18 +277,21 @@ export default function LayerSeriesPage(): JSX.Element {
         onClose={() => setOpenTimeline(null)}
       />
       <GroupFormDialog
-        key={openForm === 'create' ? 'create' : (openForm?.code ?? 'closed')}
+        key={
+          openForm === 'create'
+            ? 'group-form:create'
+            : `group-form:${openForm?.code ?? 'closed'}`
+        }
         value={openForm}
-        existingGroups={groups}
         onClose={() => setOpenForm(null)}
       />
       <AddImageDialog
-        key={openAddImage?.code ?? 'closed'}
+        key={`add-image:${openAddImage?.code ?? 'closed'}`}
         group={openAddImage}
         onClose={() => setOpenAddImage(null)}
       />
       <StepEditDialog
-        key={openStepEdit?.step.layer_code ?? 'closed'}
+        key={`step-edit:${openStepEdit?.step.layer_code ?? 'closed'}`}
         target={openStepEdit}
         groups={groups}
         onClose={() => setOpenStepEdit(null)}
@@ -312,6 +339,61 @@ export default function LayerSeriesPage(): JSX.Element {
   )
 }
 
+function SortableStepRow({
+  step,
+  index,
+  canUpdate,
+  onEditStep,
+}: {
+  step: LayerSeriesStep
+  index: number
+  canUpdate: boolean
+  onEditStep: (step: LayerSeriesStep) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: step.layer_code })
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : undefined,
+      }}
+      className={cn(isDragging && 'bg-accent')}
+    >
+      <TableCell className="w-10">
+        {canUpdate ? (
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground flex cursor-grab items-center justify-center active:cursor-grabbing"
+            aria-label="Kéo để đổi thứ tự"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-4" />
+          </button>
+        ) : null}
+      </TableCell>
+      <TableCell className="text-right font-mono text-xs">{index + 1}</TableCell>
+      <TableCell className="font-medium">{step.label}</TableCell>
+      <TableCell className="text-right">{step.year_from}</TableCell>
+      <TableCell className="text-right">{step.year_to}</TableCell>
+      <TableCell className="font-mono text-xs">{step.layer_code}</TableCell>
+      <TableCell className="font-mono text-xs">{step.geoserver_layer}</TableCell>
+      {canUpdate && (
+        <TableCell className="text-right">
+          <Button variant="outline" size="sm" onClick={() => onEditStep(step)}>
+            <Pencil className="mr-1 size-3.5" />
+            Sửa
+          </Button>
+        </TableCell>
+      )}
+    </TableRow>
+  )
+}
+
 function TimelineDialog({
   group,
   canAddImage,
@@ -328,6 +410,7 @@ function TimelineDialog({
   onClose: () => void
 }) {
   const open = Boolean(group)
+  const queryClient = useQueryClient()
   const timelineQuery = useApiQuery<TimelineResponse>(
     ['layer-series-timeline', group?.code],
     () => layerSeriesService.getTimeline(group!.code),
@@ -335,7 +418,50 @@ function TimelineDialog({
   )
 
   const timeline = timelineQuery.data?.data
-  const steps = timeline?.steps ?? []
+  const serverSteps = timeline?.steps ?? []
+
+  // Local optimistic order: sync khi server data mới về, còn khi user kéo thả
+  // giữ order local để giao diện responsive ngay.
+  const [localSteps, setLocalSteps] = useState<LayerSeriesStep[]>([])
+  useEffect(() => {
+    setLocalSteps(serverSteps)
+    // JSON stringify để tránh re-sync khi array chỉ thay identity mà nội dung
+    // không đổi (React Query có thể tạo array mới sau refetch cache-hit).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(serverSteps.map((s) => s.layer_code))])
+
+  const reorderMutation = useApiMutation(
+    async (order: string[]) => {
+      if (!group) throw new Error('Không có nhóm')
+      return layerSeriesService.reorderSteps(group.code, order)
+    },
+    {
+      onSuccess: () => {
+        toast.success('Đã lưu thứ tự mới')
+        if (group) {
+          queryClient.invalidateQueries({
+            queryKey: ['layer-series-timeline', group.code],
+          })
+        }
+      },
+      onError: () => {
+        // Rollback về server order nếu API lỗi
+        setLocalSteps(serverSteps)
+      },
+    },
+    false
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = localSteps.findIndex((step) => step.layer_code === active.id)
+    const newIndex = localSteps.findIndex((step) => step.layer_code === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    const next = arrayMove(localSteps, oldIndex, newIndex)
+    setLocalSteps(next)
+    reorderMutation.mutate(next.map((step) => step.layer_code))
+  }
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -344,6 +470,7 @@ function TimelineDialog({
           <DialogTitle>Các mốc thời gian · {group?.name_vi}</DialogTitle>
           <DialogDescription>
             Danh sách dữ liệu bản đồ đã có theo từng mốc thời gian.
+            {canUpdate && ' Kéo biểu tượng ⋮⋮ để đổi thứ tự hiển thị.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -361,47 +488,46 @@ function TimelineDialog({
             <div className="flex items-center justify-center py-10">
               <LoadingInline />
             </div>
-          ) : steps.length === 0 ? (
+          ) : localSteps.length === 0 ? (
             <p className="text-muted-foreground py-10 text-center text-sm">Chưa có bước ảnh nào.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12 text-right">#</TableHead>
-                  <TableHead>Nhãn</TableHead>
-                  <TableHead className="text-right">Từ năm</TableHead>
-                  <TableHead className="text-right">Đến năm</TableHead>
-                  <TableHead>Mã dữ liệu</TableHead>
-                  <TableHead>Nguồn bản đồ</TableHead>
-                  {canUpdate && <TableHead className="text-right">Thao tác</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {steps.map((step, index) => (
-                  <TableRow key={step.id}>
-                    <TableCell className="text-right font-mono text-xs">{index + 1}</TableCell>
-                    <TableCell className="font-medium">{step.label}</TableCell>
-                    <TableCell className="text-right">{step.year_from}</TableCell>
-                    <TableCell className="text-right">{step.year_to}</TableCell>
-                    <TableCell className="font-mono text-xs">{step.layer_code}</TableCell>
-                    <TableCell className="font-mono text-xs">{step.geoserver_layer}</TableCell>
-                    {canUpdate && (
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" onClick={() => onEditStep(step)}>
-                          <Pencil className="mr-1 size-3.5" />
-                          Sửa
-                        </Button>
-                      </TableCell>
-                    )}
+            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10" />
+                    <TableHead className="w-12 text-right">#</TableHead>
+                    <TableHead>Nhãn</TableHead>
+                    <TableHead className="text-right">Từ năm</TableHead>
+                    <TableHead className="text-right">Đến năm</TableHead>
+                    <TableHead>Mã dữ liệu</TableHead>
+                    <TableHead>Nguồn bản đồ</TableHead>
+                    {canUpdate && <TableHead className="text-right">Thao tác</TableHead>}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  <SortableContext
+                    items={localSteps.map((s) => s.layer_code)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {localSteps.map((step, index) => (
+                      <SortableStepRow
+                        key={step.layer_code}
+                        step={step}
+                        index={index}
+                        canUpdate={canUpdate}
+                        onEditStep={onEditStep}
+                      />
+                    ))}
+                  </SortableContext>
+                </TableBody>
+              </Table>
+            </DndContext>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={reorderMutation.isPending}>
             Đóng
           </Button>
         </DialogFooter>
@@ -412,11 +538,9 @@ function TimelineDialog({
 
 function GroupFormDialog({
   value,
-  existingGroups,
   onClose,
 }: {
   value: LayerSeriesGroup | 'create' | null
-  existingGroups: LayerSeriesGroup[]
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
@@ -425,60 +549,12 @@ function GroupFormDialog({
 
   const [code, setCode] = useState(editing?.code ?? '')
   const [nameVi, setNameVi] = useState(editing?.name_vi ?? '')
-  const [nameEn, setNameEn] = useState(editing?.name_en ?? '')
-  const [store, setStore] = useState(editing?.geoserver_store ?? '')
-  const [layer, setLayer] = useState(editing?.geoserver_layer ?? '')
-  const [style, setStyle] = useState(
-    (typeof editing?.default_style === 'string'
-      ? editing.default_style
-      : editing?.geoserver_style) ?? ''
-  )
   const [isActive, setIsActive] = useState(editing?.is_active ?? true)
   const [isPublic, setIsPublic] = useState(editing?.is_public ?? true)
-
-  const rasterLayersQuery = useApiQuery(
-    ['layer-series-raster-options'],
-    () => mapLayerService.getAll({ page: 1, limit: 200 }),
-    { enabled: open },
-    false
-  )
-  const rasterLayers = extractMapLayers(rasterLayersQuery.data).filter(
-    (l) => String(l.geometry_type).toUpperCase() === 'RASTER'
-  )
-
-  const storeOptions = Array.from(
-    new Set([
-      ...existingGroups.map((g) => g.geoserver_store).filter(Boolean),
-      ...rasterLayers.map((l) => l.geoserver_store).filter(Boolean),
-    ] as string[])
-  ).sort()
-
-  const layerOptions = Array.from(
-    new Set([
-      ...existingGroups.map((g) => g.geoserver_layer).filter(Boolean),
-      ...rasterLayers.map((l) => l.geoserver_layer).filter(Boolean),
-    ] as string[])
-  ).sort()
-
-  const styleOptions = Array.from(
-    new Set(
-      existingGroups
-        .map((g) => (typeof g.default_style === 'string' ? g.default_style : g.geoserver_style))
-        .filter(Boolean) as string[]
-    )
-  ).sort()
 
   const hydrate = () => {
     setCode(editing?.code ?? '')
     setNameVi(editing?.name_vi ?? '')
-    setNameEn(editing?.name_en ?? '')
-    setStore(editing?.geoserver_store ?? '')
-    setLayer(editing?.geoserver_layer ?? '')
-    setStyle(
-      (typeof editing?.default_style === 'string'
-        ? editing.default_style
-        : editing?.geoserver_style) ?? ''
-    )
     setIsActive(editing?.is_active ?? true)
     setIsPublic(editing?.is_public ?? true)
   }
@@ -486,10 +562,6 @@ function GroupFormDialog({
   const reset = () => {
     setCode('')
     setNameVi('')
-    setNameEn('')
-    setStore('')
-    setLayer('')
-    setStyle('')
     setIsActive(true)
     setIsPublic(true)
   }
@@ -511,8 +583,8 @@ function GroupFormDialog({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!code.trim() || !nameVi.trim() || !store.trim() || !layer.trim()) {
-      toast.error('Vui lòng nhập đầy đủ các trường bắt buộc')
+    if (!code.trim() || !nameVi.trim()) {
+      toast.error('Vui lòng nhập mã nhóm và tên tiếng Việt')
       return
     }
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(code.trim())) {
@@ -520,13 +592,11 @@ function GroupFormDialog({
       return
     }
 
+    // Chỉ gửi metadata user quan tâm. Server tự suy ra geoserver_store /
+    // geoserver_layer từ các layer con thuộc nhóm (hoặc fallback default).
     mutation.mutate({
       code: code.trim(),
       name_vi: nameVi.trim(),
-      name_en: nameEn.trim() || null,
-      geoserver_store: store.trim(),
-      geoserver_layer: layer.trim(),
-      geoserver_style: style.trim() || null,
       is_active: isActive,
       is_public: isPublic,
     })
@@ -554,7 +624,23 @@ function GroupFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="group-code">Mã nhóm *</Label>
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="group-code">Mã nhóm *</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground focus-visible:ring-ring cursor-help rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                      aria-label="Thông tin về mã nhóm"
+                    >
+                      <CircleHelp className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs leading-relaxed">
+                    Mã nhóm sẽ tự động được hệ thống nhóm theo nhóm phụ của lớp bản đồ.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <Input
                 id="group-code"
                 value={code}
@@ -573,60 +659,6 @@ function GroupFormDialog({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="group-name-en">Tên tiếng Anh</Label>
-            <Input id="group-name-en" value={nameEn} onChange={(e) => setNameEn(e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="group-store">Mã nguồn dữ liệu (store) *</Label>
-              <Input
-                id="group-store"
-                list="group-store-options"
-                value={store}
-                onChange={(e) => setStore(e.target.value)}
-                placeholder="kontum_raster_store"
-              />
-              <datalist id="group-store-options">
-                {storeOptions.map((opt) => (
-                  <option key={opt} value={opt} />
-                ))}
-              </datalist>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="group-layer">Tên nguồn bản đồ (workspace:layer) *</Label>
-              <Input
-                id="group-layer"
-                list="group-layer-options"
-                value={layer}
-                onChange={(e) => setLayer(e.target.value)}
-                placeholder="kontum:lop_phu"
-              />
-              <datalist id="group-layer-options">
-                {layerOptions.map((opt) => (
-                  <option key={opt} value={opt} />
-                ))}
-              </datalist>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="group-style">Kiểu hiển thị (SLD style)</Label>
-            <Input
-              id="group-style"
-              list="group-style-options"
-              value={style}
-              onChange={(e) => setStyle(e.target.value)}
-              placeholder="Để trống nếu dùng style mặc định"
-            />
-            <datalist id="group-style-options">
-              {styleOptions.map((opt) => (
-                <option key={opt} value={opt} />
-              ))}
-            </datalist>
-          </div>
-
           <div className="flex flex-wrap gap-4 text-sm">
             <label className="flex cursor-pointer items-center gap-2">
               <input
@@ -642,7 +674,7 @@ function GroupFormDialog({
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
               />
-              Công khai trên client
+              Công khai trên webGIS
             </label>
           </div>
 
@@ -687,56 +719,56 @@ function RasterLayerOption({
   selected: boolean
   onSelect: (layer: MapLayer) => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `raster:${layer.code}`,
-    data: { layerCode: layer.code },
-  })
   const period = getLayerPeriod(layer)
 
   return (
-    <Button
-      ref={setNodeRef}
-      type="button"
-      variant="outline"
-      {...listeners}
-      {...attributes}
+    <label
       className={cn(
-        'h-auto w-full cursor-grab justify-start p-3 text-left whitespace-normal active:cursor-grabbing',
-        selected && 'border-primary bg-accent',
-        isDragging && 'opacity-50'
+        'hover:bg-accent/40 flex w-full cursor-pointer items-center gap-3 rounded-md border p-3 text-left transition-colors',
+        selected && 'border-primary bg-accent'
       )}
-      style={{ transform: CSS.Translate.toString(transform) }}
-      onClick={() => onSelect(layer)}
     >
-      <GripVertical className="text-muted-foreground size-4 shrink-0" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium">{layer.name_vi || layer.code}</span>
-        <span className="text-muted-foreground block truncate font-mono text-xs">{layer.code}</span>
+      <input
+        type="radio"
+        name="raster-layer"
+        value={layer.code}
+        checked={selected}
+        onChange={() => onSelect(layer)}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden="true"
+        className={cn(
+          'border-primary peer-focus-visible:ring-ring grid size-4 shrink-0 place-content-center rounded-sm border peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2',
+          selected && 'bg-primary text-primary-foreground'
+        )}
+      >
+        {selected && <Check />}
       </span>
-      <span className="shrink-0 text-xs">
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">
+          {layer.name_vi || layer.code}
+        </span>
+        <span className="text-muted-foreground block truncate font-mono text-xs">
+          {layer.code}
+        </span>
+      </span>
+      <span className="text-muted-foreground shrink-0 text-xs">
         {period.yearFrom === period.yearTo ? period.yearTo : `${period.yearFrom}–${period.yearTo}`}
       </span>
-    </Button>
+    </label>
   )
 }
 
-function RasterLayerDropTarget({
+function SelectedLayerPreview({
   group,
   layer,
 }: {
   group: LayerSeriesGroup
   layer: MapLayer | null
 }) {
-  const { isOver, setNodeRef } = useDroppable({ id: 'series-layer-target' })
-
   return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        'flex min-h-28 items-center justify-center rounded-md border border-dashed p-4 text-center transition-colors',
-        isOver && 'border-primary bg-accent'
-      )}
-    >
+    <div className="flex min-h-28 items-center justify-center rounded-md border border-dashed p-4 text-center">
       {layer ? (
         <div className="space-y-1">
           <p className="font-medium">{layer.name_vi || layer.code}</p>
@@ -746,8 +778,10 @@ function RasterLayerDropTarget({
       ) : (
         <div>
           <ImagePlus className="text-muted-foreground mx-auto mb-2 size-7" />
-          <p className="text-sm font-medium">Thả một lớp raster vào đây</p>
-          <p className="text-muted-foreground text-xs">Hoặc bấm chọn từ danh sách bên trái</p>
+          <p className="text-sm font-medium">Chưa chọn lớp nào</p>
+          <p className="text-muted-foreground text-xs">
+            Tick vào một lớp raster ở danh sách bên trái để chọn.
+          </p>
         </div>
       )}
     </div>
@@ -821,13 +855,6 @@ function AddImageDialog({
     false
   )
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    if (event.over?.id !== 'series-layer-target') return
-    const layerCode = event.active.data.current?.layerCode
-    const layer = rasterLayers.find((item) => item.code === layerCode)
-    if (layer) selectLayer(layer)
-  }
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const parsedYear = Number(dataYear)
@@ -851,7 +878,7 @@ function AddImageDialog({
           <DialogTitle>Thêm lớp ảnh · {group?.name_vi}</DialogTitle>
           <DialogDescription>
             Chọn hoặc kéo một lớp raster đã có trong Lớp dữ liệu vào nhóm{' '}
-            <span className="font-mono">{group?.code}</span>. Không tải file mới.
+            <span className="font-mono">{group?.code}</span>.
           </DialogDescription>
         </DialogHeader>
 
@@ -868,82 +895,84 @@ function AddImageDialog({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <DndContext onDragEnd={handleDragEnd}>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="raster-layer-search">Lớp raster có sẵn</Label>
-                    <Input
-                      id="raster-layer-search"
-                      value={search}
-                      placeholder="Tìm theo tên hoặc mã lớp..."
-                      onChange={(event) => setSearch(event.target.value)}
-                    />
-                  </div>
-                  <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-2">
-                    {rasterLayers.map((layer) => (
-                      <RasterLayerOption
-                        key={layer.code}
-                        layer={layer}
-                        selected={selectedLayer?.code === layer.code}
-                        onSelect={selectLayer}
-                      />
-                    ))}
-                    {rasterLayers.length === 0 && (
-                      <p className="text-muted-foreground py-8 text-center text-sm">
-                        Không có lớp raster đã publish phù hợp.
-                      </p>
-                    )}
-                  </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="raster-layer-search">Lớp raster có sẵn</Label>
+                  <Input
+                    id="raster-layer-search"
+                    value={search}
+                    placeholder="Tìm theo tên hoặc mã lớp..."
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
                 </div>
-
-                <div className="space-y-4">
-                  {group && <RasterLayerDropTarget group={group} layer={selectedLayer} />}
-
-                  {selectedLayer && selectedPeriod && (
-                    <>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="existing-layer-year">Năm dữ liệu *</Label>
-                          <Input
-                            id="existing-layer-year"
-                            type="number"
-                            min={1900}
-                            max={2100}
-                            value={dataYear}
-                            disabled={selectedPeriod.locked}
-                            onChange={(event) => setDataYear(event.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Khoảng hiển thị</Label>
-                          <div className="flex h-10 items-center rounded-md border px-3 text-sm">
-                            {selectedPeriod.yearFrom === selectedPeriod.yearTo
-                              ? selectedPeriod.yearTo
-                              : `${selectedPeriod.yearFrom}–${selectedPeriod.yearTo}`}
-                          </div>
-                        </div>
-                      </div>
-                      {selectedPeriod.locked && (
-                        <p className="text-muted-foreground text-xs">
-                          Thời gian được đọc từ mã lớp hiện có nên không thể đổi tại đây.
-                        </p>
-                      )}
-                      <label className="flex cursor-pointer items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={isPublic}
-                          onCheckedChange={(checked) => setIsPublic(checked === true)}
-                        />
-                        Công khai lớp ảnh trên bản đồ
-                      </label>
-                      <p className="text-muted-foreground text-xs">
-                        Lớp sẽ được bật hoạt động khi thêm vào timeline.
-                      </p>
-                    </>
+                <div
+                  role="radiogroup"
+                  aria-label="Chọn lớp raster"
+                  className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-2"
+                >
+                  {rasterLayers.map((layer) => (
+                    <RasterLayerOption
+                      key={layer.code}
+                      layer={layer}
+                      selected={selectedLayer?.code === layer.code}
+                      onSelect={selectLayer}
+                    />
+                  ))}
+                  {rasterLayers.length === 0 && (
+                    <p className="text-muted-foreground py-8 text-center text-sm">
+                      Không có lớp raster đã publish phù hợp.
+                    </p>
                   )}
                 </div>
               </div>
-            </DndContext>
+
+              <div className="space-y-4">
+                {group && <SelectedLayerPreview group={group} layer={selectedLayer} />}
+
+                {selectedLayer && selectedPeriod && (
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="existing-layer-year">Năm dữ liệu *</Label>
+                        <Input
+                          id="existing-layer-year"
+                          type="number"
+                          min={1900}
+                          max={2100}
+                          value={dataYear}
+                          disabled={selectedPeriod.locked}
+                          onChange={(event) => setDataYear(event.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Khoảng hiển thị</Label>
+                        <div className="flex h-10 items-center rounded-md border px-3 text-sm">
+                          {selectedPeriod.yearFrom === selectedPeriod.yearTo
+                            ? selectedPeriod.yearTo
+                            : `${selectedPeriod.yearFrom}–${selectedPeriod.yearTo}`}
+                        </div>
+                      </div>
+                    </div>
+                    {selectedPeriod.locked && (
+                      <p className="text-muted-foreground text-xs">
+                        Thời gian được đọc từ mã lớp hiện có nên không thể đổi tại đây.
+                      </p>
+                    )}
+                    <label className="flex cursor-pointer items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={isPublic}
+                        onCheckedChange={(checked) => setIsPublic(checked === true)}
+                      />
+                      Công khai lớp ảnh trên bản đồ
+                    </label>
+                    <p className="text-muted-foreground text-xs">
+                      Lớp sẽ được bật hoạt động khi thêm vào timeline.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
 
             <DialogFooter className="gap-2">
               <Button
@@ -1039,7 +1068,6 @@ function StepEditForm({
 }) {
   const queryClient = useQueryClient()
   const [nameVi, setNameVi] = useState(detail.name_vi || target.step.label)
-  const [nameEn, setNameEn] = useState(detail.name_en || '')
   const [groupCode, setGroupCode] = useState(detail.layer_group || target.group.code)
   const [dataYear, setDataYear] = useState(String(detail.data_year || target.step.year_to))
   const [isPublic, setIsPublic] = useState(detail.is_public ?? true)
@@ -1051,7 +1079,7 @@ function StepEditForm({
 
       await mapLayerService.patch(target.step.layer_code, {
         name_vi: nameVi.trim(),
-        name_en: nameEn.trim() || null,
+        name_en: (detail.name_en || '').trim() || null,
         layer_group: groupCode,
         data_year: nextDataYear,
         is_public: isPublic,
@@ -1118,14 +1146,6 @@ function StepEditForm({
             id="step-name-vi"
             value={nameVi}
             onChange={(event) => setNameVi(event.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="step-name-en">Tên tiếng Anh</Label>
-          <Input
-            id="step-name-en"
-            value={nameEn}
-            onChange={(event) => setNameEn(event.target.value)}
           />
         </div>
       </div>

@@ -8,20 +8,25 @@ import type { ApiResponse, MapLayer } from '@/types/api'
 import { formatDateTime } from '@/lib/date'
 import { getMapLayerCategoryLabel } from '@/constant/mapLayerConstant'
 import {
+  buildGeoserverDownloadUrl,
+  buildGeoserverGeoJsonUrl,
+  downloadGeoJsonFile,
+  downloadRasterFile,
+} from '@/lib/geoserver'
+import { toast } from 'react-toastify'
+import { useState } from 'react'
+import {
   CalendarClock,
   Database,
-  FileJson,
+  Download,
   Info,
-  Layers3,
   RefreshCw,
-  Server,
-  ShieldCheck,
 } from 'lucide-react'
 
 interface MapLayerDetailDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  layerId: number | null
+  layerCode: string | null
 }
 
 type MapLayerDetailData = MapLayer | { mapLayer?: MapLayer }
@@ -29,12 +34,6 @@ type MapLayerDetailData = MapLayer | { mapLayer?: MapLayer }
 const LAYER_KIND_LABEL: Record<string, string> = {
   basemap: 'Lớp nền',
   overlay: 'Lớp chuyên đề',
-}
-
-const SOURCE_DATASET_LABEL: Record<string, string> = {
-  gee: 'Dữ liệu phân tích viễn thám',
-  postgis: 'Cơ sở dữ liệu không gian',
-  remote_sensing: 'Kho ảnh viễn thám',
 }
 
 function getLayerDetail(response?: ApiResponse<MapLayerDetailData>): MapLayer | null {
@@ -131,12 +130,12 @@ function BooleanBadge({
 export default function MapLayerDetailDialog({
   open,
   onOpenChange,
-  layerId,
+  layerCode,
 }: MapLayerDetailDialogProps) {
   const dbQuery = useApiQuery(
-    ['mapLayer', layerId],
-    () => mapLayerService.getById(layerId!),
-    { enabled: !!layerId && open, staleTime: 0 },
+    ['mapLayer', layerCode],
+    () => mapLayerService.getByCode(layerCode!),
+    { enabled: !!layerCode && open, staleTime: 0 },
     false,
     false
   )
@@ -145,6 +144,40 @@ export default function MapLayerDetailDialog({
   const isPublished = !!layer?.geoserver_layer
   const createdAt = layer?.created_at ?? layer?.createdAt
   const updatedAt = layer?.updated_at ?? layer?.updatedAt
+
+  // Auto-detect định dạng nguồn:
+  //  1. geometry_type = RASTER → chắc chắn TIFF (coverage).
+  //  2. source_url chứa .tif/.tiff → gốc là GeoTIFF, ưu tiên tải TIFF dù metadata
+  //     có thể ghi POLYGON (backend đã vectorize để hiển thị, nhưng file gốc
+  //     vẫn nằm trên GeoServer dưới dạng coverage store cùng tên).
+  //  3. Còn lại → dùng GeoJSON (WFS).
+  const hasTiffSource = /\.(tif|tiff)($|[?#])/i.test(String(layer?.source_url || ''))
+  const isRaster = String(layer?.geometry_type || '').toUpperCase() === 'RASTER'
+  const preferTiff = isRaster || hasTiffSource
+  const geoJsonUrl = buildGeoserverGeoJsonUrl(layer?.geoserver_layer)
+  const geoTiffUrl = buildGeoserverDownloadUrl(layer?.geoserver_layer)
+  const downloadUrl = preferTiff ? geoTiffUrl : geoJsonUrl
+  const downloadFormatLabel = preferTiff ? 'GeoTIFF' : 'GeoJSON'
+  const canDownload = !!(layer && isPublished && downloadUrl)
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownload() {
+    if (!layer || !downloadUrl) return
+    const baseName = layer.code || layer.name_vi || 'layer'
+    setDownloading(true)
+    try {
+      if (preferTiff) {
+        await downloadRasterFile(downloadUrl, baseName)
+      } else {
+        await downloadGeoJsonFile(downloadUrl, baseName)
+      }
+      toast.success(`Đã tải xuống ${downloadFormatLabel}`)
+    } catch (err: any) {
+      toast.error(err?.message || `Không thể tải ${downloadFormatLabel}`)
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -199,12 +232,6 @@ export default function MapLayerDetailDialog({
                     falseLabel="Nội bộ"
                     tone="info"
                   />
-                  <BooleanBadge
-                    value={layer.is_editable}
-                    trueLabel="Cho phép biên tập"
-                    falseLabel="Chỉ đọc"
-                    tone="warning"
-                  />
                   <Badge
                     variant="outline"
                     className={
@@ -213,6 +240,22 @@ export default function MapLayerDetailDialog({
                   >
                     {isPublished ? 'Đã công bố bản đồ' : 'Chưa công bố bản đồ'}
                   </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canDownload || downloading}
+                    onClick={handleDownload}
+                    title={
+                      canDownload
+                        ? preferTiff
+                          ? 'Tải file GeoTIFF gốc (WCS)'
+                          : 'Tải feature vector dạng GeoJSON (WFS)'
+                        : 'Layer chưa công bố lên GeoServer'
+                    }
+                  >
+                    <Download className="size-4" aria-hidden="true" />
+                    {downloading ? `Đang tải ${downloadFormatLabel}…` : `Tải ${downloadFormatLabel}`}
+                  </Button>
                 </div>
               </div>
               {layer.description_vi && (
@@ -297,70 +340,6 @@ export default function MapLayerDetailDialog({
                       <JsonValue value={layer.bbox} emptyLabel="Chưa có thông tin phạm vi." />
                     </DetailField>
                   </dl>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Server className="text-primary size-4" aria-hidden="true" />
-                    Nguồn và dịch vụ bản đồ
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <dl className="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
-                    <DetailField label="Layer dịch vụ">
-                      <CodeValue>{layer.geoserver_layer}</CodeValue>
-                    </DetailField>
-                    <DetailField label="Kho dữ liệu dịch vụ">
-                      <CodeValue>{layer.geoserver_store}</CodeValue>
-                    </DetailField>
-                    <DetailField label="Nguồn dữ liệu">
-                      {layer.source_dataset
-                        ? (SOURCE_DATASET_LABEL[layer.source_dataset] ?? layer.source_dataset)
-                        : '-'}
-                    </DetailField>
-                    <DetailField label="Tên lớp nguồn">
-                      <CodeValue>{layer.source_layer_name}</CodeValue>
-                    </DetailField>
-                    <DetailField label="ID ảnh viễn thám">
-                      <CodeValue>{layer.remote_sensing_image_id}</CodeValue>
-                    </DetailField>
-                    <DetailField label="Đường dẫn nguồn" wide>
-                      <CodeValue>{layer.source_url}</CodeValue>
-                    </DetailField>
-                  </dl>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <ShieldCheck className="text-primary size-4" aria-hidden="true" />
-                    Cấu hình và phân quyền
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <FileJson className="text-muted-foreground size-4" aria-hidden="true" />
-                      Kiểu hiển thị mặc định
-                    </div>
-                    <JsonValue
-                      value={layer.default_style}
-                      emptyLabel="Chưa cấu hình kiểu hiển thị riêng."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Layers3 className="text-muted-foreground size-4" aria-hidden="true" />
-                      Quyền riêng theo lớp
-                    </div>
-                    <JsonValue
-                      value={layer.layer_permissions}
-                      emptyLabel="Chưa cấu hình quyền riêng theo lớp."
-                    />
-                  </div>
                 </CardContent>
               </Card>
 

@@ -35,6 +35,13 @@ export default {
     apiClient.del<LayerSeriesGroup>(
       `${serviceLayerSeriesPath}/${encodeURIComponent(groupCode)}`
     ),
+
+  /** PATCH /map/layer-groups/:groupCode/reorder — { order: string[] } */
+  reorderSteps: (groupCode: string, order: string[]) =>
+    apiClient.patch<{ updated_count: number; order: string[] }>(
+      `${serviceLayerSeriesPath}/${encodeURIComponent(groupCode)}/reorder`,
+      { order }
+    ),
 }
 
 export type { LayerSeriesGroup, LayerSeriesTimeline }

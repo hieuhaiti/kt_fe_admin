@@ -175,6 +175,66 @@ export function buildGeoserverDownloadUrl(layerFqn?: string | null): string | nu
   return `${service.endpoint}?${params.toString()}`
 }
 
+export function buildGeoserverGeoJsonUrl(
+  layerFqn?: string | null,
+  { count = 10000, srsName = 'EPSG:4326' }: { count?: number; srsName?: string } = {}
+): string | null {
+  const layer = normalizeGeoserverLayer(layerFqn)
+  if (!layer) return null
+
+  // WFS endpoint dùng chung path {root}/{workspace}/wfs.
+  const [workspace, layerName] = getLayerParts(layer)
+  const root = getGeoserverRoot(workspace)
+  if (!root || !workspace || !layerName) return null
+
+  const params = new URLSearchParams({
+    service: 'WFS',
+    version: '2.0.0',
+    request: 'GetFeature',
+    typeNames: `${workspace}:${layerName}`,
+    outputFormat: 'application/json',
+    srsName,
+    count: String(count),
+  })
+
+  return `${root}/${workspace}/wfs?${params.toString()}`
+}
+
+export async function downloadGeoJsonFile(url: string, filename: string): Promise<void> {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`Nguồn dữ liệu trả lỗi HTTP ${response.status}.`)
+
+  const text = await response.text()
+  // Server WFS có thể trả XML exception (200) khi layer không tồn tại. Chống nhầm định dạng.
+  const trimmed = text.trim()
+  if (!trimmed.startsWith('{')) {
+    throw new Error('Nguồn dữ liệu không trả về GeoJSON hợp lệ.')
+  }
+  try {
+    const parsed = JSON.parse(trimmed)
+    if (!parsed || parsed.type !== 'FeatureCollection') {
+      throw new Error('Nguồn dữ liệu không trả về GeoJSON hợp lệ.')
+    }
+  } catch {
+    throw new Error('Nguồn dữ liệu không trả về GeoJSON hợp lệ.')
+  }
+
+  const blob = new Blob([text], { type: 'application/geo+json' })
+  const finalName = /\.(geo)?json$/i.test(filename) ? filename : `${filename}.geojson`
+  const objectUrl = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = objectUrl
+  anchor.download = finalName
+  document.body.appendChild(anchor)
+  try {
+    anchor.click()
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 250))
+  } finally {
+    anchor.remove()
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
 function detectRasterExtension(bytes: Uint8Array): 'tif' | 'zip' | null {
   if (bytes[0] === 0x50 && bytes[1] === 0x4b) return 'zip'
 

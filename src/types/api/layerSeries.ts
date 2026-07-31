@@ -20,8 +20,9 @@ export interface LayerSeriesGroupPayload {
   code: string
   name_vi: string
   name_en?: string | null
-  geoserver_store: string
-  geoserver_layer: string
+  // 2 field kỹ thuật — server tự suy ra từ layer con hoặc dùng default nếu client bỏ trống.
+  geoserver_store?: string
+  geoserver_layer?: string
   geoserver_style?: string | null
   is_active?: boolean
   is_public?: boolean

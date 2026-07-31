@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
+import { FileJson } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +22,7 @@ import { MAP_LAYER_CATEGORY_OPTIONS } from '@/constant/mapLayerConstant'
 interface MapLayerFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  layerId: number | null
+  layerCode: string | null
   onSubmit: (data: CreateMapLayerBody) => void
   isLoading?: boolean
 }
@@ -36,13 +37,9 @@ export const mapLayerSchema = z.object({
     .trim()
     .min(2, { message: 'Tên lớp bản đồ phải có ít nhất 2 ký tự' })
     .max(200, { message: 'Tên lớp bản đồ không được vượt quá 200 ký tự' }),
-  geometry_type: z.enum(['polygon', 'line', 'point'], {
-    message: "Kiểu hình học phải là một trong: 'polygon', 'line', 'point'",
+  geometry_type: z.enum(['polygon', 'line', 'point', 'raster'], {
+    message: "Kiểu hình học phải là một trong: 'polygon', 'line', 'point', 'raster'",
   }),
-  geometry_data: z.union([
-    z.record(z.string(), z.any()),
-    z.string().trim().min(2, { message: 'Dữ liệu hình học phải là GeoJSON object hoặc WKT string' }),
-  ]),
   properties: z.record(z.string(), z.any()).nullable().optional(),
   is_active: z.boolean().optional(),
   is_public: z.boolean().optional(),
@@ -125,41 +122,137 @@ function toLayerCode(value: string): string {
   return /^[a-z_]/.test(code) ? code : `layer_${code}`
 }
 
-function toApiGeometryType(type: GeometryType): CreateMapLayerBody['geometry_type'] {
+type FormGeometryKind = 'point' | 'line' | 'polygon' | 'raster'
+
+function toApiGeometryType(type: FormGeometryKind): CreateMapLayerBody['geometry_type'] {
   if (type === 'point') return 'POINT'
   if (type === 'line') return 'LINESTRING'
   if (type === 'polygon') return 'POLYGON'
+  if (type === 'raster') return 'RASTER'
   return type
 }
 
-function toFormGeometryType(type?: GeometryType | null): 'point' | 'line' | 'polygon' {
-  if (type === 'POINT' || type === 'MULTIPOINT' || type === 'point') return 'point'
-  if (type === 'LINESTRING' || type === 'MULTILINESTRING' || type === 'line') return 'line'
+function toFormGeometryType(type?: GeometryType | null): FormGeometryKind {
+  const upper = String(type || '').toUpperCase()
+  if (upper === 'POINT' || upper === 'MULTIPOINT') return 'point'
+  if (upper === 'LINESTRING' || upper === 'MULTILINESTRING') return 'line'
+  if (upper === 'RASTER') return 'raster'
   return 'polygon'
+}
+
+// Suy ra kiểu hình học chính từ nội dung GeoJSON (Feature / FeatureCollection / Geometry).
+function inferGeometryKind(raw: unknown): 'point' | 'line' | 'polygon' | null {
+  const collect = (value: any): string | null => {
+    if (!value || typeof value !== 'object') return null
+    if (value.type === 'FeatureCollection' && Array.isArray(value.features)) {
+      for (const f of value.features) {
+        const t = collect(f)
+        if (t) return t
+      }
+      return null
+    }
+    if (value.type === 'Feature') return collect(value.geometry)
+    if (typeof value.type === 'string') return value.type
+    return null
+  }
+  const t = collect(raw)
+  if (!t) return null
+  if (t === 'Point' || t === 'MultiPoint') return 'point'
+  if (t === 'LineString' || t === 'MultiLineString') return 'line'
+  if (t === 'Polygon' || t === 'MultiPolygon') return 'polygon'
+  return null
 }
 
 export default function MapLayerFormDialog({
   open,
   onOpenChange,
-  layerId,
+  layerCode,
   onSubmit,
   isLoading = false,
 }: MapLayerFormDialogProps) {
   const [category, setCategory] = useState<string>('forest_district')
   const [layerGroup, setLayerGroup] = useState<string>('')
+  const [layerKind, setLayerKind] = useState<'basemap' | 'overlay'>('overlay')
   const [name, setName] = useState<string>('')
-  const [geometryType, setGeometryType] = useState<'point' | 'line' | 'polygon'>('polygon')
+  const [geometryType, setGeometryType] = useState<FormGeometryKind>('polygon')
+  const [rasterFileName, setRasterFileName] = useState<string>('')
   const [isActive, setIsActive] = useState<'true' | 'false'>('true')
   const [isPublic, setIsPublic] = useState<'true' | 'false'>('false')
   const [latitude, setLatitude] = useState<string>('')
   const [longitude, setLongitude] = useState<string>('')
   const [geometryDataText, setGeometryDataText] = useState<string>('')
   const [propertiesText, setPropertiesText] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function isTiffFile(file: File): boolean {
+    const name = file.name.toLowerCase()
+    return /\.(tif|tiff)$/.test(name) || file.type === 'image/tiff'
+  }
+
+  async function detectTiffMagicBytes(file: File): Promise<boolean> {
+    const bytes = new Uint8Array(await file.slice(0, 4).arrayBuffer())
+    const le = bytes[0] === 0x49 && bytes[1] === 0x49 && (bytes[2] === 0x2a || bytes[2] === 0x2b) && bytes[3] === 0x00
+    const be = bytes[0] === 0x4d && bytes[1] === 0x4d && bytes[2] === 0x00 && (bytes[3] === 0x2a || bytes[3] === 0x2b)
+    return le || be
+  }
+
+  async function handleOpenGeometryFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    if (isTiffFile(file)) {
+      const isTiff = await detectTiffMagicBytes(file)
+      if (!isTiff) {
+        toast.error('File có đuôi .tif/.tiff nhưng không phải GeoTIFF hợp lệ')
+        return
+      }
+      setGeometryType('raster')
+      setRasterFileName(file.name)
+      setLatitude('')
+      setLongitude('')
+      setGeometryDataText('')
+      toast.success(
+        `Đã ghi nhận ${file.name} là raster — nạp thực tế qua Import Raster / Ingest GEE`,
+      )
+      return
+    }
+
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+      const kind = inferGeometryKind(parsed)
+      if (!kind) {
+        toast.error('Không nhận diện được GeoJSON hợp lệ trong file')
+        return
+      }
+      setGeometryType(kind)
+      setRasterFileName('')
+
+      if (kind === 'point') {
+        const point = extractPointCoordinates(parsed)
+        if (point) {
+          setLatitude(String(point.lat))
+          setLongitude(String(point.lng))
+          setGeometryDataText('')
+          toast.success(`Đã nạp Point từ ${file.name}`)
+          return
+        }
+      }
+
+      setGeometryDataText(stringifyJson(parsed))
+      setLatitude('')
+      setLongitude('')
+      toast.success(`Đã nạp GeoJSON từ ${file.name}`)
+    } catch (err: any) {
+      toast.error(`File không phải GeoJSON/TIFF hợp lệ: ${err?.message || 'lỗi parse'}`)
+    }
+  }
 
   const layerQuery = useApiQuery(
-    ['mapLayer', layerId],
-    () => mapLayerService.getById(layerId!),
-    { enabled: !!layerId && open, staleTime: 0 },
+    ['mapLayer', layerCode],
+    () => mapLayerService.getByCode(layerCode!),
+    { enabled: !!layerCode && open, staleTime: 0 },
     false,
     false
   )
@@ -169,13 +262,14 @@ export default function MapLayerFormDialog({
     (responseData && 'mapLayer' in responseData
       ? (responseData as { mapLayer?: MapLayer }).mapLayer
       : (responseData as MapLayer)) ?? null
-  const isEdit = !!layerId
+  const isEdit = !!layerCode
 
   useEffect(() => {
     if (!open) return
     if (!isEdit) {
       setCategory('forest_district')
       setLayerGroup('')
+      setLayerKind('overlay')
       setName('')
       setGeometryType('polygon')
       setIsActive('true')
@@ -190,6 +284,7 @@ export default function MapLayerFormDialog({
     if (layer) {
       setCategory(layer.category || 'forest_district')
       setLayerGroup(layer.layer_group || '')
+      setLayerKind(layer.layer_kind === 'basemap' ? 'basemap' : 'overlay')
       setName(layer.name_vi || layer.name || '')
       setGeometryType(toFormGeometryType(layer.geometry_type))
       setIsActive(layer.is_active ? 'true' : 'false')
@@ -209,6 +304,9 @@ export default function MapLayerFormDialog({
   }, [open, isEdit, layer])
 
   const geometryPreview = useMemo(() => {
+    if (geometryType === 'raster') {
+      return { error: null as string | null, geojson: null as GeoJSON.GeoJSON | null }
+    }
     if (geometryType === 'point') {
       if (!latitude.trim() || !longitude.trim()) {
         return { error: null as string | null, geojson: null as GeoJSON.GeoJSON | null }
@@ -221,7 +319,10 @@ export default function MapLayerFormDialog({
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
         return { error: 'Latitude/Longitude vượt phạm vi hợp lệ', geojson: null }
       }
-      return { error: null, geojson: { type: 'Point', coordinates: [lng, lat] } as GeoJSON.Geometry }
+      return {
+        error: null,
+        geojson: { type: 'Point', coordinates: [lng, lat] } as GeoJSON.Geometry,
+      }
     }
 
     if (!geometryDataText.trim())
@@ -239,8 +340,10 @@ export default function MapLayerFormDialog({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
-    let geometryData: object | string
-    if (geometryType === 'point') {
+    // Dữ liệu hình học chỉ dùng để preview client; server không cần khi tạo/sửa
+    // metadata layer (chỉ cần geometry_type). Nếu user có nhập → validate; không
+    // nhập → bỏ qua, cho phép submit shell layer trống, nạp dữ liệu sau qua import.
+    if (geometryType === 'point' && (latitude.trim() || longitude.trim())) {
       const lat = toNumber(latitude)
       const lng = toNumber(longitude)
       if (lat === null || lng === null) {
@@ -250,17 +353,6 @@ export default function MapLayerFormDialog({
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
         toast.error('Latitude/Longitude vượt phạm vi hợp lệ')
         return
-      }
-      geometryData = { type: 'Point', coordinates: [lng, lat] }
-    } else {
-      if (!geometryDataText.trim()) {
-        toast.error('Vui lòng nhập GeoJSON')
-        return
-      }
-      try {
-        geometryData = JSON.parse(geometryDataText.trim())
-      } catch {
-        geometryData = geometryDataText.trim()
       }
     }
 
@@ -285,7 +377,6 @@ export default function MapLayerFormDialog({
       layer_group: layerGroup.trim(),
       name: name.trim(),
       geometry_type: geometryType,
-      geometry_data: geometryData,
       properties: properties ?? null,
       is_active: isActive === 'true',
       is_public: isPublic === 'true',
@@ -304,7 +395,7 @@ export default function MapLayerFormDialog({
       table_name: isEdit && layer?.table_name ? layer.table_name : code,
       schema_name: isEdit ? layer?.schema_name || 'gis' : 'gis',
       category,
-      layer_kind: 'overlay',
+      layer_kind: layerKind,
       layer_group: trimmedLayerGroup ? trimmedLayerGroup : null,
       geometry_type: toApiGeometryType(geometryType),
       epsg_code: 4326,
@@ -344,7 +435,30 @@ export default function MapLayerFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="map-layer-group">Nhóm phụ (layer_group)</Label>
+            <Label>
+              Loại lớp <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={layerKind}
+              onValueChange={(v) => setLayerKind(v as 'basemap' | 'overlay')}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="basemap">Lớp nền</SelectItem>
+                <SelectItem value="overlay">Lớp phủ</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              {layerKind === 'basemap'
+                ? 'Lớp nền sẽ tự động được bật khi user vào bản đồ, hiển thị ở mục "Lớp nền" trong sidebar.'
+                : 'Lớp phủ mặc định tắt, được gom nhóm theo "Nhóm lớp" trong sidebar.'}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="map-layer-group">Nhóm phụ </Label>
             <Input
               id="map-layer-group"
               value={layerGroup}
@@ -352,6 +466,7 @@ export default function MapLayerFormDialog({
               placeholder="Ví dụ: nhiet_do_be_mat"
               maxLength={80}
             />
+            <p className="text-muted-foreground text-xs">Tùy chọn.</p>
           </div>
 
           <div className="space-y-2">
@@ -370,7 +485,10 @@ export default function MapLayerFormDialog({
             <Label>
               Kiểu hình học <span className="text-destructive">*</span>
             </Label>
-            <Select value={geometryType} onValueChange={(v) => setGeometryType(v as typeof geometryType)}>
+            <Select
+              value={geometryType}
+              onValueChange={(v) => setGeometryType(v as typeof geometryType)}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -378,6 +496,7 @@ export default function MapLayerFormDialog({
                 <SelectItem value="point">Point</SelectItem>
                 <SelectItem value="line">Line</SelectItem>
                 <SelectItem value="polygon">Polygon</SelectItem>
+                <SelectItem value="raster">Raster (GeoTIFF)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -409,12 +528,43 @@ export default function MapLayerFormDialog({
           </div>
 
           <div className="space-y-2">
-            {geometryType === 'point' ? (
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".geojson,.json,.tif,.tiff,application/geo+json,application/json,image/tiff"
+              className="hidden"
+              onChange={handleOpenGeometryFile}
+            />
+            <div className="flex items-center justify-between gap-2">
+              <Label>Dữ liệu hình học </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileJson className="size-4" aria-hidden="true" />
+                Mở file GeoJSON / GeoTIFF
+              </Button>
+            </div>
+            {geometryType === 'raster' ? (
+              <div className="border-muted bg-muted/20 space-y-1 rounded-md border p-3">
+                <p className="text-sm font-medium">Raster (GeoTIFF)</p>
+                <p className="text-muted-foreground text-xs">
+                  {rasterFileName
+                    ? `Đã ghi nhận: ${rasterFileName}`
+                    : 'Chưa chọn file raster.'}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Form chỉ lưu metadata (geometry_type = RASTER). Nạp file thực tế
+                  qua chức năng <strong>Ingest Raster</strong> hoặc{' '}
+                  <strong>GeoServer Coverage Store</strong>.
+                </p>
+              </div>
+            ) : geometryType === 'point' ? (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="latitude">
-                    Latitude <span className="text-destructive">*</span>
-                  </Label>
+                  <Label htmlFor="latitude">Latitude</Label>
                   <Input
                     id="latitude"
                     value={latitude}
@@ -423,9 +573,7 @@ export default function MapLayerFormDialog({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="longitude">
-                    Longitude <span className="text-destructive">*</span>
-                  </Label>
+                  <Label htmlFor="longitude">Longitude</Label>
                   <Input
                     id="longitude"
                     value={longitude}
@@ -435,28 +583,25 @@ export default function MapLayerFormDialog({
                 </div>
               </div>
             ) : (
-              <>
-                <Label htmlFor="geometry-data">
-                  GeoJSON <span className="text-destructive">*</span>
-                </Label>
-                <Textarea
-                  id="geometry-data"
-                  rows={8}
-                  value={geometryDataText}
-                  onChange={(e) => setGeometryDataText(e.target.value)}
-                  placeholder='{"type":"Polygon","coordinates":[[[108,14.3],[108.1,14.3],[108.1,14.4],[108,14.3]]]}'
-                />
-              </>
+              <Textarea
+                id="geometry-data"
+                rows={8}
+                value={geometryDataText}
+                onChange={(e) => setGeometryDataText(e.target.value)}
+                placeholder='{"type":"Polygon","coordinates":[[[108,14.3],[108.1,14.3],[108.1,14.4],[108,14.3]]]}'
+              />
             )}
-            {geometryPreview.error && (
+            {geometryType !== 'raster' && geometryPreview.error && (
               <p className="text-destructive text-xs">{geometryPreview.error}</p>
             )}
-            {!geometryPreview.error && geometryPreview.geojson && (
-              <div className="border-muted bg-muted/20 rounded-md border p-2">
-                <p className="text-muted-foreground mb-2 text-xs">Preview bản đồ</p>
-                <GeoJsonMapPreview geojson={geometryPreview.geojson} />
-              </div>
-            )}
+            {geometryType !== 'raster' &&
+              !geometryPreview.error &&
+              geometryPreview.geojson && (
+                <div className="border-muted bg-muted/20 rounded-md border p-2">
+                  <p className="text-muted-foreground mb-2 text-xs">Preview bản đồ</p>
+                  <GeoJsonMapPreview geojson={geometryPreview.geojson} />
+                </div>
+              )}
           </div>
 
           <div className="space-y-2">
