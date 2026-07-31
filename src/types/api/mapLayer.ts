@@ -78,6 +78,7 @@ export interface MapLayerListParams {
   geometry_type?: string
   is_active?: boolean
   is_public?: boolean
+  publish_data?: boolean
 
   page?: number
   limit?: number

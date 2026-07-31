@@ -18,7 +18,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusDotBadge } from '@/components/common/StatusDotBadge'
-import { ACTIVE_LABEL, ACTIVE_CLASS, ACTIVE_DOT } from '@/constant/mapLayerConstant'
+import {
+  ACTIVE_LABEL,
+  ACTIVE_CLASS,
+  ACTIVE_DOT,
+  getMapLayerCategoryLabel,
+} from '@/constant/mapLayerConstant'
 import ToolTableCustom from '@/components/features/ToolTableCustom'
 import {
   Table,
@@ -331,7 +336,7 @@ export default function MapLayerPage(): JSX.Element {
                   <TableCell className="max-w-64 font-medium">
                     <span className="line-clamp-2">{layer.name_vi || layer.name || layer.code}</span>
                   </TableCell>
-                  <TableCell>{layer.category || '-'}</TableCell>
+                  <TableCell>{getMapLayerCategoryLabel(layer.category)}</TableCell>
                   <TableCell className="uppercase">{layer.geometry_type || '-'}</TableCell>
                   <TableCell>
                     <StatusDotBadge

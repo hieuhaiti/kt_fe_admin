@@ -18,17 +18,7 @@ import { toast } from 'react-toastify'
 import { CheckCircle2, Download, FileJson, Info } from 'lucide-react'
 import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
-
-const categoryOptions = [
-  'land_cover',
-  'fire_risk_district',
-  'remote_sensing',
-  'forest_district',
-  'hanh_chinh',
-  'thuy_van',
-  'giao_thong',
-  'other',
-]
+import { MAP_LAYER_CATEGORY_OPTIONS } from '@/constant/mapLayerConstant'
 
 function extractGeoJson(raw: any): GeoJSON.GeoJSON | null {
   if (!raw || typeof raw !== 'object') return null
@@ -186,9 +176,9 @@ export default function ImportGeoJsonPage(): JSX.Element {
                   <SelectValue placeholder="Chọn nhóm lớp" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoryOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
+                  {MAP_LAYER_CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

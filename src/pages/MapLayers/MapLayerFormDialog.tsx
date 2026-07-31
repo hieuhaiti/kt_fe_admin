@@ -16,6 +16,7 @@ import { mapLayerService, useApiQuery } from '@/service'
 import GeoJsonMapPreview from '@/components/features/GeoJsonMapPreview'
 import type { ApiResponse, CreateMapLayerBody, GeometryType, MapLayer } from '@/types/api'
 import { toast } from 'react-toastify'
+import { MAP_LAYER_CATEGORY_OPTIONS } from '@/constant/mapLayerConstant'
 
 interface MapLayerFormDialogProps {
   open: boolean
@@ -26,17 +27,6 @@ interface MapLayerFormDialogProps {
 }
 
 type MapLayerDetailData = MapLayer | { mapLayer?: MapLayer }
-
-const categoryOptions = [
-  'land_cover',
-  'fire_risk_district',
-  'remote_sensing',
-  'forest_district',
-  'hanh_chinh',
-  'thuy_van',
-  'giao_thong',
-  'other',
-]
 
 export const mapLayerSchema = z.object({
   category: z.string().trim().min(1, { message: 'Vui lòng chọn nhóm lớp' }).max(60),
@@ -344,9 +334,9 @@ export default function MapLayerFormDialog({
                 <SelectValue placeholder="Chọn nhóm lớp" />
               </SelectTrigger>
               <SelectContent>
-                {categoryOptions.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
+                {MAP_LAYER_CATEGORY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>

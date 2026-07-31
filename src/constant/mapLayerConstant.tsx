@@ -39,3 +39,53 @@ export const PUBLIC_DOT: Record<string, string> = {
   true: 'bg-emerald-500',
   false: 'bg-slate-400',
 }
+
+// ── Category (nhóm lớp) ───────────────────────────────────────────
+// Mapping toàn diện: gồm cả slug mới (English, khớp GEE modules) và slug cũ
+// (tiếng Việt không dấu) để hiển thị nhất quán ở mọi nơi.
+export const MAP_LAYER_CATEGORY_LABEL_VI: Record<string, string> = {
+  // Modules chuyên đề (English slug)
+  land_cover: 'Lớp phủ mặt đất',
+  remote_sensing: 'Ảnh viễn thám',
+  fire_risk_district: 'Nguy cơ cháy rừng theo huyện',
+  forest_district: 'Phân loại rừng theo huyện',
+  administrative: 'Ranh giới hành chính',
+  hydrology: 'Thủy văn',
+  transportation: 'Giao thông',
+  infrastructure: 'Hạ tầng',
+  environment: 'Môi trường',
+  agriculture: 'Nông nghiệp',
+  forestry: 'Lâm nghiệp',
+  // Legacy slug (dữ liệu cũ trong DB có thể còn)
+  fire_risk: 'Nguy cơ cháy rừng',
+  forest: 'Rừng',
+  transport: 'Giao thông',
+  weather: 'Thời tiết',
+  hanh_chinh: 'Hành chính',
+  thuy_van: 'Thủy văn',
+  giao_thong: 'Giao thông',
+  other: 'Khác',
+}
+
+// Danh sách chọn trong form Tạo/Sửa/Import — giữ nguyên value hiện hành để
+// không phá dữ liệu đã tạo. Chỉ hiển thị label tiếng Việt.
+export const MAP_LAYER_CATEGORY_OPTIONS: { value: string; label: string }[] = [
+  { value: 'land_cover', label: MAP_LAYER_CATEGORY_LABEL_VI.land_cover },
+  { value: 'fire_risk_district', label: MAP_LAYER_CATEGORY_LABEL_VI.fire_risk_district },
+  { value: 'remote_sensing', label: MAP_LAYER_CATEGORY_LABEL_VI.remote_sensing },
+  { value: 'forest_district', label: MAP_LAYER_CATEGORY_LABEL_VI.forest_district },
+  { value: 'hanh_chinh', label: MAP_LAYER_CATEGORY_LABEL_VI.hanh_chinh },
+  { value: 'thuy_van', label: MAP_LAYER_CATEGORY_LABEL_VI.thuy_van },
+  { value: 'giao_thong', label: MAP_LAYER_CATEGORY_LABEL_VI.giao_thong },
+  { value: 'other', label: MAP_LAYER_CATEGORY_LABEL_VI.other },
+]
+
+export function getMapLayerCategoryLabel(key?: string | null): string {
+  if (!key) return '-'
+  return (
+    MAP_LAYER_CATEGORY_LABEL_VI[key] ||
+    key
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+  )
+}

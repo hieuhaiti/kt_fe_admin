@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { mapLayerService, useApiQuery } from '@/service'
 import type { ApiResponse, MapLayer } from '@/types/api'
 import { formatDateTime } from '@/lib/date'
+import { getMapLayerCategoryLabel } from '@/constant/mapLayerConstant'
 import {
   CalendarClock,
   Database,
@@ -24,18 +25,6 @@ interface MapLayerDetailDialogProps {
 }
 
 type MapLayerDetailData = MapLayer | { mapLayer?: MapLayer }
-
-const CATEGORY_LABEL: Record<string, string> = {
-  administrative: 'Hành chính',
-  fire_risk: 'Nguy cơ cháy rừng',
-  forest: 'Rừng',
-  hydrology: 'Thủy văn',
-  land_cover: 'Lớp phủ đất',
-  other: 'Khác',
-  remote_sensing: 'Viễn thám',
-  transport: 'Giao thông',
-  weather: 'Thời tiết',
-}
 
 const LAYER_KIND_LABEL: Record<string, string> = {
   basemap: 'Lớp nền',
@@ -256,7 +245,7 @@ export default function MapLayerDetailDialog({
                       <span className="whitespace-pre-wrap">{layer.description_en || '-'}</span>
                     </DetailField>
                     <DetailField label="Danh mục">
-                      {layer.category ? (CATEGORY_LABEL[layer.category] ?? layer.category) : '-'}
+                      {getMapLayerCategoryLabel(layer.category)}
                     </DetailField>
                     <DetailField label="Loại lớp">
                       {layer.layer_kind
