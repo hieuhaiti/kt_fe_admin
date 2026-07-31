@@ -820,8 +820,25 @@ export default function ForestClassificationPage() {
           </p>
           {snapshot && (
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              <span>
-                Kết quả cập nhật đến: <span>{formatPeriod(snapshot.year, snapshot.month)}</span>
+              <span className="flex items-center gap-1">
+                <span>
+                  Kết quả cập nhật đến: <span>{formatPeriod(snapshot.year, snapshot.month)}</span>
+                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground focus-visible:ring-ring cursor-help rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                      aria-label="Giải thích kỳ cập nhật kết quả"
+                    >
+                      <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs leading-relaxed">
+                    Kỳ dữ liệu mới nhất đã xử lý xong. Số liệu được tổng hợp từ ảnh của 12 tháng
+                    gần nhất, không phải dữ liệu thời gian thực.
+                  </TooltipContent>
+                </Tooltip>
               </span>
               <StatusBadge status={snapshot.status} />
               <span
@@ -978,6 +995,21 @@ export default function ForestClassificationPage() {
               <h2 className="flex items-center gap-2 font-semibold">
                 <GitCompareArrows className="text-primary h-4 w-4" />
                 So sánh hai kỳ
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground focus-visible:ring-ring cursor-help rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                      aria-label="Giải thích cách so sánh số liệu"
+                    >
+                      <CircleHelp className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs font-normal leading-relaxed">
+                    Đối chiếu diện tích và cơ cấu 11 lớp phủ giữa hai kỳ đã công bố. Nên chọn cùng
+                    tháng giữa các năm để giảm khác biệt theo mùa.
+                  </TooltipContent>
+                </Tooltip>
               </h2>
               <p className="text-muted-foreground mt-1 text-xs">
                 Chọn kỳ cần xem và kỳ đối chiếu. Cùng tháng giữa hai năm thường dễ đánh giá hơn vì

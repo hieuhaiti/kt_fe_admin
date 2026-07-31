@@ -9,24 +9,28 @@ export interface NewsCommentUser {
 }
 
 export interface NewsComment {
-  id: number
-  newsId?: number
-  userId?: number | null
+  id: number | string
+  newsId?: number | string
+  userId?: number | string | null
   user?: NewsCommentUser | null
+  userName?: string | null
+  userAvatar?: string | null
+  newsTitle?: string | null
+  newsSlug?: string | null
   content: string
   isApproved?: boolean
-  parentCommentId?: number | null
+  parentCommentId?: number | string | null
   replies?: NewsComment[]
   createdAt?: string
   updatedAt?: string
 
   // legacy snake_case
-  news_id?: number
-  user_id?: number | null
+  news_id?: number | string
+  user_id?: number | string | null
   user_name?: string
   user_email?: string
   is_approved?: boolean
-  parent_comment_id?: number | null
+  parent_comment_id?: number | string | null
   created_at?: string
   updated_at?: string
 }
@@ -37,8 +41,11 @@ export interface NewsCommentData {
 }
 
 export interface NewsCommentListData {
-  comments: NewsComment[]
-  pagination: import('./index').Pagination
+  items: NewsComment[]
+
+  // legacy
+  comments?: NewsComment[]
+  pagination?: import('./index').Pagination
 }
 
 export type NewsCommentPublicList = NewsComment[]
@@ -52,6 +59,8 @@ export interface NewsCommentAdminListParams {
   limit?: number
   targetType?: 'news' | string
   targetId?: number
+  approved?: boolean
+  newsId?: number
   isApproved?: boolean
   sortBy?: 'created_at' | 'updated_at'
   sortOrder?: 'ASC' | 'DESC'

@@ -1,6 +1,5 @@
 import apiClient from './common/apiClient'
 import type {
-  ApiResponse,
   Notification,
   NotificationListData,
   NotificationListParams,
@@ -24,7 +23,7 @@ export default {
 
   /** GET /notifications/unread-count */
   getUnreadCount: () =>
-    apiClient.get<{ unreadCount: number }>(`${serviceNotificationPath}/unread-count`),
+    apiClient.get<{ unread: number }>(`${serviceNotificationPath}/unread-count`),
 
   /** PATCH /notifications/read-all */
   markAllAsRead: () =>
@@ -36,17 +35,17 @@ export default {
 
   /** DELETE /notifications/:notificationId */
   delete: (notificationId: number | string) =>
-    apiClient.del<ApiResponse<{}>>(`${serviceNotificationPath}/${notificationId}`),
+    apiClient.del<Record<string, never>>(`${serviceNotificationPath}/${notificationId}`),
 
   /** POST /notifications/devices  (FCM device registration) */
   registerDevice: (data: RegisterDeviceBody) =>
-    apiClient.post<ApiResponse<{}>>(serviceNotificationDevicesPath, data),
+    apiClient.post<Record<string, never>>(serviceNotificationDevicesPath, data),
 
   /** DELETE /notifications/devices */
   unregisterDevice: (data: UnregisterDeviceBody) =>
-    apiClient.del<ApiResponse<{}>>(serviceNotificationDevicesPath, data),
+    apiClient.del<Record<string, never>>(serviceNotificationDevicesPath, data),
 
   /** POST /notifications/send (admin/so_nnmt) */
   send: (data: SendNotificationBody) =>
-    apiClient.post<ApiResponse<{ id: number }>>(`${serviceNotificationPath}/send`, data),
+    apiClient.post<{ id: number }>(`${serviceNotificationPath}/send`, data),
 }

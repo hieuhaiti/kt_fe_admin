@@ -1,6 +1,5 @@
 import apiClient from './common/apiClient'
 import type {
-  ApiResponse,
   NewsComment,
   NewsCommentListData,
   NewsCommentAdminListParams,
@@ -28,13 +27,13 @@ export default {
 
   /** DELETE /admin/comments/:commentId */
   delete: (commentId: number | string) =>
-    apiClient.del<ApiResponse<{}>>(`${serviceAdminCommentsPath}/${commentId}`),
+    apiClient.del<Record<string, never>>(`${serviceAdminCommentsPath}/${commentId}`),
 
   /** Backwards-compat alias */
   adminDelete: (commentId: number | string) =>
-    apiClient.del<ApiResponse<{}>>(`${serviceAdminCommentsPath}/${commentId}`),
+    apiClient.del<Record<string, never>>(`${serviceAdminCommentsPath}/${commentId}`),
 
   /** GET /admin/comments/:commentId */
   getById: (commentId: number | string) =>
-    apiClient.get<{ comment: NewsComment }>(`${serviceAdminCommentsPath}/${commentId}`),
+    apiClient.get<NewsComment>(`${serviceAdminCommentsPath}/${commentId}`),
 }

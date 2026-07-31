@@ -4,13 +4,13 @@ export type NotificationPlatform = 'web' | 'android' | 'ios'
 export type NotificationTarget = 'user' | 'all' | 'role'
 
 export interface Notification {
-  id: number
+  id: number | string
   userId?: number | null
   channel?: NotificationChannel
   type: NotificationType
   title?: string | null
   body?: string | null
-  data?: Record<string, any> | null
+  data?: Record<string, unknown> | null
   isRead?: boolean
   readAt?: string | null
   createdAt?: string
@@ -18,15 +18,18 @@ export interface Notification {
   // legacy snake_case fallbacks
   user_id?: number | null
   message?: string | null
-  payload?: Record<string, any> | null
+  payload?: Record<string, unknown> | null
   is_read?: boolean
   read_at?: string | null
   created_at?: string
 }
 
 export interface NotificationListData {
-  notifications: Notification[]
-  pagination: import('./index').Pagination
+  items: Notification[]
+
+  // legacy
+  notifications?: Notification[]
+  pagination?: import('./index').Pagination
   unreadCount?: number
   unread_count?: number
 }
@@ -45,7 +48,7 @@ export interface NotificationListParams {
 export interface RegisterDeviceBody {
   token: string
   platform: NotificationPlatform
-  deviceInfo?: { model?: string; os?: string; [key: string]: any }
+  deviceInfo?: { model?: string; os?: string; [key: string]: unknown }
 }
 
 export interface UnregisterDeviceBody {
@@ -60,7 +63,7 @@ export type SendNotificationBody =
       type: NotificationType
       title: string
       body: string
-      data?: Record<string, any>
+      data?: Record<string, unknown>
     }
   | {
       target: 'all'
@@ -68,7 +71,7 @@ export type SendNotificationBody =
       type: NotificationType
       title: string
       body: string
-      data?: Record<string, any>
+      data?: Record<string, unknown>
     }
   | {
       target: 'role'
@@ -77,5 +80,5 @@ export type SendNotificationBody =
       type: NotificationType
       title: string
       body: string
-      data?: Record<string, any>
+      data?: Record<string, unknown>
     }

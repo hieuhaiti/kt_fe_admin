@@ -32,6 +32,8 @@ const CHANNEL_OPTIONS: { value: string; label: string }[] = [
   { value: 'system', label: 'Hệ thống' },
   { value: 'fire', label: 'Cháy rừng' },
   { value: 'feedback', label: 'Phản ánh' },
+  { value: 'comment', label: 'Bình luận' },
+  { value: 'news', label: 'Tin tức' },
 ]
 
 const TYPE_GROUPS: { group: string; items: { value: string; label: string }[] }[] = [
@@ -54,6 +56,7 @@ const TYPE_GROUPS: { group: string; items: { value: string; label: string }[] }[
   {
     group: 'Phản ánh',
     items: [
+      { value: 'feedback_created', label: 'Phản ánh mới (feedback_created)' },
       { value: 'feedback_fire_report', label: 'Phản ánh cháy rừng (feedback_fire_report)' },
       {
         value: 'feedback_status_changed',
@@ -61,6 +64,19 @@ const TYPE_GROUPS: { group: string; items: { value: string; label: string }[] }[
       },
       { value: 'feedback_resolved', label: 'Phản ánh đã xử lý (feedback_resolved)' },
     ],
+  },
+  {
+    group: 'Bình luận',
+    items: [
+      { value: 'comment_created', label: 'Bình luận mới (comment_created)' },
+      { value: 'comment_approved', label: 'Bình luận đã duyệt (comment_approved)' },
+      { value: 'comment_rejected', label: 'Bình luận bị từ chối (comment_rejected)' },
+      { value: 'comment_removed', label: 'Bình luận bị gỡ (comment_removed)' },
+    ],
+  },
+  {
+    group: 'Tin tức',
+    items: [{ value: 'news_published', label: 'Tin mới xuất bản (news_published)' }],
   },
 ]
 
@@ -191,7 +207,8 @@ export default function NotificationSendPage() {
       <div>
         <h1 className="text-2xl font-bold">Gửi thông báo</h1>
         <p className="text-muted-foreground text-sm">
-          Gửi thông báo hệ thống hoặc cảnh báo cháy tới người dùng cụ thể, theo vai trò hoặc tất cả.
+          Gửi thông báo hệ thống, phản ánh, bình luận, tin tức hoặc cảnh báo cháy tới người dùng cụ
+          thể, theo vai trò hoặc tất cả.
         </p>
       </div>
 

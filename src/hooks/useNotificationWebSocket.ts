@@ -3,7 +3,19 @@ import { tokenManager } from '@/lib/tokenManager'
 
 type UseNotificationWebSocketOptions = {
     enabled?: boolean
-    onMessage: () => void
+    roleCode?: string
+    onMessage: (message: NotificationSocketMessage) => void
+}
+
+export type NotificationSocketMessage = {
+    event?: string
+    data?: {
+        id?: number | string
+        title?: string | null
+        body?: string | null
+        [key: string]: unknown
+    }
+    timestamp?: string
 }
 
 const WS_BASE_URL = import.meta.env.VITE_WS_URL || ''
@@ -29,7 +41,7 @@ function buildNotificationSocketUrl(token?: string) {
 }
 
 export function useNotificationWebSocket(options: UseNotificationWebSocketOptions) {
-    const { enabled = true, onMessage } = options
+    const { enabled = true, roleCode, onMessage } = options
     const reconnectTimeoutRef = useRef<number | null>(null)
     const reconnectAttemptRef = useRef(0)
     const socketRef = useRef<WebSocket | null>(null)
@@ -63,11 +75,11 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
             }, delay)
         }
 
-        const handleMessage = () => {
+        const handleMessage = (message: NotificationSocketMessage) => {
             const now = Date.now()
             if (now - lastRefetchAtRef.current < 500) return
             lastRefetchAtRef.current = now
-            onMessage()
+            onMessage(message)
         }
 
         const connect = () => {
@@ -78,10 +90,21 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
 
             socket.onopen = () => {
                 reconnectAttemptRef.current = 0
+                if (roleCode) {
+                    socket.send(JSON.stringify({
+                        action: 'subscribe',
+                        channels: [`role_${roleCode}`],
+                    }))
+                }
             }
 
-            socket.onmessage = () => {
-                handleMessage()
+            socket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data) as NotificationSocketMessage
+                    if (message.event === 'notification') handleMessage(message)
+                } catch {
+                    // Bỏ qua payload không thuộc giao thức notification.
+                }
             }
 
             socket.onerror = () => {
@@ -105,5 +128,5 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
                 socketRef.current = null
             }
         }
-    }, [enabled, onMessage, socketUrl])
+    }, [enabled, onMessage, roleCode, socketUrl])
 }

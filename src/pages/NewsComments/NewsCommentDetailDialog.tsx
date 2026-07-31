@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { newsCommentService, useApiQuery } from '@/service'
-import type { ApiResponse, NewsCommentData } from '@/types/api'
+import type { ApiResponse, NewsComment } from '@/types/api'
 import { UserText } from '@/components/common/UserText'
 import { formatDateTime } from '@/lib/date'
 import { toApprovedFlag } from '@/lib/newsComment'
@@ -9,7 +9,7 @@ import { toApprovedFlag } from '@/lib/newsComment'
 interface NewsCommentDetailDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  commentId: number | null
+  commentId: number | string | null
 }
 
 export default function NewsCommentDetailDialog({
@@ -24,16 +24,30 @@ export default function NewsCommentDetailDialog({
     false,
     false
   )
-  const comment = (dbQuery.data as ApiResponse<NewsCommentData>)?.data?.comment ?? null
+  const comment = (dbQuery.data as ApiResponse<NewsComment>)?.data ?? null
 
   const parentQuery = useApiQuery(
-    ['news-comment', comment?.parent_comment_id],
-    () => newsCommentService.getById(comment!.parent_comment_id!),
-    { enabled: !!comment?.parent_comment_id, staleTime: 0 },
+    ['news-comment', comment?.parentCommentId ?? comment?.parent_comment_id],
+    () => newsCommentService.getById((comment!.parentCommentId ?? comment!.parent_comment_id)!),
+    {
+      enabled: !!(comment?.parentCommentId ?? comment?.parent_comment_id),
+      staleTime: 0,
+    },
     false,
     false
   )
-  const parentComment = (parentQuery.data as ApiResponse<NewsCommentData>)?.data?.comment ?? null
+  const parentComment = (parentQuery.data as ApiResponse<NewsComment>)?.data ?? null
+  const newsId = comment?.newsId ?? comment?.news_id
+  const userId = comment?.userId ?? comment?.user_id
+  const userName =
+    comment?.userName ??
+    comment?.user_name ??
+    comment?.user?.fullName ??
+    comment?.user?.full_name
+  const parentCommentId = comment?.parentCommentId ?? comment?.parent_comment_id
+  const isApproved = comment?.isApproved ?? comment?.is_approved
+  const createdAt = comment?.createdAt ?? comment?.created_at
+  const updatedAt = comment?.updatedAt ?? comment?.updated_at
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -49,21 +63,21 @@ export default function NewsCommentDetailDialog({
             </div>
             <div className="grid grid-cols-3 gap-2">
               <span className="font-semibold">Bài viết ID:</span>
-              <span className="col-span-2">{comment.news_id}</span>
+              <span className="col-span-2">{newsId}</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <span className="font-semibold">Người bình luận:</span>
               <span className="col-span-2">
-                {comment.user_id ? <UserText userId={comment.user_id} /> : comment.user_name || '-'}
+                <UserText userId={userId} inlineUser={userName} />
               </span>
             </div>
-            {!comment.user_id && comment.user_email && (
+            {!userId && comment.user_email && (
               <div className="grid grid-cols-3 gap-2">
                 <span className="font-semibold">Email:</span>
                 <span className="col-span-2">{comment.user_email}</span>
               </div>
             )}
-            {comment.parent_comment_id && (
+            {parentCommentId && (
               <div className="grid grid-cols-3 gap-2">
                 <span className="font-semibold">Trả lời bình luận:</span>
                 <div className="col-span-2">
@@ -72,15 +86,20 @@ export default function NewsCommentDetailDialog({
                       <p className="text-muted-foreground text-xs">
                         #{parentComment.id} ·{' '}
                         {parentComment.user
-                          ? parentComment.user.full_name || `User #${parentComment.user.id}`
-                          : parentComment.user_name || '-'}{' '}
-                        · {formatDateTime(parentComment.created_at)}
+                          ? parentComment.user.fullName ||
+                            parentComment.user.full_name ||
+                            `User #${parentComment.user.id}`
+                          : parentComment.userName || parentComment.user_name || '-'}{' '}
+                        ·{' '}
+                        {formatDateTime(
+                          (parentComment.createdAt ?? parentComment.created_at) as string
+                        )}
                       </p>
                       <p className="whitespace-pre-wrap">{parentComment.content}</p>
                     </div>
                   ) : (
                     <span className="text-muted-foreground text-sm">
-                      #{comment.parent_comment_id}
+                      #{parentCommentId}
                     </span>
                   )}
                 </div>
@@ -100,8 +119,12 @@ export default function NewsCommentDetailDialog({
                     <div key={r.id} className="rounded border p-2 text-sm">
                       <p className="text-muted-foreground text-xs">
                         #{r.id} ·{' '}
-                        {r.user_name || (r.user ? r.user.full_name || `User #${r.user.id}` : '-')} ·{' '}
-                        {formatDateTime(r.created_at)}
+                        {r.userName ||
+                          r.user_name ||
+                          (r.user
+                            ? r.user.fullName || r.user.full_name || `User #${r.user.id}`
+                            : '-')}{' '}
+                        · {formatDateTime((r.createdAt ?? r.created_at) as string)}
                       </p>
                       <p className="mt-1 whitespace-pre-wrap">{r.content}</p>
                     </div>
@@ -112,7 +135,7 @@ export default function NewsCommentDetailDialog({
             <div className="grid grid-cols-3 gap-2">
               <span className="font-semibold">Trạng thái:</span>
               <span className="col-span-2">
-                {toApprovedFlag(comment.is_approved) ? (
+                {toApprovedFlag(isApproved) ? (
                   <Badge variant="default">Đã duyệt</Badge>
                 ) : (
                   <Badge variant="secondary">Chờ duyệt</Badge>
@@ -122,14 +145,14 @@ export default function NewsCommentDetailDialog({
             <div className="grid grid-cols-3 gap-2">
               <span className="font-semibold">Ngày tạo:</span>
               <span className="col-span-2">
-                {comment.created_at ? formatDateTime(comment.created_at) : '-'}
+                {createdAt ? formatDateTime(createdAt) : '-'}
               </span>
             </div>
-            {comment.updated_at && (
+            {updatedAt && (
               <div className="grid grid-cols-3 gap-2">
                 <span className="font-semibold">Cập nhật:</span>
                 <span className="col-span-2">
-                  {formatDateTime(comment.updated_at)}
+                  {formatDateTime(updatedAt)}
                 </span>
               </div>
             )}

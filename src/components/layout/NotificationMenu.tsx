@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import { Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +23,7 @@ import type {
 import { cn } from '@/lib/utils'
 import { formatDateTime } from '@/lib/date'
 import { useNotificationWebSocket } from '@/hooks/useNotificationWebSocket'
+import { useAuthStore } from '@/stores/common/useAuthStore'
 
 const defaultParams: NotificationListParams = {
   page: 1,
@@ -44,8 +48,26 @@ function createdAtOf(n: Notification) {
   return n.createdAt ?? n.created_at ?? ''
 }
 
+function getNotificationPath(n: Notification) {
+  const data = n.data ?? n.payload
+  if (
+    typeof data?.path === 'string' &&
+    data.path.startsWith('/') &&
+    !data.path.startsWith('//')
+  ) {
+    return data.path
+  }
+  if (n.channel === 'feedback') return '/feedbacks'
+  if (n.channel === 'comment') return '/news-comments'
+  if (n.channel === 'news') return '/news'
+  return null
+}
+
 export function NotificationMenu() {
   const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const roleCode = useAuthStore((state) => state.user?.roleCode ?? state.user?.role?.code)
 
   const params = defaultParams
   const query = useApiQuery(
@@ -55,51 +77,73 @@ export function NotificationMenu() {
     false,
     false
   )
+  const unreadQuery = useApiQuery(
+    ['notifications', 'unread-count'],
+    () => notificationService.getUnreadCount(),
+    { refetchOnWindowFocus: false },
+    false,
+    false
+  )
 
-  const handleWsMessage = useCallback(() => {
-    query.refetch()
-  }, [query.refetch])
+  const refreshNotifications = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['notifications'] })
+  }, [queryClient])
+
+  const handleWsMessage = useCallback(
+    (message: { data?: { id?: number | string; title?: string | null; body?: string | null } }) => {
+      refreshNotifications()
+      if (!open) {
+        toast.info(message.data?.title || message.data?.body || 'Bạn có thông báo mới', {
+          toastId: `notification-${message.data?.id ?? 'new'}`,
+        })
+      }
+    },
+    [open, refreshNotifications]
+  )
 
   useNotificationWebSocket({
+    roleCode,
     onMessage: handleWsMessage,
   })
 
-  useEffect(() => {
-    if (open) query.refetch()
-  }, [open, query.refetch])
-
   const raw = query.data as ApiResponse<NotificationListData> | undefined
-  const data = raw?.data as any
-  const notifications: Notification[] =
-    data?.items ?? data?.notifications ?? []
-  const unreadCountRaw = data?.unreadCount ?? data?.unread_count
+  const data = raw?.data
+  const notifications: Notification[] = data?.items ?? data?.notifications ?? []
+  const unreadData = (unreadQuery.data as ApiResponse<{ unread: number }> | undefined)?.data
+  const unreadCountRaw = unreadData?.unread ?? data?.unreadCount ?? data?.unread_count
   const unreadCount = Number.isFinite(Number(unreadCountRaw))
     ? Math.max(0, Number(unreadCountRaw))
     : Math.max(0, notifications.filter((n) => !isReadFlag(n)).length)
-  const showBadge = true
+  const showBadge = unreadCount > 0
 
   const markAsReadMutation = useApiMutation(
-    (id: number) => notificationService.markAsRead(id),
+    (id: number | string) => notificationService.markAsRead(id),
     {
       onSuccess: () => {
-        query.refetch()
+        refreshNotifications()
       },
     },
     false
   )
 
   const markAllAsReadMutation = useApiMutation(
-    (_: void) => notificationService.markAllAsRead(),
+    () => notificationService.markAllAsRead(),
     {
       onSuccess: () => {
-        query.refetch()
+        refreshNotifications()
       },
     },
     false
   )
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) refreshNotifications()
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -164,6 +208,8 @@ export function NotificationMenu() {
                     if (!read && !markAsReadMutation.isPending) {
                       markAsReadMutation.mutate(n.id)
                     }
+                    const path = getNotificationPath(n)
+                    if (path) navigate(path)
                   }}
                 >
                   <div className="flex w-full items-center justify-between gap-2">

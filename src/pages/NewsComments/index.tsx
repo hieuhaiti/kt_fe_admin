@@ -1,7 +1,13 @@
 import type { JSX } from 'react'
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useApiQuery, useApiMutation, newsCommentService } from '@/service'
-import type { ApiResponse, Pagination } from '@/types/api'
+import type {
+  ApiResponse,
+  NewsComment,
+  NewsCommentAdminListParams,
+  NewsCommentListData,
+  Pagination,
+} from '@/types/api'
 import {
   Select,
   SelectTrigger,
@@ -49,12 +55,10 @@ export default function NewsComments(): JSX.Element {
   const [searchValue, setSearchValue] = useState<string>('')
   const [approvedFilter, setApprovedFilter] = useState<string>('all')
 
-  const queryParams = {
+  const queryParams: NewsCommentAdminListParams = {
     page: currentPage,
     limit,
-    sortBy: 'created_at' as const,
-    sortOrder: 'DESC' as const,
-    ...(approvedFilter !== 'all' && { is_approved: approvedFilter === 'true' }),
+    ...(approvedFilter !== 'all' && { approved: approvedFilter === 'true' }),
   }
 
   const dbQuery = useApiQuery(
@@ -65,42 +69,36 @@ export default function NewsComments(): JSX.Element {
     false
   )
 
-  const raw = dbQuery.data as ApiResponse<any> | undefined
-  const data = raw?.data as any
+  const raw = dbQuery.data as ApiResponse<NewsCommentListData> | undefined
+  const data = raw?.data
   const comments = data?.items ?? data?.comments ?? []
   const pagination = (raw?.metadata ?? data?.pagination ?? {}) as Partial<Pagination>
-  const lastTotalPagesRef = useRef(1)
-  if (pagination.totalPages !== undefined) {
-    lastTotalPagesRef.current = Math.max(1, pagination.totalPages)
-  }
-  const totalPages = lastTotalPagesRef.current
+  const totalPages = Math.max(1, pagination.totalPages ?? 1)
   const total = pagination?.total ?? 0
-
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages)
-  }, [currentPage, totalPages])
 
   // Filter comments locally by search value (user_name, user_email, content)
   const filteredComments = searchValue
-    ? comments.filter((c: any) => {
+    ? comments.filter((c) => {
         const q = searchValue.toLowerCase()
         return (
           c.content?.toLowerCase().includes(q) ||
+          c.userName?.toLowerCase().includes(q) ||
           c.user_name?.toLowerCase().includes(q) ||
-          c.user_email?.toLowerCase().includes(q)
+          c.user_email?.toLowerCase().includes(q) ||
+          c.newsTitle?.toLowerCase().includes(q)
         )
       })
     : comments
 
   // Dialog states
-  const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null)
+  const [selectedCommentId, setSelectedCommentId] = useState<number | string | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [commentToDelete, setCommentToDelete] = useState<any | null>(null)
+  const [commentToDelete, setCommentToDelete] = useState<NewsComment | null>(null)
 
   // Approve mutation
   const approveMutation = useApiMutation(
-    (id: number) => newsCommentService.approve(id),
+    (id: number | string) => newsCommentService.approve(id),
     {
       onSuccess: () => {
         dbQuery.refetch()
@@ -111,10 +109,14 @@ export default function NewsComments(): JSX.Element {
 
   // Delete mutation
   const deleteMutation = useApiMutation(
-    (id: number) => newsCommentService.adminDelete(id),
+    (id: number | string) => newsCommentService.adminDelete(id),
     {
       onSuccess: () => {
-        dbQuery.refetch()
+        if (comments.length === 1 && currentPage > 1) {
+          setCurrentPage((page) => page - 1)
+        } else {
+          dbQuery.refetch()
+        }
         setDeleteDialogOpen(false)
         setCommentToDelete(null)
       },
@@ -122,14 +124,14 @@ export default function NewsComments(): JSX.Element {
     true
   )
 
-  function openDetails(c: any) {
+  function openDetails(c: NewsComment) {
     if (c?.id) {
       setSelectedCommentId(c.id)
       setDetailDialogOpen(true)
     }
   }
 
-  function openDeleteDialog(c: any) {
+  function openDeleteDialog(c: NewsComment) {
     setCommentToDelete(c)
     setDeleteDialogOpen(true)
   }
@@ -212,69 +214,87 @@ export default function NewsComments(): JSX.Element {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredComments.map((c: any) => (
-                <TableRow
-                  className="hover:cursor-pointer"
-                  key={c.id}
-                  onClick={() => openDetails(c)}
-                >
-                  <TableCell>{c.id}</TableCell>
-                  <TableCell>#{c.news_id}</TableCell>
-                  <TableCell>
-                    <UserCell userId={c.user_id} inlineUser={c.user ?? c.user_name} />
-                  </TableCell>
-                  <TableCell className="max-w-64">
-                    <span className="line-clamp-2 text-sm">{c.content}</span>
-                  </TableCell>
-                  <TableCell>
-                    <StatusDotBadge
-                      label={APPROVED_LABEL[String(toApprovedFlag(c.is_approved))]}
-                      badgeClass={APPROVED_CLASS[String(toApprovedFlag(c.is_approved))]}
-                      dotClass={APPROVED_DOT[String(toApprovedFlag(c.is_approved))]}
-                    />
-                  </TableCell>
-                  <TableCell>{c.created_at ? formatDate(c.created_at) : '-'}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {canApprove && (
-                        <Button
-                          variant={toApprovedFlag(c.is_approved) ? 'outline' : 'default'}
-                          size="sm"
-                          disabled={toApprovedFlag(c.is_approved) || approveMutation.isPending}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (!toApprovedFlag(c.is_approved)) approveMutation.mutate(c.id)
-                          }}
-                          title={
-                            toApprovedFlag(c.is_approved)
-                              ? 'Bình luận đã được duyệt'
-                              : 'Duyệt bình luận'
-                          }
-                        >
-                          {toApprovedFlag(c.is_approved)
-                            ? 'Đã duyệt'
-                            : approveMutation.isPending
-                              ? 'Đang duyệt...'
-                              : 'Duyệt'}
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openDeleteDialog(c)
-                          }}
-                          title="Xóa"
-                        >
-                          <Trash2 className="text-destructive size-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredComments.map((c) => {
+                const newsId = c.newsId ?? c.news_id
+                const userId = c.userId ?? c.user_id
+                const userName =
+                  c.userName ?? c.user_name ?? c.user?.fullName ?? c.user?.full_name
+                const isApproved = c.isApproved ?? c.is_approved
+                const createdAt = c.createdAt ?? c.created_at
+
+                return (
+                  <TableRow
+                    className="hover:cursor-pointer"
+                    key={c.id}
+                    onClick={() => openDetails(c)}
+                  >
+                    <TableCell>{c.id}</TableCell>
+                    <TableCell className="max-w-72">
+                      <div className="space-y-0.5">
+                        <p className="line-clamp-2 text-sm font-medium">
+                          {c.newsTitle || `Bài viết #${newsId}`}
+                        </p>
+                        {c.newsTitle && newsId && (
+                          <p className="text-muted-foreground text-xs">#{newsId}</p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <UserCell userId={userId} inlineUser={userName} />
+                    </TableCell>
+                    <TableCell className="max-w-64">
+                      <span className="line-clamp-2 text-sm">{c.content}</span>
+                    </TableCell>
+                    <TableCell>
+                      <StatusDotBadge
+                        label={APPROVED_LABEL[String(toApprovedFlag(isApproved))]}
+                        badgeClass={APPROVED_CLASS[String(toApprovedFlag(isApproved))]}
+                        dotClass={APPROVED_DOT[String(toApprovedFlag(isApproved))]}
+                      />
+                    </TableCell>
+                    <TableCell>{createdAt ? formatDate(createdAt) : '-'}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        {canApprove && (
+                          <Button
+                            variant={toApprovedFlag(isApproved) ? 'outline' : 'default'}
+                            size="sm"
+                            disabled={toApprovedFlag(isApproved) || approveMutation.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (!toApprovedFlag(isApproved)) approveMutation.mutate(c.id)
+                            }}
+                            title={
+                              toApprovedFlag(isApproved)
+                                ? 'Bình luận đã được duyệt'
+                                : 'Duyệt bình luận'
+                            }
+                          >
+                            {toApprovedFlag(isApproved)
+                              ? 'Đã duyệt'
+                              : approveMutation.isPending
+                                ? 'Đang duyệt...'
+                                : 'Duyệt'}
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openDeleteDialog(c)
+                            }}
+                            title="Xóa"
+                          >
+                            <Trash2 className="text-destructive size-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>
