@@ -767,7 +767,7 @@ export default function MapLayerFormDialog({
           <div className="border-border/80 bg-muted/20 space-y-3 rounded-lg border p-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <Label className="text-sm font-semibold">Kiểu vẽ mặc định (default_style)</Label>
+                <Label className="text-sm font-semibold">Kiểu vẽ mặc định</Label>
                 <p className="text-muted-foreground text-xs">
                   Màu sắc và cách hiển thị trên bản đồ Mapbox, theo kiểu {geometryType}.
                 </p>
@@ -916,7 +916,7 @@ export default function MapLayerFormDialog({
           <div className="border-border/80 bg-muted/20 space-y-3 rounded-lg border p-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <Label className="text-sm font-semibold">Chú giải lớp bản đồ (Legend)</Label>
+                <Label className="text-sm font-semibold">Chú giải lớp bản đồ</Label>
                 <p className="text-muted-foreground text-xs">
                   Cấu hình màu sắc và nhãn hiển thị trong bảng chú giải trên WebGIS.
                 </p>
@@ -958,7 +958,7 @@ export default function MapLayerFormDialog({
                       <div
                         // Entries are ordered form rows and have no persisted identifier.
                         // eslint-disable-next-line react-x/no-array-index-key
-                        key={`${entry.label || 'entry'}-${index}`}
+                        key={index}
                         className="flex items-center gap-2"
                       >
                         <div className="relative flex shrink-0 items-center">
