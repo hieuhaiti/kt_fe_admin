@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useApiQuery, useApiMutation, userService, authService } from '@/service'
 import type {
   ApiResponse,
@@ -54,7 +54,7 @@ const ROLE_OPTIONS: { value: UserRoleCode; label: string }[] = [
   { value: 'citizen', label: 'Người dân' },
 ]
 
-function roleCodeOf(user: User | any) {
+function roleCodeOf(user?: User | { role?: string | { code?: string }; roleCode?: string; role_name?: string } | null) {
   const role = user?.role
   if (typeof role === 'string') return role
   return user?.roleCode ?? role?.code ?? user?.role_name ?? null
@@ -98,34 +98,26 @@ export default function User(): JSX.Element {
     false
   )
 
-  const raw = dbQuery.data as ApiResponse<UserListData> | undefined
+  const raw = dbQuery.data as ApiResponse<UserListData | { items?: User[]; users?: User[] }> | undefined
   const data = raw?.data
-  const users = data?.users ?? data?.items ?? []
-  const pagination = (raw?.metadata ?? data?.pagination ?? {}) as Partial<Pagination>
-  const lastTotalPagesRef = useRef(1)
-  if (pagination.totalPages !== undefined) {
-    lastTotalPagesRef.current = Math.max(1, pagination.totalPages)
-  }
-  const totalPages = lastTotalPagesRef.current
+  const users: User[] = (data && 'items' in data && data.items) || (data && 'users' in data && data.users) || []
+  const pagination = (raw?.metadata ?? (data && 'pagination' in data ? data.pagination : {})) as Partial<Pagination>
+  const totalPages = Math.max(1, pagination.totalPages ?? (pagination.total ? Math.ceil(pagination.total / limit) : 1))
   const total = pagination?.total ?? 0
-
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages)
-  }, [currentPage, totalPages])
 
   // Dialog states
   const [selectedUserId, setSelectedUserId] = useState<number | string | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [userToDelete, setUserToDelete] = useState<any | null>(null)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [activeDialogOpen, setActiveDialogOpen] = useState(false)
-  const [userToToggle, setUserToToggle] = useState<any | null>(null)
+  const [userToToggle, setUserToToggle] = useState<User | null>(null)
   const [resetPwdDialogOpen, setResetPwdDialogOpen] = useState(false)
-  const [userToResetPwd, setUserToResetPwd] = useState<any | null>(null)
+  const [userToResetPwd, setUserToResetPwd] = useState<User | null>(null)
   const [newPasswordValue, setNewPasswordValue] = useState('')
   const [roleDialogOpen, setRoleDialogOpen] = useState(false)
-  const [userToChangeRole, setUserToChangeRole] = useState<any | null>(null)
+  const [userToChangeRole, setUserToChangeRole] = useState<User | null>(null)
   const [newRoleValue, setNewRoleValue] = useState<UserRoleCode>('citizen')
 
   // Get current user
@@ -142,7 +134,7 @@ export default function User(): JSX.Element {
 
   // Create mutation
   const createMutation = useApiMutation(
-    (data: any) => userService.create(data),
+    (createData: Parameters<typeof userService.create>[0]) => userService.create(createData),
     {
       onSuccess: () => {
         dbQuery.refetch()
@@ -160,7 +152,8 @@ export default function User(): JSX.Element {
     {
       onSuccess: (data, variables) => {
         const vars = variables as { id: number | string; isActive: boolean }
-        const updatedUser = (data as ApiResponse)?.data?.user
+        const resData = (data as ApiResponse<User | { user?: User }> | undefined)?.data
+        const updatedUser = resData ? ('user' in resData && resData.user ? resData.user : (resData as User)) : undefined
         if (updatedUser) {
           queryClient.setQueryData(['user', vars.id], { data: { user: updatedUser } })
         }
@@ -193,7 +186,8 @@ export default function User(): JSX.Element {
     {
       onSuccess: (data, variables) => {
         const vars = variables as { id: number | string; roleCode: UserRoleCode }
-        const updatedUser = (data as ApiResponse)?.data?.user
+        const resData = (data as ApiResponse<User | { user?: User }> | undefined)?.data
+        const updatedUser = resData ? ('user' in resData && resData.user ? resData.user : (resData as User)) : undefined
         if (updatedUser) {
           queryClient.setQueryData(['user', vars.id], { data: { user: updatedUser } })
         }
@@ -214,7 +208,7 @@ export default function User(): JSX.Element {
     },
   })
 
-  function openDetails(u: any) {
+  function openDetails(u: User) {
     if (u?.id) {
       setSelectedUserId(u.id)
       setDetailDialogOpen(true)
@@ -226,12 +220,12 @@ export default function User(): JSX.Element {
     setFormDialogOpen(true)
   }
 
-  function openEditDialog(u: any) {
+  function openEditDialog(u: User) {
     setSelectedUserId(u.id)
     setFormDialogOpen(true)
   }
 
-  function openActiveDialog(u: any) {
+  function openActiveDialog(u: User) {
     if (profileUser && String(u.id) === String(profileUser.id)) {
       toast.warning('Bạn không thể thay đổi trạng thái của tài khoản mình')
       return
@@ -240,7 +234,7 @@ export default function User(): JSX.Element {
     setActiveDialogOpen(true)
   }
 
-  function openResetPasswordDialog(u: any) {
+  function openResetPasswordDialog(u: User) {
     if (profileUser && String(u.id) === String(profileUser.id)) {
       toast.warning('Vui lòng dùng chức năng Đổi mật khẩu cho tài khoản của mình')
       return
@@ -250,7 +244,7 @@ export default function User(): JSX.Element {
     setResetPwdDialogOpen(true)
   }
 
-  function openChangeRoleDialog(u: any) {
+  function openChangeRoleDialog(u: User) {
     if (profileUser && String(u.id) === String(profileUser.id)) {
       toast.warning('Bạn không thể tự đổi vai trò của mình')
       return
@@ -261,7 +255,7 @@ export default function User(): JSX.Element {
     setRoleDialogOpen(true)
   }
 
-  function openDeleteDialog(u: any) {
+  function openDeleteDialog(u: User) {
     if (profileUser && String(u.id) === String(profileUser.id)) {
       toast.warning('Bạn không thể xóa tài khoản của bạn')
       return
@@ -270,13 +264,13 @@ export default function User(): JSX.Element {
     setDeleteDialogOpen(true)
   }
 
-  function handleFormSubmit(data: any) {
+  function handleFormSubmit(formData: Parameters<typeof userService.create>[0]) {
     if (selectedUserId) {
       // In new API: no unified update endpoint. Nothing to submit from the form.
       toast.info('Vui lòng dùng các thao tác Vai trò / Kích hoạt / Đặt lại mật khẩu để cập nhật')
       return
     }
-    createMutation.mutate(data)
+    createMutation.mutate(formData)
   }
 
   function handleToggleActive() {
@@ -398,7 +392,7 @@ export default function User(): JSX.Element {
                 </TableCell>
               </TableRow>
             ) : (
-              users.map((u: any) => {
+              users.map((u: User) => {
                 const isActive = u.isActive ?? u.is_active ?? true
                 const roleCode = roleCodeOf(u)
                 const roleName = u.role_name_vi ?? u.role?.name ?? u.role_name

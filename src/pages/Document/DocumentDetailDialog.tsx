@@ -31,6 +31,15 @@ function formatBytes(size?: number | string | null) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`
 }
 
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <span className="font-semibold">{label}:</span>
+      <span className="col-span-2">{children}</span>
+    </div>
+  )
+}
+
 export default function DocumentDetailDialog({
   open,
   onOpenChange,
@@ -63,13 +72,6 @@ export default function DocumentDetailDialog({
   const createdAt = doc?.createdAt ?? doc?.created_at
   const updatedAt = doc?.updatedAt ?? doc?.updated_at
 
-  const Row = ({ label, children }: { label: string; children: ReactNode }) => (
-    <div className="grid grid-cols-3 gap-2">
-      <span className="font-semibold">{label}:</span>
-      <span className="col-span-2">{children}</span>
-    </div>
-  )
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
@@ -82,54 +84,54 @@ export default function DocumentDetailDialog({
           <div className="text-destructive py-8 text-center">Không thể tải thông tin tài liệu.</div>
         ) : doc ? (
           <div className="mt-4 space-y-3">
-            <Row label="ID">{doc.id}</Row>
-            {doc.document_number && <Row label="Số tài liệu">{doc.document_number}</Row>}
-            <Row label="Tiêu đề">{title || '-'}</Row>
-            <Row label="Loại">
+            <DetailRow label="ID">{doc.id}</DetailRow>
+            {doc.document_number && <DetailRow label="Số tài liệu">{doc.document_number}</DetailRow>}
+            <DetailRow label="Tiêu đề">{title || '-'}</DetailRow>
+            <DetailRow label="Loại">
               <Badge variant="outline">{TYPE_LABEL[docType ?? ''] ?? docType ?? '-'}</Badge>
-            </Row>
+            </DetailRow>
             {status && (
-              <Row label="Trạng thái">
+              <DetailRow label="Trạng thái">
                 <Badge variant={STATUS_VARIANT[status] ?? 'outline'}>
                   {STATUS_LABEL[status] ?? status}
                 </Badge>
-              </Row>
+              </DetailRow>
             )}
-            <Row label="Phạm vi">
+            <DetailRow label="Phạm vi">
               {isPublic ? (
                 <Badge variant="default">Công khai</Badge>
               ) : (
                 <Badge variant="secondary">Nội bộ</Badge>
               )}
-            </Row>
-            {description && <Row label="Mô tả">{description}</Row>}
-            {doc.issuer && <Row label="Cơ quan ban hành">{doc.issuer}</Row>}
-            {doc.signer && <Row label="Người ký">{doc.signer}</Row>}
-            {doc.issued_date && <Row label="Ngày ban hành">{formatDate(doc.issued_date)}</Row>}
+            </DetailRow>
+            {description && <DetailRow label="Mô tả">{description}</DetailRow>}
+            {doc.issuer && <DetailRow label="Cơ quan ban hành">{doc.issuer}</DetailRow>}
+            {doc.signer && <DetailRow label="Người ký">{doc.signer}</DetailRow>}
+            {doc.issued_date && <DetailRow label="Ngày ban hành">{formatDate(doc.issued_date)}</DetailRow>}
             {doc.effective_date && (
-              <Row label="Ngày hiệu lực">{formatDate(doc.effective_date)}</Row>
+              <DetailRow label="Ngày hiệu lực">{formatDate(doc.effective_date)}</DetailRow>
             )}
-            {doc.expiry_date && <Row label="Ngày hết hạn">{formatDate(doc.expiry_date)}</Row>}
-            {fileName && <Row label="Tên file">{fileName}</Row>}
-            {mimeType && <Row label="Định dạng">{mimeType}</Row>}
-            <Row label="Dung lượng">{formatBytes(fileSize)}</Row>
-            {uploadedBy && <Row label="Người tải lên">{uploadedBy}</Row>}
+            {doc.expiry_date && <DetailRow label="Ngày hết hạn">{formatDate(doc.expiry_date)}</DetailRow>}
+            {fileName && <DetailRow label="Tên file">{fileName}</DetailRow>}
+            {mimeType && <DetailRow label="Định dạng">{mimeType}</DetailRow>}
+            <DetailRow label="Dung lượng">{formatBytes(fileSize)}</DetailRow>
+            {uploadedBy && <DetailRow label="Người tải lên">{uploadedBy}</DetailRow>}
             {viewCount !== undefined && (
-              <Row label="Lượt xem">
+              <DetailRow label="Lượt xem">
                 <span className="flex items-center gap-1">
                   <Eye className="size-4" /> {viewCount}
                 </span>
-              </Row>
+              </DetailRow>
             )}
             {downloadCount !== undefined && (
-              <Row label="Lượt tải">
+              <DetailRow label="Lượt tải">
                 <span className="flex items-center gap-1">
                   <Download className="size-4" /> {downloadCount}
                 </span>
-              </Row>
+              </DetailRow>
             )}
             {doc.tags && doc.tags.length > 0 && (
-              <Row label="Tags">
+              <DetailRow label="Tags">
                 <div className="flex flex-wrap gap-1">
                   {doc.tags.map((tag) => (
                     <Badge key={tag} variant="outline" className="text-xs">
@@ -137,10 +139,10 @@ export default function DocumentDetailDialog({
                     </Badge>
                   ))}
                 </div>
-              </Row>
+              </DetailRow>
             )}
             {fileUrl && (
-              <Row label="File">
+              <DetailRow label="File">
                 <a
                   href={parseLink(fileUrl)}
                   target="_blank"
@@ -149,10 +151,10 @@ export default function DocumentDetailDialog({
                 >
                   <FileText className="size-4" /> Xem / Tải tài liệu
                 </a>
-              </Row>
+              </DetailRow>
             )}
-            <Row label="Ngày tạo">{createdAt ? formatDateTime(createdAt) : '-'}</Row>
-            <Row label="Cập nhật lúc">{updatedAt ? formatDateTime(updatedAt) : '-'}</Row>
+            <DetailRow label="Ngày tạo">{createdAt ? formatDateTime(createdAt) : '-'}</DetailRow>
+            <DetailRow label="Cập nhật lúc">{updatedAt ? formatDateTime(updatedAt) : '-'}</DetailRow>
           </div>
         ) : (
           <div className="text-muted-foreground py-8 text-center">Không có dữ liệu</div>

@@ -1,7 +1,6 @@
 import apiClient from '@/service/common/apiClient'
 import { serviceMapApiPath, serviceMapDataPath } from '@/constant/serviceConstant'
 import type {
-  ApiResponse,
   MapApi,
   MapApiListData,
   MapApiListParams,
@@ -39,7 +38,7 @@ const mapApiService = {
 
   /** DELETE /map-apis/:mapApiId */
   delete: (mapApiId: number | string) =>
-    apiClient.del<ApiResponse<{}>>(`${serviceMapApiPath}/${mapApiId}`),
+    apiClient.del<void>(`${serviceMapApiPath}/${mapApiId}`),
 
   // ── Consumer (/map-data — needs X-Map-Api-Key header) ──
 

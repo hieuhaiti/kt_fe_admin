@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { FileImage, FileText, Save } from 'lucide-react'
 import { toast } from 'react-toastify'
 import { mapImageService, useApiQuery } from '@/service'
-import type { ApiResponse, MapImage, UpdatePdfMapBody } from '@/types/api'
+import type { ApiResponse, MapImage, MapImageDetailData, UpdatePdfMapBody } from '@/types/api'
 import { THEME_LABEL } from '@/constant/mapImageConstant'
 import { parseLink, isPdf } from '@/lib/utils'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -109,8 +109,8 @@ export default function MapImageFormDialog({
     false
   )
   const mapImage = (() => {
-    const d = (dbQuery.data as ApiResponse<any>)?.data
-    return (d ? (d.mapImage ?? d.pdfMap ?? d) : null) as MapImage | null
+    const d = (dbQuery.data as ApiResponse<MapImageDetailData | { mapImage?: MapImage; pdfMap?: MapImage } | MapImage>)?.data
+    return (d ? ('mapImage' in d && d.mapImage ? d.mapImage : 'pdfMap' in d && d.pdfMap ? d.pdfMap : d) : null) as MapImage | null
   })()
   const isEdit = !!mapImageId
   const detailLoading = isEdit && dbQuery.isLoading
@@ -125,7 +125,7 @@ export default function MapImageFormDialog({
     setValue,
     formState: { errors },
   } = useForm<MapImageFormValues>({
-    resolver: zodResolver(mapImageSchema) as any,
+    resolver: zodResolver(mapImageSchema),
     defaultValues: DEFAULT_VALUES,
   })
 

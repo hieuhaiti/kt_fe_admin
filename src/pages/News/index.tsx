@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useApiQuery, useApiMutation, newsService } from '@/service'
-import type { ApiResponse, NewsStatus, Pagination, UpdateNewsBody } from '@/types/api'
+import type { ApiResponse, News, NewsListData, NewsStatus, Pagination, UpdateNewsBody } from '@/types/api'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   Select,
@@ -52,25 +52,27 @@ const STATUS_DOT: Record<string, string> = {
   draft: 'bg-slate-400',
 }
 
-export default function News(): JSX.Element {
+export default function NewsPage(): JSX.Element {
   const user = useAuthStore((s) => s.user)
   const canCreate = hasPerm(user, 'news', 'create')
   const canUpdate = hasPerm(user, 'news', 'update')
   const canDelete = hasPerm(user, 'news', 'delete')
-  const [currentPage, setCurrentPage] = useState<number>(1)
-  const [limit, setLimit] = useState<number>(10)
-  const [searchValue, setSearchValue] = useState<string>('')
+  // Search & filter states
+  const [searchValue, setSearchValue] = useState('')
   const [statusFilter, setStatusFilter] = useState<NewsStatus | 'all'>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [limit, setLimit] = useState<number>(10)
 
   const queryParams = {
     page: currentPage,
     limit,
     sortBy: 'created_at' as const,
     sortOrder: 'DESC' as const,
-    ...(searchValue && { q: searchValue }),
-    ...(statusFilter !== 'all' && { status: statusFilter }),
+    ...(searchValue.trim() ? { q: searchValue.trim() } : {}),
+    ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
   }
 
+  // Fetch news query
   const dbQuery = useApiQuery(
     ['news', queryParams],
     () => newsService.getAll(queryParams),
@@ -79,33 +81,25 @@ export default function News(): JSX.Element {
     false
   )
 
-  const raw = dbQuery.data as ApiResponse<any> | undefined
-  const data = raw?.data as any
-  const newsList = data?.items ?? data?.news ?? []
-  const pagination = (raw?.metadata ?? data?.pagination ?? {}) as Partial<Pagination>
-  const lastTotalPagesRef = useRef(1)
-  if (pagination.totalPages !== undefined) {
-    lastTotalPagesRef.current = Math.max(1, pagination.totalPages)
-  }
-  const totalPages = lastTotalPagesRef.current
+  const raw = dbQuery.data as ApiResponse<NewsListData | { items?: News[]; news?: News[] }> | undefined
+  const data = raw?.data
+  const newsList: News[] = (data && 'items' in data && data.items) || (data && 'news' in data && data.news) || []
+  const pagination = (raw?.metadata ?? (data && 'pagination' in data ? data.pagination : {})) as Partial<Pagination>
+  const totalPages = Math.max(1, pagination.totalPages ?? (pagination.total ? Math.ceil(pagination.total / limit) : 1))
   const total = pagination?.total ?? 0
-
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages)
-  }, [currentPage, totalPages])
 
   // Dialog states
   const [selectedNewsId, setSelectedNewsId] = useState<number | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [newsToDelete, setNewsToDelete] = useState<any | null>(null)
+  const [newsToDelete, setNewsToDelete] = useState<News | null>(null)
 
   const queryClient = useQueryClient()
 
   // Create mutation — FormData multipart
   const createMutation = useApiMutation(
-    (data: FormData) => newsService.create(data),
+    (createData: FormData) => newsService.create(createData),
     {
       onSuccess: () => {
         dbQuery.refetch()
@@ -118,7 +112,7 @@ export default function News(): JSX.Element {
 
   // Update mutation — JSON PUT
   const updateMutation = useApiMutation(
-    (data: { id: number; payload: UpdateNewsBody }) => newsService.update(data.id, data.payload),
+    (updateData: { id: number; payload: UpdateNewsBody }) => newsService.update(updateData.id, updateData.payload),
     {
       onSuccess: (_data, variables) => {
         const vars = variables as { id: number; payload: UpdateNewsBody }
@@ -144,9 +138,9 @@ export default function News(): JSX.Element {
     true
   )
 
-  function openDetails(n: any) {
+  function openDetails(n: News) {
     if (n?.id) {
-      setSelectedNewsId(n.id)
+      setSelectedNewsId(Number(n.id))
       setDetailDialogOpen(true)
     }
   }
@@ -156,12 +150,12 @@ export default function News(): JSX.Element {
     setFormDialogOpen(true)
   }
 
-  function openEditDialog(n: any) {
-    setSelectedNewsId(n.id)
+  function openEditDialog(n: News) {
+    setSelectedNewsId(Number(n.id))
     setFormDialogOpen(true)
   }
 
-  function openDeleteDialog(n: any) {
+  function openDeleteDialog(n: News) {
     setNewsToDelete(n)
     setDeleteDialogOpen(true)
   }
@@ -176,7 +170,7 @@ export default function News(): JSX.Element {
 
   function handleDelete() {
     if (newsToDelete) {
-      deleteMutation.mutate(newsToDelete.id)
+      deleteMutation.mutate(Number(newsToDelete.id))
     }
   }
 
@@ -257,7 +251,7 @@ export default function News(): JSX.Element {
                 </TableCell>
               </TableRow>
             ) : (
-              newsList.map((n: any) => {
+              newsList.map((n: News) => {
                 const status: string = n.status ?? (n.is_published ? 'published' : 'draft')
                 const createdAt = n.createdAt ?? n.created_at
                 const viewCount = n.viewCount ?? n.view_count ?? 0

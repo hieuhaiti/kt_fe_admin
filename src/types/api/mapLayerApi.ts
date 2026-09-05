@@ -2,7 +2,7 @@ export interface MapApiScope {
   read?: boolean
   rate_per_min?: number
   bbox_limit?: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface MapApi {
@@ -86,6 +86,10 @@ export interface MapApiKeyIssueData {
   raw_key?: string
 }
 
+export type MapLayerApiDetailData = MapApi | { api?: MapApi }
+export type MapLayerApiCreateData = MapApiKeyIssueData
+export type MapLayerApiRegenerateKeyData = MapApiKeyIssueData
+
 /** Consumer-side (/map-data/*) — used from citizen apps */
 export interface MapDataFeaturesQuery {
   bbox?: string
@@ -95,7 +99,7 @@ export interface MapDataFeaturesQuery {
 
 export interface MapDataFeaturesResponse {
   type: 'FeatureCollection'
-  features: any[]
+  features: Array<Record<string, unknown>>
   total: number
   returned: number
   hasMore: boolean

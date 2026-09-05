@@ -56,6 +56,8 @@ export interface MapImageListData {
   pagination: import('./index').Pagination
 }
 
+export type MapImageDetailData = MapImage | { mapImage?: MapImage; pdfMap?: MapImage }
+
 export interface PdfMapListParams {
   page?: number
   limit?: number

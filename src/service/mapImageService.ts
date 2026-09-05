@@ -1,6 +1,5 @@
 import apiClient from './common/apiClient'
 import type {
-  ApiResponse,
   PdfMap,
   PdfMapListData,
   PdfMapListParams,
@@ -58,7 +57,7 @@ export default {
 
   /** DELETE /admin/pdf-maps/:pdfMapId (soft delete) */
   delete: (pdfMapId: number | string) =>
-    apiClient.del<ApiResponse<{}>>(`${serviceAdminPdfMapPath}/${pdfMapId}`),
+    apiClient.del<void>(`${serviceAdminPdfMapPath}/${pdfMapId}`),
 
   /**
    * Legacy toggle-status endpoint isn't in Postman; falls back to a partial update

@@ -99,8 +99,8 @@ export default function DocumentFormDialog({
     false
   )
   const doc = (() => {
-    const d = (dbQuery.data as ApiResponse<any>)?.data
-    return (d ? (d.document ?? d) : null) as Document | null
+    const d = (dbQuery.data as ApiResponse<Document | { document?: Document }> | undefined)?.data
+    return (d ? ('document' in d && d.document ? d.document : (d as Document)) : null)
   })()
   const isEdit = !!doc
 
@@ -113,7 +113,7 @@ export default function DocumentFormDialog({
     control,
     formState: { errors, isSubmitting },
   } = useForm<DocumentFormValues>({
-    resolver: zodResolver(documentFormSchema) as any,
+    resolver: zodResolver(documentFormSchema),
     defaultValues: {
       document_number: '',
       title: '',
@@ -136,8 +136,8 @@ export default function DocumentFormDialog({
         document_number: (doc.document_number ?? '') as string,
         title: (vi?.title ?? doc.title ?? '') as string,
         description: vi?.description ?? doc.description ?? '',
-        document_type: (doc.document_type ?? doc.docType ?? 'bao_cao') as any,
-        status: (doc.status ?? 'active') as any,
+        document_type: (doc.document_type ?? doc.docType ?? 'pdf') as DocumentFormValues['document_type'],
+        status: (doc.status ?? 'active') as DocumentFormValues['status'],
         is_public: doc.is_public ?? doc.isPublic ?? true,
         issuer: doc.issuer || '',
         signer: doc.signer || '',
@@ -160,8 +160,7 @@ export default function DocumentFormDialog({
         expiry_date: '',
       })
     }
-    setFileList([])
-  }, [doc, reset, open])
+  }, [doc, reset])
 
   const onFileValidate = useCallback((file: File): string | null => {
     if (!ACCEPTED_MIME.includes(file.type)) return 'Chỉ chấp nhận PDF, Word, Excel'

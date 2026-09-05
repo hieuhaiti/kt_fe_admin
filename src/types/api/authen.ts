@@ -9,7 +9,7 @@ export interface AuthTokens {
 }
 
 export interface AuthLoginData extends AuthTokens {
-  user?: Pick<User, 'id' | 'email' | 'fullName' | 'roleCode'> & Record<string, any>
+  user?: Pick<User, 'id' | 'email' | 'fullName' | 'roleCode'> & Record<string, unknown>
 }
 
 export interface AuthRegisterData extends AuthTokens {
@@ -29,7 +29,7 @@ export interface AuthMeData {
   user: User
 }
 
-export interface AuthLogoutData {}
+export type AuthLogoutData = Record<string, never>
 
 export interface AuthSetPasswordData {
   hasPassword: boolean

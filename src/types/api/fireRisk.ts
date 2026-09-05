@@ -6,7 +6,7 @@ export interface FireRiskProvinceSummary {
   avgRiskLevel?: number | null
   riskLevelDist?: Record<'0' | '1' | '2' | '3' | '4' | '5', number>
   s2CoverageRatio?: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /** Feature từ repo.getFeatures — 1 row/district/level, có geometry polygon. */
@@ -16,8 +16,8 @@ export interface FireRiskFeature {
   district_code: string | null
   district_name: string | null
   area_ha: string | number
-  geometry?: any | null
-  properties?: Record<string, any>
+  geometry?: Record<string, unknown> | null
+  properties?: Record<string, unknown>
 }
 
 export interface FireRiskDistrictStat {
@@ -70,7 +70,7 @@ export interface FireRiskDistrictExport {
   districtName: string
   status: 'pending' | 'computing' | 'exporting' | 'completed' | 'published' | 'failed' | 'skipped'
   scaleM: number | null
-  areaStats: Record<string, any> | null
+  areaStats: Record<string, unknown> | null
   totalAreaHa: number | null
   /** Public aliases returned when infrastructure-only fields are hidden. */
   tileUrl?: string | null
@@ -174,7 +174,7 @@ export interface FireRiskMapParams {
 
 export interface FireRiskMapData {
   type: 'FeatureCollection'
-  features: any[]
+  features: Array<Record<string, unknown>>
 }
 
 export interface FireRiskHistoryItem {
@@ -207,7 +207,7 @@ export interface FireRiskHistoryItem {
   fullyPublished?: boolean
   geoserverLayers?: string[]
   error_message?: string | null
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface FireRiskHistoryData {
@@ -234,4 +234,36 @@ export interface FireRiskHistoryParams {
   page?: number
   limit?: number
   hasGeoserverLayer?: boolean | string
+}
+
+export interface GtZoneItem {
+  id: number | string
+  name?: string | null
+  occurredAt?: string
+  occurred_at?: string
+  severity: number
+  areaHa?: number
+  area_ha?: number
+  source?: string | null
+  notes?: string | null
+  geom?: Record<string, unknown> | null
+  createdAt?: string
+  created_at?: string
+}
+
+export interface GtPointItem {
+  id: number | string
+  occurredAt?: string
+  occurred_at?: string
+  severity: number
+  lng: number
+  lat: number
+  source?: string | null
+  photoUrl?: string | null
+  photo_url?: string | null
+  reporterName?: string | null
+  reporter_name?: string | null
+  notes?: string | null
+  createdAt?: string
+  created_at?: string
 }

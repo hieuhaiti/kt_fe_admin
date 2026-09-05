@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronRight, ChevronDown } from 'lucide-react'
 import { useSidebarStore } from '@/stores/common/useSidebarStore'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import { checkPermission, hasRole } from '@/lib/permissions'
 import type { NavItem } from '@/types/common'
+import type { User } from '@/types/api'
 
 function isPathActive(pathname: string, item: Pick<NavItem, 'path' | 'subpath'>): boolean {
   const { path, subpath } = item
@@ -30,8 +31,6 @@ export function SideBar() {
     toggleSidebar: () => void
   }
   const user = useAuthStore((s) => s.user)
-  const [openSubMenu, setOpenSubMenu] = useState<string | null>(null)
-
   const filteredNav = useMemo<NavItem[]>(() => {
     return navConfig
       .filter((item) => allowNav(item, user))
@@ -42,6 +41,25 @@ export function SideBar() {
       .filter((item) => !item.subItems || item.subItems.length || !hasAnyRestriction(item))
   }, [user])
 
+  const activeParent = useMemo(() => {
+    return filteredNav.find(
+      (item) =>
+        item.subItems?.some((sub) => isPathActive(location.pathname, sub)) ?? false
+    )
+  }, [location.pathname, filteredNav])
+
+  const [toggledMenu, setToggledMenu] = useState<{ path: string | null; key: string }>({
+    path: null,
+    key: '',
+  })
+
+  const activeKey = `${location.pathname}-${filteredNav.map((i) => i.path).join(',')}`
+  const openSubMenu = isExpanded
+    ? toggledMenu.key === activeKey
+      ? toggledMenu.path
+      : (activeParent?.path ?? null)
+    : null
+
   const handleMenuClick = (path: string) => {
     if (/^https?:\/\//i.test(path)) {
       window.open(path, '_blank', 'noopener,noreferrer')
@@ -49,19 +67,6 @@ export function SideBar() {
     }
     navigate(path)
   }
-
-  // Auto-open parent menu whose subItems contain the active path
-  useEffect(() => {
-    const parent = filteredNav.find(
-      (item) =>
-        item.subItems?.some((sub) => isPathActive(location.pathname, sub as any)) ?? false
-    )
-    if (parent && isExpanded) setOpenSubMenu(parent.path)
-  }, [location.pathname, filteredNav, isExpanded])
-
-  useEffect(() => {
-    if (!isExpanded) setOpenSubMenu(null)
-  }, [isExpanded])
 
   return (
     <div className="bg-card flex h-full flex-col">
@@ -87,7 +92,7 @@ export function SideBar() {
           {filteredNav.map((item) => {
             const selfActive = isPathActive(location.pathname, item)
             const childActive =
-              item.subItems?.some((sub) => isPathActive(location.pathname, sub as any)) ?? false
+              item.subItems?.some((sub) => isPathActive(location.pathname, sub)) ?? false
             const isActive = selfActive || childActive
             const hasSubItems = !!item.subItems && item.subItems.length > 0
             const isSubOpen = openSubMenu === item.path
@@ -115,7 +120,10 @@ export function SideBar() {
                           if (hasSubItems) {
                             e.stopPropagation()
                             setExpanded(true)
-                            setOpenSubMenu(isSubOpen ? null : item.path)
+                            setToggledMenu({
+                              path: isSubOpen ? null : item.path,
+                              key: activeKey,
+                            })
                           } else {
                             handleMenuClick(item.path)
                           }
@@ -149,7 +157,7 @@ export function SideBar() {
                     {hasSubItems && isSubOpen && isExpanded && (
                       <div className="mt-1 ml-4 space-y-1 border-l pl-2">
                         {item.subItems?.map((sub) => {
-                          const subActive = isPathActive(location.pathname, sub as any)
+                          const subActive = isPathActive(location.pathname, sub)
                           return (
                             <Button
                               key={sub.path}
@@ -192,7 +200,7 @@ export function SideBar() {
   )
 }
 
-function allowNav(item: Pick<NavItem, 'roles' | 'permission'>, user: any): boolean {
+function allowNav(item: Pick<NavItem, 'roles' | 'permission'>, user: User | null | undefined): boolean {
   if (item.roles && !hasRole(user, item.roles)) return false
   if (item.permission && !checkPermission(user, item.permission)) return false
   return true

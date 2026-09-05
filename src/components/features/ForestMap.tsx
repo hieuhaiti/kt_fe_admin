@@ -94,12 +94,12 @@ export default function ForestMap({
       setRasterStatus(status)
       onRasterStatusChangeRef.current?.(status)
     }
-    const handleSourceData = (event: any) => {
+    const handleSourceData = (event: maplibregl.MapSourceDataEvent) => {
       if (!failed && event.sourceId === RASTER_SOURCE_ID && event.isSourceLoaded) {
         updateStatus('ready')
       }
     }
-    const handleSourceError = (event: any) => {
+    const handleSourceError = (event: maplibregl.ErrorEvent & { sourceId?: string }) => {
       if (event.sourceId !== RASTER_SOURCE_ID) return
       failed = true
       updateStatus('error')

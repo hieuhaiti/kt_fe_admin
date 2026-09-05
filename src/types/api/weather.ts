@@ -7,22 +7,40 @@ export interface WeatherLayer {
   tileUrl?: string
   tileUrlTemplate?: string
   attribution?: string
-  legend?: any
+  legend?: Record<string, unknown> | Array<Record<string, unknown>>
   updatedAt?: string
 }
 
 export interface WeatherPointData {
   lng: number
   lat: number
+  location?: string
+  stale?: boolean
+  cached?: boolean
+  temp?: number
   temperature?: number
+  feelsLike?: number
   humidity?: number
   pressure?: number
   windSpeed?: number
   windDeg?: number
+  wind?: {
+    speed?: number
+    deg?: number
+    [key: string]: unknown
+  }
+  clouds?: number
+  visibility?: number
   description?: string
+  weather?: {
+    description?: string
+    [key: string]: unknown
+  }
   icon?: string
   timestamp?: string
-  [key: string]: any
+  observedAt?: string
+  fetchedAt?: string
+  [key: string]: unknown
 }
 
 export interface WindGridCell {

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { formatDate } from '@/lib/date'
 import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
+import type { ApiResponse, ForestGtZoneItem, ForestGtPointItem } from '@/types/api'
 
 /**
  * Ground truth card cho phân loại lớp phủ schema v5.3.
@@ -38,7 +39,8 @@ const CLASSES: Array<{ id: number; name: string; color: string }> = [
   { id: 12, name: 'Không xác định',                  color: '#8C8C8C' },
 ]
 
-const classLabel = (id: number) => {
+const classLabel = (id?: number | null) => {
+  if (id == null) return '—'
   const c = CLASSES.find((x) => x.id === id)
   return c ? `${id} · ${c.name}` : `${id}`
 }
@@ -144,28 +146,28 @@ function ClassLegend() {
 
 function ZonesSection() {
   const [geojsonText, setGeojsonText] = useState('')
-  const [classId, setClassId] = useState(5)  // mặc định "Rừng lá rộng thường xanh"
-  const [observedAt, setObservedAt] = useState(
+  const [classId, setClassId] = useState(5)
+  const [observedAt, setObservedAt] = useState(() =>
     new Date().toISOString().slice(0, 16),
   )
 
   const listQ = useApiQuery(['forest-gt-zones'], () =>
     forestClassificationService.listGtZones({ limit: 50 }),
   )
-  const bulkM = useApiMutation((fc: any) =>
+  const bulkM = useApiMutation((fc: Record<string, unknown>) =>
     forestClassificationService.bulkGtZone(fc),
   )
-  const deleteM = useApiMutation((id: number) =>
+  const deleteM = useApiMutation((id: number | string) =>
     forestClassificationService.deleteGtZone(id),
   )
   // OK_LIST server-side wrap: { data: { items: [...] }, metadata: {...} }
   // → apiClient trả nguyên ApiResponse → phải đọc .data.items (không phải .data).
-  const items: any[] = listQ.data?.data?.items ?? []
+  const items: ForestGtZoneItem[] = listQ.data?.data?.items ?? []
 
   const onSubmit = () => {
-    let parsed: any
+    let parsed: Record<string, unknown>
     try {
-      parsed = JSON.parse(geojsonText)
+      parsed = JSON.parse(geojsonText) as Record<string, unknown>
     } catch {
       toast.error('Dữ liệu vùng không hợp lệ. Vui lòng kiểm tra lại.')
       return
@@ -187,16 +189,18 @@ function ZonesSection() {
       toast.error('Dữ liệu chưa đúng định dạng vùng bản đồ được hỗ trợ.')
       return
     }
-    parsed.features.forEach((f: any) => {
-      f.properties = f.properties || {}
-      if (f.properties.classId == null && f.properties.class_id == null && f.properties.class == null) {
-        f.properties.classId = classId
+    const features = (parsed.features as Array<Record<string, unknown>>) || []
+    features.forEach((f) => {
+      const props = (f.properties as Record<string, unknown>) || {}
+      if (props.classId == null && props.class_id == null && props.class == null) {
+        props.classId = classId
       }
-      if (!f.properties.observedAt) f.properties.observedAt = observedAt
+      if (!props.observedAt) props.observedAt = observedAt
+      f.properties = props
     })
 
     bulkM.mutate(parsed, {
-      onSuccess: (res: any) => {
+      onSuccess: (res: ApiResponse<{ inserted?: number }>) => {
         toast.success(`Đã thêm ${res?.data?.inserted ?? '?'} vùng.`)
         setGeojsonText('')
         listQ.refetch()
@@ -205,7 +209,7 @@ function ZonesSection() {
     })
   }
 
-  const onDelete = (id: number) => {
+  const onDelete = (id: number | string) => {
     if (!confirm(`Xoá vùng #${id}?`)) return
     deleteM.mutate(id, {
       onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() },
@@ -314,15 +318,15 @@ function PointsSection() {
   const listQ = useApiQuery(['forest-gt-points'], () =>
     forestClassificationService.listGtPoints({ limit: 100 }),
   )
-  const createM = useApiMutation((body: any) =>
+  const createM = useApiMutation((body: Parameters<typeof forestClassificationService.createGtPoint>[0]) =>
     forestClassificationService.createGtPoint(body),
   )
-  const deleteM = useApiMutation((id: number) =>
+  const deleteM = useApiMutation((id: number | string) =>
     forestClassificationService.deleteGtPoint(id),
   )
   // OK_LIST server-side wrap: { data: { items: [...] }, metadata: {...} }
   // → apiClient trả nguyên ApiResponse → phải đọc .data.items (không phải .data).
-  const items: any[] = listQ.data?.data?.items ?? []
+  const items: ForestGtPointItem[] = listQ.data?.data?.items ?? []
 
   const onSubmit = () => {
     const lng = Number(form.lng)
@@ -344,7 +348,7 @@ function PointsSection() {
     )
   }
 
-  const onDelete = (id: number) => {
+  const onDelete = (id: number | string) => {
     if (!confirm(`Xoá điểm #${id}?`)) return
     deleteM.mutate(id, {
       onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() },

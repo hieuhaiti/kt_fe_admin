@@ -46,7 +46,7 @@ export default function FeedbackUpdateDialog({
   canOverrideTransitions = false,
 }: FeedbackUpdateDialogProps) {
   const statusForm = useForm<StatusFormValues>({
-    resolver: zodResolver(statusSchema) as any,
+    resolver: zodResolver(statusSchema),
     defaultValues: {
       status: 'new',
       note: '',
@@ -56,7 +56,7 @@ export default function FeedbackUpdateDialog({
   useEffect(() => {
     if (feedback) {
       statusForm.reset({
-        status: feedback.status as any,
+        status: (feedback.status as StatusFormValues['status']) || 'new',
         note: '',
       })
     }

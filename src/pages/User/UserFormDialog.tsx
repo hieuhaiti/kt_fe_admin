@@ -82,9 +82,9 @@ export default function UserFormDialog({
     false
   )
   const user = (() => {
-    const d = (dbQuery.data as ApiResponse<any>)?.data
+    const d = (dbQuery.data as ApiResponse<User | { user?: User }> | undefined)?.data
     if (!d) return null
-    return (d.user ?? d) as User
+    return ('user' in d && d.user ? d.user : (d as User))
   })()
   const isEdit = !!userId
 
@@ -96,7 +96,7 @@ export default function UserFormDialog({
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateUserFormData>({
-    resolver: zodResolver(createUserSchema) as any,
+    resolver: zodResolver(createUserSchema),
     defaultValues: {
       email: '',
       password: '',

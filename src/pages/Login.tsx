@@ -76,7 +76,7 @@ export default function Login() {
       toast.success('Đăng xuất thành công!', { autoClose: 3000 })
       useAuthStore.setState({ loggedOut: false })
     }
-  }, [])
+  }, [loggedOut])
 
   const loginSchema = z.object({
     email: z.string().email('Vui lòng nhập địa chỉ email hợp lệ.'),
@@ -97,7 +97,7 @@ export default function Login() {
 
     try {
       const res = await authService.login(payload)
-      const data = res?.data as any
+      const data = res?.data
 
       if (res?.status && res.status >= 200 && res.status < 300 && data?.accessToken) {
         loginSuccess({
@@ -114,10 +114,11 @@ export default function Login() {
           setError('Tài khoản không có quyền quản trị.')
         }
       } else {
-        setError((res as any)?.message || 'Đăng nhập thất bại')
+        setError(res?.message || 'Đăng nhập thất bại')
       }
-    } catch (err: any) {
-      setError(err?.message || 'Đăng nhập thất bại')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError(message || 'Đăng nhập thất bại')
     } finally {
       setIsLoading(false)
     }
@@ -202,6 +203,7 @@ export default function Login() {
                       type="button"
                       variant="ghost"
                       size="icon"
+                      aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                       className="text-muted-foreground hover:text-primary absolute right-1 h-10 w-10 hover:bg-transparent"
                       onClick={() => setShowPassword((prev) => !prev)}
                     >
@@ -238,9 +240,10 @@ export default function Login() {
                 </p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {DEMO_ACCOUNTS.map((acc) => (
-                    <button
+                    <Button
                       key={acc.email}
                       type="button"
+                      variant="outline"
                       onClick={() => loginAsDemo(acc.email)}
                       onContextMenu={(e) => {
                         e.preventDefault()
@@ -248,11 +251,11 @@ export default function Login() {
                       }}
                       title="Nhấn để đăng nhập nhanh (chuột phải: chỉ điền form)"
                       disabled={isLoading}
-                      className={`group flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left text-xs transition hover:shadow-md disabled:opacity-50 ${acc.color}`}
+                      className={`group h-auto flex-col items-start gap-0.5 px-3 py-2 text-left text-xs transition hover:shadow-md disabled:opacity-50 ${acc.color}`}
                     >
                       <span className="font-semibold">{acc.label}</span>
                       <span className="opacity-70">{acc.email}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>

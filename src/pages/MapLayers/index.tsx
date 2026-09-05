@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { mapLayerService, useApiMutation, useApiQuery } from '@/service'
 import type {
   ApiResponse,
@@ -7,6 +7,7 @@ import type {
   MapLayer,
   MapLayerListData,
   Pagination,
+  PatchMapLayerBody,
 } from '@/types/api'
 import {
   Select,
@@ -52,7 +53,9 @@ import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
 function getLayerItems(data: unknown): MapLayer[] {
-  const response = data as ApiResponse<{ items?: MapLayer[]; mapLayers?: MapLayer[] } | MapLayer[]> | undefined
+  const response = data as
+    | ApiResponse<{ items?: MapLayer[]; mapLayers?: MapLayer[] } | MapLayer[]>
+    | undefined
   const payload = response?.data
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.items)) return payload.items
@@ -99,16 +102,8 @@ export default function MapLayerPage(): JSX.Element {
 
   const layers = getLayerItems(dbQuery.data)
   const pagination = getPagination(dbQuery.data)
-  const lastTotalPagesRef = useRef(1)
-  if (pagination.totalPages !== undefined) {
-    lastTotalPagesRef.current = Math.max(1, pagination.totalPages)
-  }
-  const totalPages = lastTotalPagesRef.current
-  const total = pagination?.total ?? 0
-
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages)
-  }, [currentPage, totalPages])
+  const totalPages = Math.max(1, pagination.totalPages ?? 1)
+  const total = pagination.total ?? 0
 
   const [selectedLayerCode, setSelectedLayerCode] = useState<string | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -131,8 +126,8 @@ export default function MapLayerPage(): JSX.Element {
   )
 
   const updateMutation = useApiMutation(
-    (payload: { code: string; data: CreateMapLayerBody }) =>
-      mapLayerService.update(payload.code, payload.data as any),
+    (payload: { code: string; data: PatchMapLayerBody }) =>
+      mapLayerService.update(payload.code, payload.data),
     {
       onSuccess: () => {
         dbQuery.refetch()
@@ -330,7 +325,9 @@ export default function MapLayerPage(): JSX.Element {
                   onClick={() => openDetails(layer)}
                 >
                   <TableCell className="max-w-64 font-medium">
-                    <span className="line-clamp-2">{layer.name_vi || layer.name || layer.code}</span>
+                    <span className="line-clamp-2">
+                      {layer.name_vi || layer.name || layer.code}
+                    </span>
                     <span className="text-muted-foreground block truncate font-mono text-xs">
                       {layer.code}
                     </span>
@@ -379,7 +376,9 @@ export default function MapLayerPage(): JSX.Element {
                                   isActive: Boolean(layer.is_active),
                                 })
                               }}
-                              title={layer.is_active ? 'Nhấn để ngừng hoạt động' : 'Nhấn để kích hoạt'}
+                              title={
+                                layer.is_active ? 'Nhấn để ngừng hoạt động' : 'Nhấn để kích hoạt'
+                              }
                             >
                               {layer.is_active ? (
                                 <EyeOff className="size-4" />
@@ -459,8 +458,8 @@ export default function MapLayerPage(): JSX.Element {
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
               Bạn có chắc chắn muốn xóa lớp "
-              {layerToDelete?.name_vi || layerToDelete?.name || layerToDelete?.code}"? Hành động
-              này không thể hoàn tác.
+              {layerToDelete?.name_vi || layerToDelete?.name || layerToDelete?.code}"? Hành động này
+              không thể hoàn tác.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

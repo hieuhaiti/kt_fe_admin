@@ -9,6 +9,8 @@ import type {
   FireRiskRefreshData,
   FireRiskDistrictExportsData,
   FireRiskPublishRasterData,
+  GtZoneItem,
+  GtPointItem,
 } from '@/types/api'
 import { serviceFireRiskPath } from '@/constant/serviceConstant'
 
@@ -59,7 +61,7 @@ export default {
     from?: string
     to?: string
     severity?: number
-  }) => apiClient.get<{ items: any[] }>(`${serviceFireRiskPath}/ground-truth/zones`, { params }),
+  }) => apiClient.get<{ items: GtZoneItem[] }>(`${serviceFireRiskPath}/ground-truth/zones`, { params }),
 
   createGtZone: (body: {
     name?: string
@@ -67,17 +69,17 @@ export default {
     severity: number
     source?: string
     notes?: string
-    geom: any
-  }) => apiClient.post<any>(`${serviceFireRiskPath}/ground-truth/zones`, body),
+    geom: Record<string, unknown>
+  }) => apiClient.post<GtZoneItem>(`${serviceFireRiskPath}/ground-truth/zones`, body),
 
-  bulkGtZone: (featureCollection: any) =>
+  bulkGtZone: (featureCollection: Record<string, unknown>) =>
     apiClient.post<{ inserted: number; ids: number[] }>(
       `${serviceFireRiskPath}/ground-truth/zones/bulk`,
       featureCollection
     ),
 
   deleteGtZone: (id: number | string) =>
-    apiClient.del<any>(`${serviceFireRiskPath}/ground-truth/zones/${id}`),
+    apiClient.del<void>(`${serviceFireRiskPath}/ground-truth/zones/${id}`),
 
   // ── Ground truth: points ──────────────────────────────────────────────────
   listGtPoints: (params?: {
@@ -86,7 +88,7 @@ export default {
     from?: string
     to?: string
     severity?: number
-  }) => apiClient.get<{ items: any[] }>(`${serviceFireRiskPath}/ground-truth/points`, { params }),
+  }) => apiClient.get<{ items: GtPointItem[] }>(`${serviceFireRiskPath}/ground-truth/points`, { params }),
 
   createGtPoint: (body: {
     occurredAt: string
@@ -97,14 +99,14 @@ export default {
     photoUrl?: string
     reporterName?: string
     notes?: string
-  }) => apiClient.post<any>(`${serviceFireRiskPath}/ground-truth/points`, body),
+  }) => apiClient.post<GtPointItem>(`${serviceFireRiskPath}/ground-truth/points`, body),
 
-  bulkGtPoint: (points: any[]) =>
+  bulkGtPoint: (points: Partial<GtPointItem>[]) =>
     apiClient.post<{ inserted: number; ids: number[] }>(
       `${serviceFireRiskPath}/ground-truth/points/bulk`,
       { points }
     ),
 
   deleteGtPoint: (id: number | string) =>
-    apiClient.del<any>(`${serviceFireRiskPath}/ground-truth/points/${id}`),
+    apiClient.del<void>(`${serviceFireRiskPath}/ground-truth/points/${id}`),
 }

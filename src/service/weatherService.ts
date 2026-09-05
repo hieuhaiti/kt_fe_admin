@@ -1,6 +1,5 @@
 import apiClient from './common/apiClient'
 import type {
-  ApiResponse,
   WeatherLayer,
   WeatherPointData,
   WindGridData,
@@ -33,5 +32,5 @@ export default {
     `${API_BASE}${serviceWeatherPath}/tiles/${layer}/{z}/{x}/{y}`,
 
   /** POST /weather/refresh (perm: weather:manage) */
-  refresh: () => apiClient.post<ApiResponse<{}>>(`${serviceWeatherPath}/refresh`),
+  refresh: () => apiClient.post<void>(`${serviceWeatherPath}/refresh`),
 }

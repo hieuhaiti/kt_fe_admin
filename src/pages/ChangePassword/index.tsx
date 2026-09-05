@@ -45,7 +45,7 @@ export default function ChangePasswordPage() {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ChangePasswordForm>({
-    resolver: zodResolver(passwordSchema) as any,
+    resolver: zodResolver(passwordSchema),
     defaultValues: {
       currentPassword: '',
       newPassword: '',

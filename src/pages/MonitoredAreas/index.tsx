@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Eye, Plus } from 'lucide-react'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -93,16 +93,8 @@ export default function MonitoredAreasPage() {
   const response = listQuery.data as ApiResponse<MonitoredAreaListData> | undefined
   const items = response?.data?.items ?? []
   const pagination = (response?.metadata ?? {}) as Partial<Pagination>
-  const lastPages = useRef(1)
-  if (pagination.totalPages !== undefined) {
-    lastPages.current = Math.max(1, pagination.totalPages)
-  }
-  const totalPages = lastPages.current
+  const totalPages = Math.max(1, pagination.totalPages ?? (pagination.total ? Math.ceil(pagination.total / limit) : 1))
   const total = pagination.total ?? items.length
-
-  useEffect(() => {
-    if (page > totalPages) setPage(Math.max(totalPages, 1))
-  }, [page, totalPages])
 
   const detailQuery = useApiQuery(
     ['monitored-area', selectedId],

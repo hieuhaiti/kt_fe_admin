@@ -1,7 +1,7 @@
 import type { JSX } from 'react'
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useApiQuery, useApiMutation, documentService } from '@/service'
-import type { ApiResponse, Document, DocumentType, Pagination } from '@/types/api'
+import type { ApiResponse, Document, DocumentListData, DocumentType, Pagination } from '@/types/api'
 import {
   Select,
   SelectContent,
@@ -50,7 +50,7 @@ function formatSize(size?: number | string) {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`
 }
 
-function getDocumentTitle(item: any) {
+function getDocumentTitle(item?: Document | null) {
   return item?.translations?.vi?.title ?? item?.title ?? '-'
 }
 
@@ -83,21 +83,13 @@ export default function DocumentPage(): JSX.Element {
     false
   )
 
-  const raw = dbQuery.data as ApiResponse<any> | undefined
-  const data = raw?.data as any
-  const documents: any[] = data?.items ?? data?.documents ?? []
-  const pagination = (raw?.metadata ?? data?.pagination ?? {}) as Partial<Pagination>
+  const raw = dbQuery.data as ApiResponse<DocumentListData | { items?: Document[]; documents?: Document[] }> | undefined
+  const data = raw?.data
+  const documents: Document[] = (data && 'items' in data && data.items) || (data && 'documents' in data && data.documents) || []
+  const pagination = (raw?.metadata ?? (data && 'pagination' in data ? data.pagination : {})) as Partial<Pagination>
 
-  const lastTotalPagesRef = useRef(1)
-  if (pagination.totalPages !== undefined) {
-    lastTotalPagesRef.current = Math.max(1, pagination.totalPages)
-  }
-  const totalPages = lastTotalPagesRef.current
+  const totalPages = Math.max(1, pagination.totalPages ?? (pagination.total ? Math.ceil(pagination.total / limit) : 1))
   const total = pagination?.total ?? 0
-
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages)
-  }, [currentPage, totalPages])
 
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -115,7 +107,7 @@ export default function DocumentPage(): JSX.Element {
 
   const updateMutation = useApiMutation(
     (args: { id: number; payload: FormData }) =>
-      documentService.update(args.id, args.payload as any),
+      documentService.update(args.id, args.payload),
     {
       onSuccess: () => {
         dbQuery.refetch()
@@ -133,7 +125,7 @@ export default function DocumentPage(): JSX.Element {
     },
   })
 
-  function openDetails(item: any) {
+  function openDetails(item: Document) {
     setSelectedId(Number(item.id))
     setDetailDialogOpen(true)
   }
@@ -143,12 +135,12 @@ export default function DocumentPage(): JSX.Element {
     setFormDialogOpen(true)
   }
 
-  function openEditDialog(item: any) {
+  function openEditDialog(item: Document) {
     setSelectedId(Number(item.id))
     setFormDialogOpen(true)
   }
 
-  function openDeleteDialog(item: any) {
+  function openDeleteDialog(item: Document) {
     setItemToDelete(item)
     setDeleteDialogOpen(true)
   }

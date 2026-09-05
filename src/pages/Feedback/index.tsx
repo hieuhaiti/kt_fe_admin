@@ -1,11 +1,12 @@
 import type { JSX } from 'react'
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useApiQuery, useApiMutation, citizenFeedbackService } from '@/service'
 import type {
   ApiResponse,
   CitizenFeedback,
   FeedbackCategory,
   FeedbackFeatureCollection,
+  FeedbackListData,
   FeedbackStatus,
   FeedbackPriority,
   UpdateFeedbackStatusBody,
@@ -107,23 +108,16 @@ export default function FeedbackPage(): JSX.Element {
     false
   )
 
-  const raw = dbQuery.data as ApiResponse<any> | undefined
-  const data = raw?.data as any
-  const feedbacks: CitizenFeedback[] = data?.items ?? data?.feedbacks ?? []
-  const pagination = (raw?.metadata ?? data?.pagination ?? {}) as Partial<Pagination>
+  const raw = dbQuery.data as ApiResponse<FeedbackListData | { items?: CitizenFeedback[]; feedbacks?: CitizenFeedback[] }> | undefined
+  const data = raw?.data
+  const feedbacks: CitizenFeedback[] = (data && 'items' in data && data.items) || (data && 'feedbacks' in data && data.feedbacks) || []
+  const pagination = (raw?.metadata ?? (data && 'pagination' in data ? data.pagination : {})) as Partial<Pagination>
 
-  const lastTotalPagesRef = useRef(1)
-  if (pagination.totalPages !== undefined) {
-    lastTotalPagesRef.current = Math.max(1, pagination.totalPages)
-  }
-  const totalPages = lastTotalPagesRef.current
+  const totalPages = Math.max(1, pagination.totalPages ?? (pagination.total ? Math.ceil(pagination.total / limit) : 1))
   const total = pagination?.total ?? 0
   const mapData = ((mapQuery.data as ApiResponse<FeedbackFeatureCollection> | undefined)?.data ??
     null) as FeedbackFeatureCollection | null
 
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages)
-  }, [currentPage, totalPages])
 
   // Dialog states
   const [selectedFeedback, setSelectedFeedback] = useState<CitizenFeedback | null>(null)

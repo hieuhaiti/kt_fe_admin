@@ -16,6 +16,49 @@ export type SourceFormat = 'shapefile' | 'geojson' | 'kml' | 'geotiff' | 'filegd
 export type ImportMode = 'overwrite' | 'append'
 export type ImportJobStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
+export interface MapLayerLegendEntry {
+  label: string
+  color: string
+  value?: string | number | null
+  min?: number | null
+  max?: number | null
+}
+
+export interface MapLayerLegend {
+  entries: MapLayerLegendEntry[]
+}
+
+export interface MapLayerDefaultStyle {
+  fillColor?: string
+  fillOpacity?: number
+  fillAntialias?: boolean
+  strokeColor?: string
+  strokeOpacity?: number
+  strokeWidth?: number
+  strokeBlur?: number
+  strokeDasharray?: number[]
+  strokeOffset?: number
+  lineCap?: 'butt' | 'round' | 'square'
+  lineJoin?: 'bevel' | 'round' | 'miter'
+  circleColor?: string
+  circleOpacity?: number
+  circleRadius?: number
+  circleBlur?: number
+  circleStrokeColor?: string
+  circleStrokeOpacity?: number
+  circleStrokeWidth?: number
+  opacity?: number
+  rasterOpacity?: number
+  brightnessMin?: number
+  brightnessMax?: number
+  contrast?: number
+  saturation?: number
+  hueRotate?: number
+  fadeDuration?: number
+  resampling?: 'linear' | 'nearest'
+  visible_by_default?: boolean
+}
+
 export interface MapLayer {
   id?: number
   code: string
@@ -31,7 +74,7 @@ export interface MapLayer {
   geoserver_layer?: string | null
   geoserver_store?: string | null
   source_url?: string | null
-  default_style?: Record<string, unknown> | null
+  default_style?: MapLayerDefaultStyle | null
   min_zoom?: number | null
   max_zoom?: number | null
   label_field?: string | null
@@ -54,6 +97,9 @@ export interface MapLayer {
   workspace?: string | null
   createdAt?: string | null
   updatedAt?: string | null
+
+  legend_config?: MapLayerLegend | null
+  legend?: MapLayerLegend | null
 
   name?: string
   geometry_data?: object | string
@@ -101,6 +147,8 @@ export interface CreateMapLayerBody {
   is_active?: boolean
   is_public?: boolean
   is_editable?: boolean
+  default_style?: MapLayerDefaultStyle | null
+  legend_config?: MapLayerLegend | null
 
   name?: string
   geometry_data?: object | string
@@ -110,11 +158,22 @@ export interface CreateMapLayerBody {
 export interface PatchMapLayerBody {
   name_vi?: string
   name_en?: string | null
-  is_public?: boolean
+  description_vi?: string | null
+  description_en?: string | null
+  schema_name?: string
+  table_name?: string
+  geometry_type?: GeometryType
+  epsg_code?: number
   category?: string
+  layer_kind?: LayerKind
   layer_group?: string | null
+  is_active?: boolean
+  is_public?: boolean
+  is_editable?: boolean
   data_year?: number | null
   sort_order?: number
+  default_style?: MapLayerDefaultStyle | null
+  legend_config?: MapLayerLegend | null
 }
 
 export interface PatchMapLayerActiveBody {

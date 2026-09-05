@@ -102,7 +102,7 @@ export interface UpdateRemoteImageBody {
 export interface CogUrlData {
   cogUrl: string
   expiresAt: string
-  webgisHint?: any
+  webgisHint?: Record<string, unknown>
 }
 
 export interface DownloadUrlParams {

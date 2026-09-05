@@ -271,8 +271,9 @@ export default function FieldMeasurementsPage() {
       anchor.download = `field-measurements-${new Date().toISOString().slice(0, 10)}.xlsx`
       anchor.click()
       URL.revokeObjectURL(url)
-    } catch (err: any) {
-      toast.error(err?.message || 'Không thể xuất Excel')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      toast.error(message || 'Không thể xuất Excel')
     }
   }
 

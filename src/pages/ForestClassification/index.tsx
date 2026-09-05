@@ -58,7 +58,9 @@ import {
   normalizeGeoserverLayer,
 } from '@/lib/geoserver'
 import type {
+  ApiResponse,
   ForestClassSnapshot,
+  ForestClassProvinceSummary,
   ForestClassAreaComparisonMetric,
   ForestClassClassComparison,
   ForestClassComparison,
@@ -69,6 +71,7 @@ import type {
   ForestClassDistrictExportsData,
   ForestClassHistoryItem,
   ForestClassLatestData,
+  ForestClassRefreshBody,
 } from '@/types/api'
 import ForestMap, { type RasterLoadStatus } from '@/components/features/ForestMap'
 import GeeProcessingStatus from '@/components/features/GeeProcessingStatus'
@@ -411,18 +414,19 @@ function resolveRasterTileSource(
   if (districtTileUrl) return { url: districtTileUrl, kind: 'geoserver-districts' }
   if (!allowProvinceFallback) return { url: null, kind: 'none' }
 
+  const legacySnapshot = snapshot as ForestClassSnapshot & Record<string, unknown>
   const layer = normalizeGeoserverLayer(
-    snapshot.geoserverLayer ?? (snapshot as any).geoserver_layer
+    snapshot.geoserverLayer ?? (legacySnapshot.geoserver_layer as string | undefined)
   )
   const snapshotTileUrl = buildGeoserverRasterTileUrl(layer ? [layer] : [])
   if (snapshotTileUrl) return { url: snapshotTileUrl, kind: 'geoserver-snapshot' }
 
-  const geeTile = snapshot.geeTileUrl ?? (snapshot as any).gee_tile_url ?? null
+  const geeTile = snapshot.geeTileUrl ?? (legacySnapshot.gee_tile_url as string | undefined) ?? null
   const generatedAt =
     snapshot.geeTileGeneratedAt ??
-    (snapshot as any).gee_tile_generated_at ??
+    (legacySnapshot.gee_tile_generated_at as string | undefined) ??
     snapshot.computedAt ??
-    (snapshot as any).computed_at
+    (legacySnapshot.computed_at as string | undefined)
   const geeTileUrl = getUsableTemporaryRasterUrl(geeTile, generatedAt)
   return geeTileUrl ? { url: geeTileUrl, kind: 'gee' } : { url: null, kind: 'none' }
 }
@@ -517,7 +521,7 @@ export default function ForestClassificationPage() {
     false
   )
   const refreshMutation = useApiMutation(
-    (body: any) => forestClassificationService.refresh(body),
+    (body: ForestClassRefreshBody) => forestClassificationService.refresh(body),
     {},
     false
   )
@@ -562,7 +566,7 @@ export default function ForestClassificationPage() {
     () => forestClassificationService.getDistrictExports(snapshotId!),
     {
       enabled: Boolean(snapshotId) && isSnapshotDone,
-      refetchInterval: (query: any) => {
+      refetchInterval: (query: { state: { data?: ApiResponse<ForestClassDistrictExportsData>; error?: unknown } }) => {
         if (query.state.error) return false
         if (
           !districtPollingRef.current.startedAt ||
@@ -584,7 +588,7 @@ export default function ForestClassificationPage() {
           ? DISTRICT_RASTER_POLL_INTERVAL_MS
           : false
       },
-    } as any,
+    },
     false
   )
   const districtExports = districtExportsQuery.data?.data ?? null
@@ -646,8 +650,9 @@ export default function ForestClassificationPage() {
     (_, index) => latestAllowedYear - index
   )
 
+  const legacySnapshot = snapshot as (ForestClassSnapshot & Record<string, unknown>) | null | undefined
   const snapshotRasterLayer = normalizeGeoserverLayer(
-    snapshot?.geoserverLayer ?? (snapshot as any)?.geoserver_layer
+    snapshot?.geoserverLayer ?? (legacySnapshot?.geoserver_layer as string | undefined)
   )
   const districtRasterLayers = Array.from(
     new Set(
@@ -667,11 +672,11 @@ export default function ForestClassificationPage() {
   )
   const rasterTileUrl = rasterTileSource.url
   const temporaryTileStatus = getTemporaryRasterUrlStatus(
-    snapshot?.geeTileUrl ?? (snapshot as any)?.gee_tile_url,
+    snapshot?.geeTileUrl ?? (legacySnapshot?.gee_tile_url as string | undefined),
     snapshot?.geeTileGeneratedAt ??
-      (snapshot as any)?.gee_tile_generated_at ??
+      (legacySnapshot?.gee_tile_generated_at as string | undefined) ??
       snapshot?.computedAt ??
-      (snapshot as any)?.computed_at
+      (legacySnapshot?.computed_at as string | undefined)
   )
   const rasterStatusLabel =
     rasterTileUrl && rasterLoadStatus === 'error'
@@ -1367,7 +1372,7 @@ export default function ForestClassificationPage() {
                     (sum, id) => sum + (Number(hbc[String(id)]) || 0),
                     0
                   )
-                  const attempt = (h as any).attempt as number | undefined
+                  const attempt = (h as ForestClassHistoryItem & { attempt?: number }).attempt
                   // Show attempt badge chỉ khi >1 (attempt=1 là mặc định, không cần chú thích).
                   const showAttempt = attempt != null && attempt > 1
                   const canQuickDownload = ['completed', 'published'].includes(
@@ -2241,7 +2246,7 @@ function DistrictStatusDot({ status }: { status: string }) {
 function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
   const user = useAuthStore((s) => s.user)
   const canPublishRaster = hasPerm(user, 'map_layers', 'ingest_raster')
-  const s = (item.province_summary || {}) as any
+  const s = (item.province_summary || {}) as ForestClassProvinceSummary
   const byClass: Record<string, number> = s.byClass || {}
   const totalHa = Number(s.totalHa) || 0
   const forestHa = FOREST_CLASS_IDS.reduce((sum, id) => sum + (Number(byClass[String(id)]) || 0), 0)
@@ -2251,20 +2256,20 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
   const [publishGoalCount, setPublishGoalCount] = useState<number | null>(null)
   const publishStartedAtRef = useRef(0)
   const publishRequestIdRef = useRef(0)
-  const districtPollingStartedAtRef = useRef(Date.now())
+  const [districtPollingStartedAt] = useState(() => Date.now())
   const queryClient = useQueryClient()
   const geoserverLayer = normalizeGeoserverLayer(item.geoserver_layer)
   const districtExportsQuery = useApiQuery(
     ['forest-class-history-district-exports', item.id],
     () => forestClassificationService.getDistrictExports(item.id),
     {
-      refetchInterval: (query: any) => {
-        const payload = query.state.data?.data as ForestClassDistrictExportsData | undefined
+      refetchInterval: (query: { state: { data?: ApiResponse<ForestClassDistrictExportsData> } }) => {
+        const payload = query.state.data?.data
         const districts = payload?.districts ?? []
         const hasPendingPublish =
           Number(payload?.queuedCount ?? 0) > 0 ||
           districts.some(
-            (district) =>
+            (district: ForestClassDistrictExport) =>
               !isDistrictReady(district) &&
               (hasActiveDistrictIngest(district) || isRasterProcessingStatus(district.status))
           )
@@ -2272,12 +2277,12 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
           publishStartedAtRef.current > 0 &&
           Date.now() - publishStartedAtRef.current < DISTRICT_PUBLISH_POLL_WINDOW_MS
         const withinStatusWindow =
-          Date.now() - districtPollingStartedAtRef.current < DISTRICT_PUBLISH_POLL_WINDOW_MS
+          Date.now() - districtPollingStartedAt < DISTRICT_PUBLISH_POLL_WINDOW_MS
         return withinStatusWindow && ((busy && withinPublishWindow) || hasPendingPublish)
           ? DISTRICT_RASTER_POLL_INTERVAL_MS
           : false
       },
-    } as any,
+    },
     false
   )
   const districtExports = districtExportsQuery.data?.data ?? null
@@ -2304,9 +2309,10 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
         (hasActiveDistrictIngest(district) || isRasterProcessingStatus(district.status))
     ) || Number(districtExports?.queuedCount ?? 0) > 0
   const hasDistrictArtifacts = districtTotal > 0 || districts.length > 0
+  const legacyItem = item as ForestClassHistoryItem & Record<string, unknown>
   const temporaryDownloadStatus = getTemporaryRasterUrlStatus(
     item.gee_download_url,
-    (item as any).gee_download_generated_at ?? item.computed_at
+    (legacyItem.gee_download_generated_at as string | undefined) ?? item.computed_at
   )
   const temporaryTileStatus = getTemporaryRasterUrlStatus(
     item.gee_tile_url,
@@ -2327,7 +2333,6 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
     setBusy(true)
     setPublishGoalCount(null)
     publishStartedAtRef.current = Date.now()
-    districtPollingStartedAtRef.current = Date.now()
     const requestId = ++publishRequestIdRef.current
     try {
       const res = await forestClassificationService.publishSnapshotRaster(item.id)
@@ -2403,26 +2408,27 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
     () => forestClassificationService.getIngestJob(ingestJobId as number),
     {
       enabled: ingestJobId != null,
-      refetchInterval: (data: any) => {
-        const st = data?.data?.data?.status ?? data?.data?.status
+      refetchInterval: (query: { state: { data?: ApiResponse<{ status?: string }> } }) => {
+        const st = query.state.data?.data?.status
         return st && ['completed', 'failed', 'cancelled'].includes(st)
           ? false
           : DISTRICT_RASTER_POLL_INTERVAL_MS
       },
       refetchOnWindowFocus: false,
-    } as any,
+    },
     false
   )
-  const job: any = (jobQuery.data as any)?.data
-  const terminal = job && ['completed', 'failed', 'cancelled'].includes(job.status)
+  const job = jobQuery.data?.data as { status?: string; [key: string]: unknown } | undefined
+  const terminal = Boolean(job?.status && ['completed', 'failed', 'cancelled'].includes(job.status))
 
   // Khi job terminal → invalidate queries + toast.
   useEffect(() => {
     if (!terminal || !busy) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBusy(false)
     setPublishGoalCount(null)
     publishStartedAtRef.current = 0
-    if (job.status === 'completed') {
+    if (job?.status === 'completed') {
       toast.success('Đã cập nhật bản đồ thành công.')
       void Promise.all([
         queryClient.invalidateQueries({
@@ -2450,6 +2456,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
     const reachedPublishGoal =
       published || (publishGoalCount != null && districtReadyCount >= publishGoalCount)
     if (reachedPublishGoal) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBusy(false)
       setPublishGoalCount(null)
       publishStartedAtRef.current = 0
@@ -2620,10 +2627,10 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
             {job && !terminal && (
               <p className="mt-1 flex items-center gap-2 text-sky-700">
                 <LoadingInline size="small" />
-                <span>Đang cập nhật bản đồ ({job.progress}%)</span>
+                <span>Đang cập nhật bản đồ ({String(job.progress ?? 0)}%)</span>
               </p>
             )}
-            {job?.status === 'completed' && job.geoserver_layer && (
+            {job?.status === 'completed' && Boolean(job.geoserver_layer) && (
               <p className="mt-1 flex items-center gap-2 text-emerald-700">
                 <span>Đã cập nhật bản đồ thành công</span>
                 <Button

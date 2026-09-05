@@ -1,11 +1,11 @@
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   message: string
   status: number
   data?: T
   /** Server sends pagination via top-level `metadata` for list endpoints */
-  metadata?: Pagination | Record<string, any>
+  metadata?: Pagination | Record<string, unknown>
   errors?: string[]
-  options?: Record<string, any>
+  options?: Record<string, unknown>
 }
 
 export interface Pagination {

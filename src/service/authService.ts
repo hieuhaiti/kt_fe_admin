@@ -1,6 +1,5 @@
 import apiClient from './common/apiClient'
 import type {
-  ApiResponse,
   AuthLoginData,
   AuthRegisterData,
   AuthRefreshData,
@@ -37,19 +36,19 @@ export default {
 
   /** POST /auth/forgot-password */
   forgotPassword: (data: ForgotPasswordBody) =>
-    apiClient.post<ApiResponse<{}>>(`${serviceAuthPath}/forgot-password`, data),
+    apiClient.post<void>(`${serviceAuthPath}/forgot-password`, data),
 
   /** POST /auth/reset-password */
   resetPassword: (data: ResetPasswordBody) =>
-    apiClient.post<ApiResponse<{}>>(`${serviceAuthPath}/reset-password`, data),
+    apiClient.post<void>(`${serviceAuthPath}/reset-password`, data),
 
   /** POST /auth/verify-email */
   verifyEmail: (data: VerifyEmailBody) =>
-    apiClient.post<ApiResponse<{}>>(`${serviceAuthPath}/verify-email`, data),
+    apiClient.post<void>(`${serviceAuthPath}/verify-email`, data),
 
   /** POST /auth/resend-verification */
   resendVerification: (data: ResendVerificationBody) =>
-    apiClient.post<ApiResponse<{}>>(`${serviceAuthPath}/resend-verification`, data),
+    apiClient.post<void>(`${serviceAuthPath}/resend-verification`, data),
 
   /** POST /auth/google/mobile */
   googleMobile: (data: GoogleMobileBody) =>
@@ -72,7 +71,7 @@ export default {
 
   /** POST /auth/change-password */
   changePassword: (data: ChangePasswordBody) =>
-    apiClient.post<ApiResponse<{}>>(`${serviceAuthPath}/change-password`, data),
+    apiClient.post<void>(`${serviceAuthPath}/change-password`, data),
 
   /** POST /auth/set-password */
   setPassword: (data: SetPasswordBody) =>

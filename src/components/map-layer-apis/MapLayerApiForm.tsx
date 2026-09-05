@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Gauge, KeyRound, Layers, Loader2, Save, ShieldCheck } from 'lucide-react'
@@ -106,7 +106,7 @@ export default function MapLayerApiForm({
   const form = useForm<FormValues>({
     resolver: zodResolver(
       mode === 'edit' ? editMapLayerApiFormSchema : createMapLayerApiSchema
-    ) as any,
+    ) as Resolver<FormValues>,
     mode: 'onChange',
     defaultValues,
   })
@@ -151,7 +151,7 @@ export default function MapLayerApiForm({
       expires_at: initialData.expires_at ?? null,
     }
 
-    return buildUpdatePayload(original, normalizeMapLayerApiInput(watched as any))
+    return buildUpdatePayload(original, normalizeMapLayerApiInput(watched as Partial<CreateMapLayerApiBody>))
   }, [mode, initialData, watched])
 
   const changedCount = Object.keys(changedPayload).length
@@ -162,13 +162,13 @@ export default function MapLayerApiForm({
     <form
       className="space-y-5"
       onSubmit={form.handleSubmit((values) => {
-        const normalized = normalizeMapLayerApiInput(values as any)
+        const normalized = normalizeMapLayerApiInput(values)
         if (mode === 'create') {
           onSubmitCreate(normalized)
           return
         }
 
-        const patch = { ...(changedPayload as Record<string, any>) }
+        const patch = { ...(changedPayload as Record<string, unknown>) }
         delete patch.layer_id
         onSubmitUpdate(patch as Partial<CreateMapLayerApiBody>)
       })}

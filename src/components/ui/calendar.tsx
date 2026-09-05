@@ -5,6 +5,34 @@ import { DayButton, DayPicker, getDefaultClassNames } from 'react-day-picker'
 import { cn } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 
+function CalendarRoot({ className, rootRef, ...props }: React.ComponentProps<'div'> & { rootRef?: React.Ref<HTMLDivElement> }) {
+  return <div data-slot="calendar" ref={rootRef} className={cn(className)} {...props} />
+}
+
+function CalendarChevron({
+  className,
+  orientation,
+  ...props
+}: React.ComponentProps<'svg'> & { orientation?: 'left' | 'right' | 'up' | 'down' }) {
+  if (orientation === 'left') {
+    return <ChevronLeftIcon className={cn('size-4', className)} {...props} />
+  }
+  if (orientation === 'right') {
+    return <ChevronRightIcon className={cn('size-4', className)} {...props} />
+  }
+  return <ChevronDownIcon className={cn('size-4', className)} {...props} />
+}
+
+function CalendarWeekNumber({ children, ...props }: React.ComponentProps<'td'>) {
+  return (
+    <td {...props}>
+      <div className="flex size-[--cell-size] items-center justify-center text-center">
+        {children}
+      </div>
+    </td>
+  )
+}
+
 function Calendar({
   className,
   classNames,
@@ -71,7 +99,7 @@ function Calendar({
             : '[&>svg]:text-muted-foreground flex h-8 items-center gap-1 rounded-md pl-2 pr-1 text-sm [&>svg]:size-3.5',
           defaultClassNames.caption_label
         ),
-        table: 'w-full border-collapse',
+        table: 'w-full border-collapse space-y-1',
         weekdays: cn('flex gap-1', defaultClassNames.weekdays),
         weekday: cn(
           'text-muted-foreground flex-1 select-none rounded-md text-[0.8rem] font-normal',
@@ -84,49 +112,28 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          'group/day relative aspect-square h-full w-full select-none p-0 text-center [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md',
+          'p-0 size-(--cell-size) text-center text-sm relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
           defaultClassNames.day
         ),
-        range_start: cn('bg-accent rounded-l-md', defaultClassNames.range_start),
-        range_middle: cn('rounded-none', defaultClassNames.range_middle),
-        range_end: cn('bg-accent rounded-r-md', defaultClassNames.range_end),
-        today: cn(
-          'bg-accent text-accent-foreground rounded-md data-[selected=true]:rounded-none',
-          defaultClassNames.today
+        day_button: cn(
+          buttonVariants({ variant: 'ghost' }),
+          'size-(--cell-size) p-0 font-normal aria-selected:opacity-100',
+          defaultClassNames.day_button
         ),
-        outside: cn(
-          'text-muted-foreground aria-selected:text-muted-foreground',
-          defaultClassNames.outside
-        ),
-        disabled: cn('text-muted-foreground opacity-50', defaultClassNames.disabled),
-        hidden: cn('invisible', defaultClassNames.hidden),
+        range_end: 'day-range-end',
+        selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground',
+        today: 'bg-accent text-accent-foreground',
+        outside: 'text-muted-foreground aria-selected:text-muted-foreground opacity-50',
+        disabled: 'text-muted-foreground opacity-50',
+        range_middle: 'aria-selected:bg-accent aria-selected:text-accent-foreground',
+        hidden: 'invisible',
         ...classNames,
       }}
       components={{
-        Root: ({ className, rootRef, ...props }) => {
-          return <div data-slot="calendar" ref={rootRef} className={cn(className)} {...props} />
-        },
-        Chevron: ({ className, orientation, ...props }) => {
-          if (orientation === 'left') {
-            return <ChevronLeftIcon className={cn('size-4', className)} {...props} />
-          }
-
-          if (orientation === 'right') {
-            return <ChevronRightIcon className={cn('size-4', className)} {...props} />
-          }
-
-          return <ChevronDownIcon className={cn('size-4', className)} {...props} />
-        },
+        Root: CalendarRoot,
+        Chevron: CalendarChevron,
         DayButton: CalendarDayButton,
-        WeekNumber: ({ children, ...props }) => {
-          return (
-            <td {...props}>
-              <div className="flex size-[--cell-size] items-center justify-center text-center">
-                {children}
-              </div>
-            </td>
-          )
-        },
+        WeekNumber: CalendarWeekNumber,
         ...components,
       }}
       {...props}

@@ -1,6 +1,5 @@
 import apiClient from './common/apiClient'
 import type {
-  ApiResponse,
   RemoteImage,
   RemoteImageListData,
   RemoteImageListParams,
@@ -81,7 +80,7 @@ export default {
 
   /** DELETE /remote-sensing/images/:remoteImageId?hardDelete= */
   deleteImage: (remoteImageId: number | string, hardDelete = false) =>
-    apiClient.del<ApiResponse<{}>>(
+    apiClient.del<void>(
       `${serviceRemoteSensingPath}/images/${remoteImageId}`,
       undefined,
       { params: { hardDelete } }

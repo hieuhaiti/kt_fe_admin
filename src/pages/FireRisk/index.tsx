@@ -47,9 +47,11 @@ import {
   normalizeGeoserverLayer,
 } from '@/lib/geoserver'
 import type {
+  ApiResponse,
   FireRiskFeature,
   FireRiskDistrictExport,
   FireRiskDistrictExportsData,
+  FireRiskDistrictStat,
   FireRiskHistoryItem,
   FireRiskProvinceSummary,
   FireRiskSnapshot,
@@ -270,8 +272,8 @@ type DistrictArtifactSummary = {
   available: boolean
 }
 
-function getDistrictArtifactSummary(value: Record<string, any>): DistrictArtifactSummary {
-  const nested = value.districtArtifacts ?? value.district_artifacts ?? {}
+function getDistrictArtifactSummary(value: Record<string, unknown>): DistrictArtifactSummary {
+  const nested = (value.districtArtifacts ?? value.district_artifacts ?? {}) as Record<string, unknown>
   const rawLayers =
     value.geoserverLayers ??
     value.geoserver_layers ??
@@ -443,7 +445,7 @@ export default function FireRiskPage() {
     () => fireRiskService.getDistrictExports(snapshotId as number | string),
     {
       enabled: Boolean(snapshotId) && isSnapshotDone,
-      refetchInterval: (query: any) => {
+      refetchInterval: (query: { state: { data?: ApiResponse<FireRiskDistrictExportsData>; error?: unknown } }) => {
         if (query.state.error) return false
         if (
           !districtPollingRef.current.startedAt ||
@@ -465,7 +467,7 @@ export default function FireRiskPage() {
         // đủ bộ raster ổn định thay vì phụ thuộc riêng vào rasterIngestJobId.
         return !fullyPublished ? DISTRICT_RASTER_POLL_INTERVAL_MS : false
       },
-    } as any,
+    },
     false
   )
   const summary: FireRiskProvinceSummary = snapshot?.provinceSummary ?? {}
@@ -480,7 +482,7 @@ export default function FireRiskPage() {
   }
   const historyTotalPages = lastHistoryTotalPages.current
   const latestHistoryItem = history.find((item) => String(item.id) === String(snapshot?.id))
-  const districtExports = ((districtExportsQuery.data as any)?.data ??
+  const districtExports = (districtExportsQuery.data?.data ??
     null) as FireRiskDistrictExportsData | null
   const districtArtifacts = districtExports?.districts ?? []
   const expectedDistrictTotal = resolveDistrictTotal(districtExports, districtArtifacts)
@@ -652,7 +654,7 @@ export default function FireRiskPage() {
             maxLevel: dMax,
             totalHa: sumDistAbove(d.riskLevelDist, minLevel),
             topLevelHa: topHa,
-            s2Coverage: (d as any).s2Coverage as number | undefined,
+            s2Coverage: (d as FireRiskDistrictStat & { s2Coverage?: number }).s2Coverage,
             riskLevelDist: d.riskLevelDist,
           }
         })
@@ -1023,8 +1025,8 @@ export default function FireRiskPage() {
                   const districtArtifacts = getDistrictArtifactSummary(h)
                   const hasStableDistrictRaster = districtArtifacts.fullyPublished
                   const temporaryTileStatus = getTemporaryRasterUrlStatus(
-                    h.gee_tile_url ?? h.geeTileUrl,
-                    h.gee_tile_generated_at ?? h.computed_at
+                    (h.gee_tile_url ?? h.geeTileUrl) as string | null | undefined,
+                    (h.gee_tile_generated_at ?? h.computed_at) as string | null | undefined
                   )
                   const rasterKind = hasStableDistrictRaster
                     ? 'districts'
@@ -1676,23 +1678,33 @@ function FireRiskLayerCard({
 
 function Stat({
   label,
-  value,
   hint,
-  tone = 'default',
+  value,
+  sub,
+  tone,
 }: {
   label: string
-  value: any
   hint?: string
-  tone?: 'default' | 'danger'
+  value: React.ReactNode
+  sub?: string
+  tone?: 'success' | 'warning' | 'danger' | 'default'
 }) {
-  const border = tone === 'danger' ? 'border-red-400 bg-red-50' : ''
+  const toneClass =
+    tone === 'success'
+      ? 'text-emerald-700'
+      : tone === 'warning'
+        ? 'text-warning'
+        : tone === 'danger'
+          ? 'text-red-700'
+          : ''
   return (
-    <div className={`min-w-0 rounded-md border p-3 ${border}`}>
-      <p className="text-muted-foreground truncate text-xs">{label}</p>
-      <p className="mt-1 truncate text-xl font-bold sm:text-2xl">{value ?? '—'}</p>
-      {hint && (
-        <p className="text-muted-foreground mt-1 line-clamp-2 text-[11px] leading-4">{hint}</p>
-      )}
+    <div className="rounded-lg border bg-card p-3 shadow-xs">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{label}</span>
+        {hint && <span className="text-[10px] text-muted-foreground/70" title={hint}>ⓘ</span>}
+      </div>
+      <div className={`mt-1 text-2xl font-bold ${toneClass}`}>{value}</div>
+      {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
     </div>
   )
 }
@@ -1783,7 +1795,7 @@ function DistrictLevelBreakdown({
 function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
   const user = useAuthStore((s) => s.user)
   const canPublishRaster = hasPerm(user, 'map_layers', 'ingest_raster')
-  const s = (item?.province_summary || {}) as any
+  const s = (item?.province_summary || {}) as FireRiskProvinceSummary
   const dist: Record<string, number> = s.riskLevelDist || {}
   const totalHaAll = [0, 1, 2, 3, 4, 5].reduce((sum, l) => sum + (Number(dist[String(l)]) || 0), 0)
 
@@ -1794,20 +1806,20 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
   const [publishGoalCount, setPublishGoalCount] = useState<number | null>(null)
   const publishStartedAtRef = useRef(0)
   const publishRequestIdRef = useRef(0)
-  const districtPollingStartedAtRef = useRef(Date.now())
+  const [districtPollingStartedAt] = useState(() => Date.now())
   const queryClient = useQueryClient()
   const geoserverLayer = normalizeGeoserverLayer(item.geoserver_layer)
   const districtExportsQuery = useApiQuery(
     ['fire-risk-history-district-exports', item.id],
     () => fireRiskService.getDistrictExports(item.id),
     {
-      refetchInterval: (query: any) => {
-        const payload = query.state.data?.data as FireRiskDistrictExportsData | undefined
+      refetchInterval: (query: { state: { data?: ApiResponse<FireRiskDistrictExportsData> } }) => {
+        const payload = query.state.data?.data
         const districts = payload?.districts ?? []
         const hasPendingPublish =
           Number(payload?.queuedCount ?? 0) > 0 ||
           districts.some(
-            (district) =>
+            (district: FireRiskDistrictExport) =>
               !isDistrictReady(district) &&
               (hasActiveDistrictIngest(district) || isRasterProcessingStatus(district.status))
           )
@@ -1815,12 +1827,12 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
           publishStartedAtRef.current > 0 &&
           Date.now() - publishStartedAtRef.current < DISTRICT_PUBLISH_POLL_WINDOW_MS
         const withinStatusWindow =
-          Date.now() - districtPollingStartedAtRef.current < DISTRICT_PUBLISH_POLL_WINDOW_MS
+          Date.now() - districtPollingStartedAt < DISTRICT_PUBLISH_POLL_WINDOW_MS
         return withinStatusWindow && ((busy && withinPublishWindow) || hasPendingPublish)
           ? DISTRICT_RASTER_POLL_INTERVAL_MS
           : false
       },
-    } as any,
+    },
     false
   )
   const districtExports = districtExportsQuery.data?.data ?? null
@@ -1847,8 +1859,8 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
     ) || Number(districtExports?.queuedCount ?? 0) > 0
   const hasDistrictArtifacts = districtTotal > 0 || districts.length > 0
   const temporaryDownloadStatus = getTemporaryRasterUrlStatus(
-    item.gee_download_url ?? item.geeDownloadUrl,
-    item.gee_download_generated_at ?? item.computed_at
+    (item.gee_download_url ?? item.geeDownloadUrl) as string | null | undefined,
+    (item.gee_download_generated_at ?? item.computed_at) as string | null | undefined
   )
   const hasLegacyDownload = temporaryDownloadStatus === 'available'
   const published = hasDistrictArtifacts
@@ -1865,7 +1877,6 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
     setBusy(true)
     setPublishGoalCount(null)
     publishStartedAtRef.current = Date.now()
-    districtPollingStartedAtRef.current = Date.now()
     const requestId = ++publishRequestIdRef.current
     try {
       const res = await fireRiskService.publishSnapshotRaster(item.id)
@@ -1947,18 +1958,18 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
     () => fireRiskService.getIngestJob(ingestJobId as number),
     {
       enabled: ingestJobId != null,
-      refetchInterval: (data: any) => {
-        const st = data?.data?.data?.status ?? data?.data?.status
+      refetchInterval: (query: { state: { data?: ApiResponse<{ status?: string }> } }) => {
+        const st = query.state.data?.data?.status
         return st && ['completed', 'failed', 'cancelled'].includes(st)
           ? false
           : DISTRICT_RASTER_POLL_INTERVAL_MS
       },
       refetchOnWindowFocus: false,
-    } as any,
+    },
     false
   )
-  const job: any = jobQuery.data?.data
-  const terminal = job && ['completed', 'failed', 'cancelled'].includes(job.status)
+  const job = (jobQuery.data?.data as { status?: string; [key: string]: unknown } | undefined)
+  const terminal = Boolean(job?.status && ['completed', 'failed', 'cancelled'].includes(job.status))
 
   // Terminal side-effects trong useEffect (không setState trong render body).
   // Khi publish thành công → invalidate query fire-risk-{latest,map,history} để
@@ -1966,10 +1977,11 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
   // FireRiskMap chuyển sang WMS thay cho GEE tile URL.
   useEffect(() => {
     if (!terminal || !busy) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBusy(false)
     setPublishGoalCount(null)
     publishStartedAtRef.current = 0
-    if (job.status === 'completed') {
+    if (job?.status === 'completed') {
       toast.success('Đã cập nhật bản đồ thành công.')
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ['fire-risk-latest'], refetchType: 'none' }),
@@ -1991,7 +2003,8 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
     if (!busy || !hasDistrictArtifacts) return
 
     const reachedPublishGoal = publishGoalCount != null && districtReadyCount >= publishGoalCount
-    if (published) {
+    if (published || reachedPublishGoal) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBusy(false)
       setPublishGoalCount(null)
       publishStartedAtRef.current = 0
@@ -2140,10 +2153,10 @@ function SnapshotDetailPanel({ item }: { item: FireRiskHistoryItem }) {
             {job && !terminal && (
               <p className="mt-1 flex items-center gap-2 text-sky-700">
                 <LoadingInline size="small" />
-                <span>Đang cập nhật bản đồ ({job.progress}%)</span>
+                <span>Đang cập nhật bản đồ ({String(job.progress ?? 0)}%)</span>
               </p>
             )}
-            {job?.status === 'completed' && job.geoserver_layer && (
+            {job?.status === 'completed' && Boolean(job.geoserver_layer) && (
               <p className="mt-1 flex items-center gap-2 text-emerald-700">
                 <span>Đã cập nhật bản đồ thành công</span>
                 <Button
@@ -2390,7 +2403,7 @@ function groupByDistrict(features: FireRiskFeature[]) {
     const code = String(f.district_code || 'unknown')
     const ha = Number(f.area_ha) || 0
     const lvl = f.risk_level
-    const props = (f as any).properties || {}
+    const props = (f as { properties?: Record<string, unknown> }).properties || {}
     const s2 = typeof props.s2Coverage === 'number' ? props.s2Coverage : undefined
     const cur = map.get(code) || {
       code,
@@ -2452,12 +2465,12 @@ function formatHaShort(v?: number | string | null): string {
  */
 function extractFeatureCollection(payload: unknown): GeoJSON.FeatureCollection | null {
   if (!payload || typeof payload !== 'object') return null
-  const anyPayload = payload as any
+  const anyPayload = payload as { type?: string; features?: unknown; data?: { type?: string; features?: unknown } }
   if (anyPayload.type === 'FeatureCollection' && Array.isArray(anyPayload.features)) {
-    return anyPayload as GeoJSON.FeatureCollection
+    return anyPayload as unknown as GeoJSON.FeatureCollection
   }
   if (anyPayload.data?.type === 'FeatureCollection' && Array.isArray(anyPayload.data.features)) {
-    return anyPayload.data as GeoJSON.FeatureCollection
+    return anyPayload.data as unknown as GeoJSON.FeatureCollection
   }
   return null
 }

@@ -19,6 +19,8 @@ export interface Document {
   isPublic?: boolean
   uploadedBy?: number | string | null
   uploadedByName?: string | null
+  uploaded_by_name?: string | null
+  createdByName?: string | null
   viewCount?: number
   downloadCount?: number
   publishedAt?: string | null
@@ -55,7 +57,7 @@ export interface Document {
   download_count?: number
   is_public?: boolean
   tags?: string[]
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
   created_by?: number
   updated_by?: number
   created_at?: string

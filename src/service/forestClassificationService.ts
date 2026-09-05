@@ -7,6 +7,8 @@ import type {
   ForestClassRefreshData,
   ForestClassDistrictExportsData,
   ForestClassPublishRasterData,
+  ForestGtZoneItem,
+  ForestGtPointItem,
 } from '@/types/api'
 import { serviceForestClassificationPath } from '@/constant/serviceConstant'
 
@@ -69,7 +71,7 @@ export default {
     to?: string
     classId?: number
   }) =>
-    apiClient.get<{ items: any[] }>(`${serviceForestClassificationPath}/ground-truth/zones`, {
+    apiClient.get<{ items: ForestGtZoneItem[] }>(`${serviceForestClassificationPath}/ground-truth/zones`, {
       params,
     }),
 
@@ -79,17 +81,17 @@ export default {
     classId: number
     source?: string
     notes?: string
-    geom: any
-  }) => apiClient.post<any>(`${serviceForestClassificationPath}/ground-truth/zones`, body),
+    geom: Record<string, unknown>
+  }) => apiClient.post<ForestGtZoneItem>(`${serviceForestClassificationPath}/ground-truth/zones`, body),
 
-  bulkGtZone: (featureCollection: any) =>
+  bulkGtZone: (featureCollection: Record<string, unknown>) =>
     apiClient.post<{ inserted: number; ids: number[] }>(
       `${serviceForestClassificationPath}/ground-truth/zones/bulk`,
       featureCollection
     ),
 
   deleteGtZone: (id: number | string) =>
-    apiClient.del<any>(`${serviceForestClassificationPath}/ground-truth/zones/${id}`),
+    apiClient.del<void>(`${serviceForestClassificationPath}/ground-truth/zones/${id}`),
 
   // ── Ground truth: points ────────────────────────────────────────────────
   listGtPoints: (params?: {
@@ -99,9 +101,12 @@ export default {
     to?: string
     classId?: number
   }) =>
-    apiClient.get<{ items: any[] }>(`${serviceForestClassificationPath}/ground-truth/points`, {
-      params,
-    }),
+    apiClient.get<{ items: ForestGtPointItem[] }>(
+      `${serviceForestClassificationPath}/ground-truth/points`,
+      {
+        params,
+      }
+    ),
 
   createGtPoint: (body: {
     observedAt: string
@@ -112,14 +117,14 @@ export default {
     photoUrl?: string
     reporterName?: string
     notes?: string
-  }) => apiClient.post<any>(`${serviceForestClassificationPath}/ground-truth/points`, body),
+  }) => apiClient.post<ForestGtPointItem>(`${serviceForestClassificationPath}/ground-truth/points`, body),
 
-  bulkGtPoint: (points: any[]) =>
+  bulkGtPoint: (points: Partial<ForestGtPointItem>[]) =>
     apiClient.post<{ inserted: number; ids: number[] }>(
       `${serviceForestClassificationPath}/ground-truth/points/bulk`,
       { points }
     ),
 
   deleteGtPoint: (id: number | string) =>
-    apiClient.del<any>(`${serviceForestClassificationPath}/ground-truth/points/${id}`),
+    apiClient.del<void>(`${serviceForestClassificationPath}/ground-truth/points/${id}`),
 }

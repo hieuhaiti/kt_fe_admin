@@ -1,6 +1,5 @@
 import apiClient from './common/apiClient'
 import type {
-  ApiResponse,
   Document,
   DocumentListData,
   DocumentListParams,
@@ -43,12 +42,14 @@ export default {
 
   /**
    * PUT /admin/documents/:documentId
-   * body: { docType, isPublic, expectedUpdatedAt, translations: { vi:{...} } }
+   * body: { docType, isPublic, expectedUpdatedAt, translations: { vi:{...} } } or FormData
    */
-  update: (documentId: number | string, data: UpdateDocumentBody) =>
-    apiClient.put<Document>(`${serviceAdminDocumentPath}/${documentId}`, data),
+  update: (documentId: number | string, data: UpdateDocumentBody | FormData) =>
+    data instanceof FormData
+      ? apiClient.put<Document>(`${serviceAdminDocumentPath}/${documentId}`, data, true)
+      : apiClient.put<Document>(`${serviceAdminDocumentPath}/${documentId}`, data),
 
   /** DELETE /admin/documents/:documentId */
   delete: (documentId: number | string) =>
-    apiClient.del<ApiResponse<{}>>(`${serviceAdminDocumentPath}/${documentId}`),
+    apiClient.del<void>(`${serviceAdminDocumentPath}/${documentId}`),
 }

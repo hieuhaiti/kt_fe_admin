@@ -1,6 +1,5 @@
 import apiClient from './common/apiClient'
 import type {
-  ApiResponse,
   MapLayer,
   MapLayerListData,
   MapLayerListParams,
@@ -42,15 +41,15 @@ export default {
 
   /** DELETE /map/layers/:mapLayerCode */
   delete: (mapLayerCode: string) =>
-    apiClient.del<ApiResponse<{}>>(`${serviceMapLayerPath}/${mapLayerCode}`),
+    apiClient.del<void>(`${serviceMapLayerPath}/${mapLayerCode}`),
 
   /** POST /map/layers/:mapLayerCode/publish */
   publish: (mapLayerCode: string) =>
-    apiClient.post<ApiResponse<{}>>(`${serviceMapLayerPath}/${mapLayerCode}/publish`),
+    apiClient.post<void>(`${serviceMapLayerPath}/${mapLayerCode}/publish`),
 
   /** DELETE /map/layers/:mapLayerCode/publish */
   unpublish: (mapLayerCode: string) =>
-    apiClient.del<ApiResponse<{}>>(`${serviceMapLayerPath}/${mapLayerCode}/publish`),
+    apiClient.del<void>(`${serviceMapLayerPath}/${mapLayerCode}/publish`),
 
   /** PATCH /map/layers/:mapLayerCode/active */
   setActive: (mapLayerCode: string, data: PatchMapLayerActiveBody) =>
@@ -84,7 +83,7 @@ export default {
 
   /** POST /map/rasters/:coverageStore/harvest */
   harvestRaster: (coverageStore: string, data: HarvestRasterBody) =>
-    apiClient.post<ApiResponse<{}>>(
+    apiClient.post<void>(
       `${serviceMapRasterHarvestPath}/${coverageStore}/harvest`,
       data
     ),

@@ -6,8 +6,8 @@ export interface AdministrativeUnit {
   name: string
   level: AdminUnitLevel
   parentCode?: string | null
-  geometry?: any
-  [key: string]: any
+  geometry?: Record<string, unknown> | null
+  [key: string]: unknown
 }
 
 export interface LandcoverStat {
@@ -23,7 +23,7 @@ export interface LandcoverStat {
   areaHa?: number | null
   coveragePct?: number | null
   changePct?: number | null
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface DashboardDistrictCoverage {
@@ -153,7 +153,7 @@ export interface BorderStation {
   latitude: number
   longitude: number
   commune?: BorderStationCommune
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface BorderStationWithDistance extends BorderStation {

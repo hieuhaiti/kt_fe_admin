@@ -1,4 +1,4 @@
-﻿import { z } from 'zod'
+import { z } from 'zod'
 import type { CreateMapLayerApiBody, UpdateMapLayerApiBody } from '@/types/api'
 
 export const createMapLayerApiSchema = z.object({
@@ -79,18 +79,18 @@ export function buildUpdatePayload(
   const next = normalizeMapLayerApiInput(current)
   const prev = normalizeMapLayerApiInput(original)
 
-  const payload: Record<string, any> = {}
+  const payload: Partial<UpdateMapLayerApiBody> = {}
 
   ;(Object.keys(next) as (keyof CreateMapLayerApiBody)[]).forEach((key) => {
-    const nextValue = (next as any)[key]
-    const prevValue = (prev as any)[key]
+    const nextValue = next[key]
+    const prevValue = prev[key]
     const changed =
       typeof nextValue === 'object' || typeof prevValue === 'object'
         ? JSON.stringify(nextValue ?? null) !== JSON.stringify(prevValue ?? null)
         : nextValue !== prevValue
 
     if (changed) {
-      payload[key as string] = (next as any)[key]
+      (payload as Record<string, unknown>)[key as string] = next[key]
     }
   })
 

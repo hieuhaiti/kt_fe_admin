@@ -2,7 +2,7 @@ import { useApiQuery, userService } from '@/service'
 import type { ApiResponse, CitizenFeedback, User } from '@/types/api'
 
 /** Hiện 1 dòng thông tin user theo độ ưu tiên: full_name > username > email > phone > id */
-export function displayUser(u: User): string {
+function displayUser(u: User): string {
   return u.full_name || u.username || u.email || u.phone || String(u.id)
 }
 
@@ -25,8 +25,8 @@ export function UserCell({ userId, inlineUser }: UserCellProps) {
   )
 
   // 1. userId fetch thành công → hiển thị user
-  const _d = (q.data as ApiResponse<any>)?.data
-  const fetched: User | undefined = _d ? ((_d.user ?? _d) as User) : undefined
+  const _d = (q.data as ApiResponse<User | { user?: User }> | undefined)?.data
+  const fetched: User | undefined = _d ? ('user' in _d && _d.user ? _d.user : (_d as User)) : undefined
   if (userId) {
     if (q.isLoading) return <span className="text-muted-foreground text-xs">...</span>
     if (fetched) {

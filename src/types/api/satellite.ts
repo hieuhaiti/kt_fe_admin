@@ -25,7 +25,15 @@ export interface SatelliteAreaStats {
   areaHa: number
   areaPct?: number
   color?: string
-  [key: string]: any
+  [key: string]: unknown
+}
+
+export interface SatelliteLegendItem {
+  classId?: number
+  className?: string
+  color?: string
+  name?: string
+  label?: string
 }
 
 export interface SatelliteResponse {
@@ -34,18 +42,18 @@ export interface SatelliteResponse {
   tileUrlTemplate?: string
   geeTileUrl?: string
   mapId?: string
-  legend?: any
+  legend?: SatelliteLegendItem[] | Record<string, unknown>
   statistics?: SatelliteAreaStats[]
-  stats?: any
+  stats?: Record<string, unknown>
   metadata?: {
     downloadUrl?: string | null
     downloadFilename?: string | null
-    [key: string]: any
+    [key: string]: unknown
   }
   downloadUrl?: string | null
   downloadFilename?: string | null
   geoserverLayer?: string | null
   cached?: boolean
   bbox?: [number, number, number, number]
-  [key: string]: any
+  [key: string]: unknown
 }

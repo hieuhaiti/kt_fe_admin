@@ -11,7 +11,13 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,md}\"",
     "type-check": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e:smoke": "playwright test tests/e2e --project=chrome --grep @smoke",
+    "test:e2e:crud": "playwright test tests/e2e --project=chrome --grep @crud",
+    "test:audit": "npm run type-check; npm run lint; npm run test"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -59,11 +65,16 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.62.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.6",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-dom": "^5.18.0",
@@ -71,6 +82,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "eslint-plugin-react-x": "^5.18.0",
     "globals": "^16.5.0",
+    "jsdom": "^29.1.1",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "shadcn": "^3.8.5",
@@ -79,6 +91,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "uipro-cli": "^1.2.0",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^4.1.11"
   }
 }

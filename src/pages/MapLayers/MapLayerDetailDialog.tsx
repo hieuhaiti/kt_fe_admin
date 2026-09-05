@@ -20,6 +20,7 @@ import {
   Database,
   Download,
   Info,
+  Palette,
   RefreshCw,
 } from 'lucide-react'
 
@@ -172,8 +173,9 @@ export default function MapLayerDetailDialog({
         await downloadGeoJsonFile(downloadUrl, baseName)
       }
       toast.success(`Đã tải xuống ${downloadFormatLabel}`)
-    } catch (err: any) {
-      toast.error(err?.message || `Không thể tải ${downloadFormatLabel}`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      toast.error(message || `Không thể tải ${downloadFormatLabel}`)
     } finally {
       setDownloading(false)
     }
@@ -342,6 +344,43 @@ export default function MapLayerDetailDialog({
                   </dl>
                 </CardContent>
               </Card>
+
+              {/* Legend Card */}
+              {(((layer.legend_config && (layer.legend_config.entries?.length ?? 0) > 0)) ||
+                ((layer.legend && (layer.legend.entries?.length ?? 0) > 0))) && (
+                <Card className="lg:col-span-2">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Palette className="text-primary size-4" aria-hidden="true" />
+                      Chú giải lớp bản đồ (Legend)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                      {(layer.legend_config?.entries || layer.legend?.entries || []).map(
+                        (entry) => (
+                          <div
+                            key={`${entry.label || 'legend'}-${entry.color}-${entry.min ?? ''}-${entry.max ?? ''}`}
+                            className="flex items-center gap-2.5 rounded-md border bg-muted/30 px-3 py-2 text-xs"
+                          >
+                            <div
+                              className="size-4 shrink-0 rounded border border-border shadow-xs"
+                              style={{ backgroundColor: entry.color }}
+                              title={entry.color}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-foreground truncate">{entry.label}</p>
+                              <p className="font-mono text-[10px] text-muted-foreground uppercase">
+                                {entry.color}
+                              </p>
+                            </div>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               <Card className="lg:col-span-2">
                 <CardHeader className="pb-4">

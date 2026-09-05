@@ -13,13 +13,30 @@ let refreshPromise: Promise<string | null> | null = null
 let authSessionExpired = false
 
 export interface RequestOptions {
-  params?: Record<string, any>
+  params?: Record<string, unknown>
   useForm?: boolean
   lang?: string
   skipLang?: boolean
   headers?: Record<string, string>
   mapApiKey?: string
   anonymousId?: string
+}
+
+interface ErrorItemLike {
+  message?: string
+}
+
+interface RawErrorBody {
+  message?: string
+  status?: number
+  statusCode?: number
+  errors?: (string | ErrorItemLike)[]
+}
+
+interface CustomApiError extends Error {
+  status?: number
+  body?: RawErrorBody
+  isAuthRequest?: boolean
 }
 
 function getAccessToken() {
@@ -52,30 +69,32 @@ function toNeutralUiMessage(value: unknown): unknown {
     .replace(/\bGEE\b/gi, 'hệ thống xử lý')
 }
 
-function neutralizeApiMessages(body: any) {
-  if (!body || typeof body !== 'object') return body
-  if (typeof body.message === 'string') {
-    body.message = toNeutralUiMessage(body.message)
+function neutralizeApiMessages(body: unknown): RawErrorBody | undefined {
+  if (!body || typeof body !== 'object') return undefined
+  const obj = { ...(body as Record<string, unknown>) } as RawErrorBody
+  if (typeof obj.message === 'string') {
+    obj.message = toNeutralUiMessage(obj.message) as string
   }
-  if (Array.isArray(body.errors)) {
-    body.errors = body.errors.map((error: any) => {
-      if (typeof error === 'string') return toNeutralUiMessage(error)
+  if (Array.isArray(obj.errors)) {
+    obj.errors = obj.errors.map((error) => {
+      if (typeof error === 'string') return toNeutralUiMessage(error) as string
       if (error && typeof error === 'object' && typeof error.message === 'string') {
-        return { ...error, message: toNeutralUiMessage(error.message) }
+        return { ...error, message: toNeutralUiMessage(error.message) as string }
       }
       return error
     })
   }
-  return body
+  return obj
 }
 
 async function handleResponse<T>(res: Response, isAuthEndpoint = false): Promise<ApiResponse<T>> {
   const contentType = res.headers.get('content-type') || ''
   const isJson = contentType.includes('application/json')
-  const body = neutralizeApiMessages(isJson ? await res.json() : undefined)
+  const rawBody = isJson ? await res.json() : undefined
+  const body = neutralizeApiMessages(rawBody)
 
   if (!res.ok) {
-    const err: any = new Error(body?.message || res.statusText || 'Request failed')
+    const err: CustomApiError = new Error(body?.message || res.statusText || 'Request failed')
     err.status = res.status
     err.body = body
     err.isAuthRequest = isAuthEndpoint
@@ -84,7 +103,7 @@ async function handleResponse<T>(res: Response, isAuthEndpoint = false): Promise
       const errors = body?.errors
       if (Array.isArray(errors) && errors.length) {
         const detail = errors
-          .map((e: any) => (typeof e === 'string' ? e : e.message || e))
+          .map((e) => (typeof e === 'string' ? e : e.message || String(e)))
           .join('\n')
         toast.error(body?.message ? `${body.message}\n${detail}` : detail, {
           autoClose: 8000,
@@ -97,7 +116,7 @@ async function handleResponse<T>(res: Response, isAuthEndpoint = false): Promise
     throw err
   }
 
-  return body as ApiResponse<T>
+  return (rawBody ?? body) as ApiResponse<T>
 }
 
 function buildHeaders(opts: RequestOptions = {}, hasJsonBody = false): Record<string, string> {
@@ -119,13 +138,13 @@ function buildHeaders(opts: RequestOptions = {}, hasJsonBody = false): Record<st
 }
 
 function buildQuery(url: string, opts: RequestOptions = {}): string {
-  const params: Record<string, any> = { ...(opts.params ?? {}) }
+  const params: Record<string, unknown> = { ...(opts.params ?? {}) }
   if (!opts.skipLang && params.lang === undefined) params.lang = opts.lang ?? DEFAULT_LANG
 
   const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
   if (!entries.length) return url
 
-  const qs = new URLSearchParams(entries.map(([k, v]) => [k, String(v)]) as any).toString()
+  const qs = new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString()
   return url.includes('?') ? `${url}&${qs}` : `${url}?${qs}`
 }
 
@@ -158,8 +177,6 @@ function isAuthUrl(url: string) {
 }
 
 async function rotateRefreshToken(initialRefreshToken: string): Promise<string | null> {
-  // Another tab may have completed rotation while this request was waiting for
-  // the cross-tab lock. Reuse its freshly persisted token pair in that case.
   const currentRefreshToken = getRefreshToken()
   if (currentRefreshToken && currentRefreshToken !== initialRefreshToken) {
     return getAccessToken() || null
@@ -171,7 +188,6 @@ async function rotateRefreshToken(initialRefreshToken: string): Promise<string |
     body: JSON.stringify({ refreshToken: initialRefreshToken }),
   })
   if (!refreshRes.ok) {
-    // The winning tab can finish between the preflight check and this response.
     const rotatedRefreshToken = getRefreshToken()
     if (rotatedRefreshToken && rotatedRefreshToken !== initialRefreshToken) {
       return getAccessToken() || null
@@ -247,9 +263,9 @@ async function requestWithRefresh(
   }
 }
 
-export async function get<T = any>(
+export async function get<T = unknown>(
   url: string,
-  paramsOrOpts?: Record<string, any> | RequestOptions
+  paramsOrOpts?: Record<string, unknown> | RequestOptions
 ): Promise<ApiResponse<T>> {
   const opts = normalizeGetOpts(paramsOrOpts)
   const finalUrl = buildQuery(url, opts)
@@ -257,66 +273,66 @@ export async function get<T = any>(
     method: 'GET',
     headers: buildHeaders(opts, false),
   })
-  return handleResponse(res, isAuthUrl(url))
+  return handleResponse<T>(res, isAuthUrl(url))
 }
 
-function normalizeGetOpts(input?: Record<string, any> | RequestOptions): RequestOptions {
+function normalizeGetOpts(input?: Record<string, unknown> | RequestOptions): RequestOptions {
   if (!input) return {}
   if ('params' in input || 'lang' in input || 'skipLang' in input || 'headers' in input ||
       'mapApiKey' in input || 'anonymousId' in input || 'useForm' in input) {
     return input as RequestOptions
   }
-  return { params: input as Record<string, any> }
+  return { params: input as Record<string, unknown> }
 }
 
-export async function post<T = any>(
+export async function post<T = unknown>(
   url: string,
-  data?: any,
+  data?: unknown,
   useFormOrOpts?: boolean | RequestOptions
 ): Promise<ApiResponse<T>> {
   const opts = normalizeBodyOpts(useFormOrOpts)
   const useForm = opts.useForm === true
   const headers = buildHeaders(opts, !useForm)
-  const body = useForm ? data : JSON.stringify(data ?? {})
+  const body = useForm ? (data as BodyInit) : JSON.stringify(data ?? {})
 
   const finalUrl = buildQuery(url, opts)
   const res = await requestWithRefresh(finalUrl, { method: 'POST', headers, body })
-  return handleResponse(res, isAuthUrl(url))
+  return handleResponse<T>(res, isAuthUrl(url))
 }
 
-export async function put<T = any>(
+export async function put<T = unknown>(
   url: string,
-  data?: any,
+  data?: unknown,
   useFormOrOpts?: boolean | RequestOptions
 ): Promise<ApiResponse<T>> {
   const opts = normalizeBodyOpts(useFormOrOpts)
   const useForm = opts.useForm === true
   const headers = buildHeaders(opts, !useForm)
-  const body = useForm ? data : JSON.stringify(data ?? {})
+  const body = useForm ? (data as BodyInit) : JSON.stringify(data ?? {})
 
   const finalUrl = buildQuery(url, opts)
   const res = await requestWithRefresh(finalUrl, { method: 'PUT', headers, body })
-  return handleResponse(res, isAuthUrl(url))
+  return handleResponse<T>(res, isAuthUrl(url))
 }
 
-export async function patch<T = any>(
+export async function patch<T = unknown>(
   url: string,
-  data?: any,
+  data?: unknown,
   optsInput?: RequestOptions
 ): Promise<ApiResponse<T>> {
   const opts = optsInput ?? {}
   const useForm = opts.useForm === true
   const headers = buildHeaders(opts, !useForm)
-  const body = useForm ? data : JSON.stringify(data ?? {})
+  const body = useForm ? (data as BodyInit) : JSON.stringify(data ?? {})
 
   const finalUrl = buildQuery(url, opts)
   const res = await requestWithRefresh(finalUrl, { method: 'PATCH', headers, body })
-  return handleResponse(res, isAuthUrl(url))
+  return handleResponse<T>(res, isAuthUrl(url))
 }
 
-export async function del<T = any>(
+export async function del<T = unknown>(
   url: string,
-  data?: any,
+  data?: unknown,
   optsInput?: RequestOptions
 ): Promise<ApiResponse<T>> {
   const opts = optsInput ?? {}
@@ -325,7 +341,7 @@ export async function del<T = any>(
 
   const finalUrl = buildQuery(url, opts)
   const res = await requestWithRefresh(finalUrl, { method: 'DELETE', headers, body })
-  return handleResponse(res, isAuthUrl(url))
+  return handleResponse<T>(res, isAuthUrl(url))
 }
 
 function normalizeBodyOpts(input?: boolean | RequestOptions): RequestOptions {
@@ -345,13 +361,18 @@ export function setTokens({
     authSessionExpired = false
     if (accessToken) tokenManager.setAccessToken(accessToken)
     if (refreshToken) tokenManager.setRefreshToken(refreshToken)
-  } catch {}
+  } catch (err) {
+    // Non-fatal token storage error in constrained environments
+    void err
+  }
 }
 
 export function clearTokens() {
   try {
     tokenManager.clearAll()
-  } catch {}
+  } catch (err) {
+    void err
+  }
 }
 
 export default { get, post, put, patch, del, setTokens, clearTokens }

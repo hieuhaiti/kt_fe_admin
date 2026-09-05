@@ -89,7 +89,7 @@ export default function NewsFormDialog({
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<NewsFormValues>({
-    resolver: zodResolver(newsSchema) as any,
+    resolver: zodResolver(newsSchema),
     defaultValues: {
       title: '',
       content: '',

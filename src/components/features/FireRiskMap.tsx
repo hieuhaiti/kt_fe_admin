@@ -126,9 +126,9 @@ function looksLikeUtm(x: number, y: number): boolean {
  * Reproject geometry Polygon/MultiPolygon từ UTM 48N → WGS84 nếu cần.
  * Trả về geometry mới (WGS84) hoặc null nếu rỗng/không hợp lệ.
  */
-function reprojectGeometry(geometry: any): any {
-  if (!geometry?.type || !Array.isArray(geometry.coordinates)) return null
-  const crsName: string = geometry?.crs?.properties?.name || ''
+function reprojectGeometry(geometry?: GeoJSON.Geometry | null): GeoJSON.Geometry | null {
+  if (!geometry?.type || !('coordinates' in geometry) || !Array.isArray(geometry.coordinates)) return null
+  const crsName = (geometry as unknown as { crs?: { properties?: { name?: string } } })?.crs?.properties?.name || ''
   const forceUtm = crsName.includes('32648')
 
   const convertPt = (pt: number[]): number[] => {
@@ -144,11 +144,11 @@ function reprojectGeometry(geometry: any): any {
 
   if (geometry.type === 'Polygon') {
     if (!geometry.coordinates.length) return null
-    return { type: 'Polygon', coordinates: convertPolygon(geometry.coordinates) }
+    return { type: 'Polygon', coordinates: convertPolygon(geometry.coordinates as number[][][]) }
   }
   if (geometry.type === 'MultiPolygon') {
     if (!geometry.coordinates.length) return null
-    return { type: 'MultiPolygon', coordinates: geometry.coordinates.map(convertPolygon) }
+    return { type: 'MultiPolygon', coordinates: (geometry.coordinates as number[][][][]).map(convertPolygon) }
   }
   return null
 }
@@ -167,7 +167,9 @@ function getBounds(fc: GeoJSON.FeatureCollection): LngLatBoundsLike | null {
   const points: Array<[number, number]> = []
   fc.features.forEach((f) => {
     if (!f.geometry || f.geometry.type === 'GeometryCollection') return
-    collectCoords((f.geometry as any).coordinates, points)
+    if ('coordinates' in f.geometry) {
+      collectCoords(f.geometry.coordinates, points)
+    }
   })
   if (!points.length) return null
   let [minLng, minLat] = points[0]
@@ -199,12 +201,12 @@ function formatHa(v: unknown): string {
 // fallback về `riskLevel`. `areaHa` là ha ở CHÍNH cấp maxLevel — server trả
 // theo feature (huyện × cấp), sau dedupe ta giữ feature cấp cao nhất.
 // KHÔNG hiện P Nesterov để đồng bộ chính sách với FireRiskPage.
-function buildPopupHtml(props: Record<string, any>): string {
+function buildPopupHtml(props: Record<string, unknown>): string {
   const level = Number(props.maxLevel ?? props.riskLevel ?? props.risk_level ?? 0)
-  const name = props.districtName ?? props.district_name ?? '—'
-  const code = props.districtCode ?? props.district_code ?? '—'
+  const name = String(props.districtName ?? props.district_name ?? '—')
+  const code = String(props.districtCode ?? props.district_code ?? '—')
   const areaHa = props.areaHa ?? props.area_ha
-  const s2 = props.s2Coverage ?? props?.properties?.s2Coverage
+  const s2 = props.s2Coverage ?? (props.properties as Record<string, unknown> | undefined)?.s2Coverage
   const color = LEVEL_COLORS[level] || '#64748b'
   return `
     <div style="min-width:200px;color:hsl(var(--popover-foreground));font-size:12px">
@@ -213,7 +215,7 @@ function buildPopupHtml(props: Record<string, any>): string {
         <span aria-hidden="true" style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${color};box-shadow:inset 0 0 0 1px hsl(var(--foreground) / 0.2)"></span>
         ${LEVEL_LABEL[level] || `Cấp ${level}`}
       </div>
-      <div>Diện tích ở cấp cao nhất: <b>${formatHa(areaHa)}</b></div>
+      <div>Diện tích ở cấp cao nhất: <b>${formatHa(areaHa as number | undefined)}</b></div>
       ${s2 != null ? `<div>S2 coverage: <b>${(Number(s2) * 100).toFixed(1)}%</b></div>` : ''}
     </div>
   `
@@ -257,14 +259,14 @@ export default function FireRiskMap({
       string,
       {
         geometry: GeoJSON.Geometry
-        properties: Record<string, any>
+        properties: Record<string, unknown>
         maxLevel: number
       }
     >()
     for (const f of geojson.features) {
       const geom = reprojectGeometry(f?.geometry)
       if (!geom) continue
-      const props: Record<string, any> = { ...(f.properties as any) }
+      const props: Record<string, unknown> = { ...(f.properties || {}) }
       const code = String(props.districtCode ?? props.district_code ?? '')
       const level = Number(props.riskLevel ?? props.risk_level ?? 0) || 0
       const key = code || `__anon_${byCode.size}`
@@ -364,7 +366,7 @@ export default function FireRiskMap({
         popupRef.current?.remove()
         popupRef.current = new maplibregl.Popup({ closeButton: true })
           .setLngLat(e.lngLat)
-          .setHTML(buildPopupHtml(f.properties as any))
+          .setHTML(buildPopupHtml(f.properties as Record<string, unknown>))
           .addTo(map)
       })
       map.on('mouseenter', FILL_LAYER_ID, () => (map.getCanvas().style.cursor = 'pointer'))
@@ -426,7 +428,7 @@ export default function FireRiskMap({
       setRasterStatus(status)
       onRasterStatusChangeRef.current?.(status)
     }
-    const handleSourceData = (event: any) => {
+    const handleSourceData = (event: maplibregl.MapSourceDataEvent) => {
       if (failed) return
       if (
         event.sourceId === RASTER_SOURCE_ID
@@ -435,7 +437,7 @@ export default function FireRiskMap({
         if (event.isSourceLoaded) updateStatus('ready')
       }
     }
-    const handleSourceError = (event: any) => {
+    const handleSourceError = (event: maplibregl.ErrorEvent & { sourceId?: string }) => {
       if (
         event.sourceId === RASTER_SOURCE_ID
         || event.sourceId?.startsWith(DISTRICT_RASTER_SOURCE_PREFIX)

@@ -65,6 +65,15 @@ function mediaItemsOf(feedback: CitizenFeedback) {
   return [...mediaUrls, ...(feedback.attachments ?? []), ...(feedback.media ?? [])]
 }
 
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <span className="font-semibold">{label}:</span>
+      <div className="col-span-2">{children}</div>
+    </div>
+  )
+}
+
 export default function FeedbackDetailDialog({
   open,
   onOpenChange,
@@ -92,13 +101,6 @@ export default function FeedbackDetailDialog({
   const senderName = feedback?.userName ?? feedback?.createdByName
   const mediaItems = feedback ? mediaItemsOf(feedback) : []
 
-  const Row = ({ label, children }: { label: string; children: ReactNode }) => (
-    <div className="grid grid-cols-3 gap-2">
-      <span className="font-semibold">{label}:</span>
-      <div className="col-span-2">{children}</div>
-    </div>
-  )
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
@@ -113,34 +115,34 @@ export default function FeedbackDetailDialog({
           <div className="text-destructive py-8 text-center">Không thể tải thông tin phản ánh.</div>
         ) : feedback ? (
           <div className="mt-4 space-y-3">
-            <Row label="ID">{feedback.id}</Row>
-            <Row label="Tiêu đề">
+            <DetailRow label="ID">{feedback.id}</DetailRow>
+            <DetailRow label="Tiêu đề">
               <span className="font-medium">{feedback.title}</span>
-            </Row>
+            </DetailRow>
             {description && (
-              <Row label="Nội dung">
+              <DetailRow label="Nội dung">
                 <p className="text-sm whitespace-pre-wrap">{description}</p>
-              </Row>
+              </DetailRow>
             )}
             {feedback.category && (
-              <Row label="Nhóm phản ánh">
+              <DetailRow label="Nhóm phản ánh">
                 <Badge variant="outline" className={CATEGORY_CLASS[feedback.category] ?? ''}>
                   {CATEGORY_LABEL[feedback.category] ?? feedback.category}
                 </Badge>
-              </Row>
+              </DetailRow>
             )}
-            <Row label="Mức độ ưu tiên">
+            <DetailRow label="Mức độ ưu tiên">
               <Badge variant="outline" className={PRIORITY_CLASS[feedback.priority] ?? ''}>
                 {PRIORITY_LABEL[feedback.priority] ?? feedback.priority}
               </Badge>
-            </Row>
-            <Row label="Trạng thái xử lý">
+            </DetailRow>
+            <DetailRow label="Trạng thái xử lý">
               <Badge variant="outline" className={STATUS_CLASS[feedback.status] ?? ''}>
                 {STATUS_LABEL[feedback.status] ?? feedback.status}
               </Badge>
-            </Row>
+            </DetailRow>
             {feedback.is_location_verified !== undefined && (
-              <Row label="Xác minh vị trí">
+              <DetailRow label="Xác minh vị trí">
                 <Badge
                   variant="outline"
                   className={
@@ -151,13 +153,13 @@ export default function FeedbackDetailDialog({
                 >
                   {feedback.is_location_verified ? 'Đã xác minh thực địa' : 'Chưa xác minh'}
                 </Badge>
-              </Row>
+              </DetailRow>
             )}
             {feedback.location_verified_at && (
-              <Row label="Thời gian xác minh">{formatDateTime(feedback.location_verified_at)}</Row>
+              <DetailRow label="Thời gian xác minh">{formatDateTime(feedback.location_verified_at)}</DetailRow>
             )}
 
-            <Row label="Người gửi">
+            <DetailRow label="Người gửi">
               {feedback.user ? (
                 <div className="flex items-center gap-2">
                   {feedback.user.avatar_url || feedback.user.avatarUrl ? (
@@ -187,19 +189,19 @@ export default function FeedbackDetailDialog({
               ) : (
                 <span className="text-muted-foreground">Ẩn danh</span>
               )}
-            </Row>
+            </DetailRow>
 
             {(feedback.anonymousId || feedback.clientUuid) && (
-              <Row label="Định danh thiết bị">
+              <DetailRow label="Định danh thiết bị">
                 <div className="space-y-1 text-sm">
                   {feedback.anonymousId && <p>Anonymous ID: {feedback.anonymousId}</p>}
                   {feedback.clientUuid && <p>Client UUID: {feedback.clientUuid}</p>}
                 </div>
-              </Row>
+              </DetailRow>
             )}
 
             {(feedback.location_text || locationCoordinates) && (
-              <Row label="Vị trí">
+              <DetailRow label="Vị trí">
                 <div className="flex items-start gap-1">
                   <MapPin className="text-muted-foreground mt-0.5 size-4 shrink-0" />
                   <div>
@@ -218,40 +220,40 @@ export default function FeedbackDetailDialog({
                     ) : null}
                   </div>
                 </div>
-              </Row>
+              </DetailRow>
             )}
 
             {feedback.forest_loss_area_estimate_m2 != null && (
-              <Row label="Diện tích mất rừng ước tính">
+              <DetailRow label="Diện tích mất rừng ước tính">
                 {feedback.forest_loss_area_estimate_m2.toLocaleString('vi-VN')} m2
-              </Row>
+              </DetailRow>
             )}
 
             {feedback.admin_response && (
-              <Row label="Phản hồi admin">
+              <DetailRow label="Phản hồi admin">
                 <p className="bg-muted rounded-md p-2 text-sm">{feedback.admin_response}</p>
-              </Row>
+              </DetailRow>
             )}
             {feedback.resolution_note && (
-              <Row label="Ghi chú xử lý">
+              <DetailRow label="Ghi chú xử lý">
                 <p className="bg-muted rounded-md p-2 text-sm">{feedback.resolution_note}</p>
-              </Row>
+              </DetailRow>
             )}
             {feedback.responded_at && (
-              <Row label="Phản hồi lúc">{formatDateTime(feedback.responded_at)}</Row>
+              <DetailRow label="Phản hồi lúc">{formatDateTime(feedback.responded_at)}</DetailRow>
             )}
             {feedback.responder && (
-              <Row label="Người phản hồi">
+              <DetailRow label="Người phản hồi">
                 {feedback.responder.full_name ??
                   feedback.responder.fullName ??
                   feedback.responder.id}
-              </Row>
+              </DetailRow>
             )}
-            {feedback.updatedByName && <Row label="Cập nhật bởi">{feedback.updatedByName}</Row>}
-            {resolvedAt && <Row label="Xử lý xong lúc">{formatDateTime(resolvedAt)}</Row>}
+            {feedback.updatedByName && <DetailRow label="Cập nhật bởi">{feedback.updatedByName}</DetailRow>}
+            {resolvedAt && <DetailRow label="Xử lý xong lúc">{formatDateTime(resolvedAt)}</DetailRow>}
 
             {mediaItems.length > 0 && (
-              <Row label="Ảnh đính kèm">
+              <DetailRow label="Ảnh đính kèm">
                 <div className="grid grid-cols-3 gap-2">
                   {mediaItems.map((att) => {
                     const url = attachmentUrl(att)
@@ -286,11 +288,11 @@ export default function FeedbackDetailDialog({
                     )
                   })}
                 </div>
-              </Row>
+              </DetailRow>
             )}
 
             {feedback.statusLogs && feedback.statusLogs.length > 0 && (
-              <Row label="Lịch sử xử lý">
+              <DetailRow label="Lịch sử xử lý">
                 <div className="space-y-2">
                   {feedback.statusLogs.map((log) => (
                     <div key={log.id} className="rounded border p-2 text-sm">
@@ -310,11 +312,11 @@ export default function FeedbackDetailDialog({
                     </div>
                   ))}
                 </div>
-              </Row>
+              </DetailRow>
             )}
 
-            <Row label="Ngày tạo">{createdAt ? formatDateTime(createdAt) : '-'}</Row>
-            <Row label="Cập nhật lúc">{updatedAt ? formatDateTime(updatedAt) : '-'}</Row>
+            <DetailRow label="Ngày tạo">{createdAt ? formatDateTime(createdAt) : '-'}</DetailRow>
+            <DetailRow label="Cập nhật lúc">{updatedAt ? formatDateTime(updatedAt) : '-'}</DetailRow>
           </div>
         ) : (
           <div className="text-muted-foreground py-8 text-center">Không có dữ liệu</div>

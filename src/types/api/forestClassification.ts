@@ -10,7 +10,7 @@ import type { GeeDistrictExportProgress, GeeProcessingState } from './geeProcess
 export interface ForestClassProvinceSummary {
   byClass?: Record<string, number>
   totalHa?: number
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface ForestClassSnapshot {
@@ -33,7 +33,7 @@ export interface ForestClassSnapshot {
   retryCount?: number
   nextRetryAt?: string | null
   lastRetryError?: string | null
-  [key: string]: any
+  [key: string]: unknown
 }
 
 // Server trả nested structure trong /latest response — mỗi huyện là 1 object
@@ -49,7 +49,7 @@ export interface ForestClassDistrictArea {
   districtCode?: string | null
   districtName?: string | null
   classes: ForestClassDistrictClassArea[]
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface ForestClassAreaComparisonMetric {
@@ -229,7 +229,7 @@ export interface ForestClassHistoryItem {
   readyCount?: number
   geoserverLayers?: string[]
   error_message?: string | null
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface ForestClassHistoryData {
@@ -258,4 +258,38 @@ export interface ForestClassHistoryParams {
   page?: number
   limit?: number
   hasGeoserverLayer?: boolean | string
+}
+
+export interface ForestGtZoneItem {
+  id: number | string
+  name?: string | null
+  observedAt?: string
+  observed_at?: string
+  classId: number
+  class_id?: number
+  areaHa?: number
+  area_ha?: number
+  source?: string | null
+  notes?: string | null
+  geom?: Record<string, unknown> | null
+  createdAt?: string
+  created_at?: string
+}
+
+export interface ForestGtPointItem {
+  id: number | string
+  observedAt?: string
+  observed_at?: string
+  classId: number
+  class_id?: number
+  lng: number
+  lat: number
+  source?: string | null
+  photoUrl?: string | null
+  photo_url?: string | null
+  reporterName?: string | null
+  reporter_name?: string | null
+  notes?: string | null
+  createdAt?: string
+  created_at?: string
 }

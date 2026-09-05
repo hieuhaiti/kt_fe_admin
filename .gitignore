@@ -38,3 +38,8 @@ dist-ssr
 # promt
 prompts/
 .shared
+# Audit credentials and generated browser evidence
+.env.audit
+.env.audit.local
+playwright-report/
+test-results/

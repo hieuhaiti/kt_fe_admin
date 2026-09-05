@@ -38,13 +38,13 @@ const LAYER_TYPES: {
   { value: 'pressure', label: 'Áp suất', description: 'Khí áp bề mặt', icon: Gauge },
 ]
 
-function formatNumber(value?: number | null, suffix = '', maximumFractionDigits = 1) {
+function formatNumber(value?: unknown, suffix = '', maximumFractionDigits = 1) {
   if (value == null || Number.isNaN(Number(value))) return '-'
   return `${Number(value).toLocaleString('vi-VN', { maximumFractionDigits })}${suffix}`
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return '-'
+function formatDateTime(value?: unknown) {
+  if (!value || typeof value !== 'string') return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
   return date.toLocaleString('vi-VN', {
@@ -263,9 +263,9 @@ export default function WeatherPage() {
                 <div className="border-primary/20 bg-primary/5 rounded-md border p-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="text-lg font-semibold">{point.location ?? 'Vị trí đã chọn'}</p>
+                      <p className="text-lg font-semibold">{String(point.location || 'Vị trí đã chọn')}</p>
                       <p className="text-muted-foreground text-sm">
-                        {point.weather?.description ?? point.description ?? 'Chưa có mô tả thời tiết'}
+                        {String(point.weather?.description || point.description || 'Chưa có mô tả thời tiết')}
                       </p>
                     </div>
                     <Badge variant={point.stale ? 'destructive' : 'secondary'} className="w-fit">

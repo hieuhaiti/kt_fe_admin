@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { KeyRound, Pen, RotateCcw, Trash2 } from 'lucide-react'
@@ -31,16 +31,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { mapLayerApiService, mapLayerService, useApiMutation, useApiQuery } from '@/service'
-import { useAuthStore } from '@/stores/common/useAuthStore'
-import type { ApiResponse, MapLayer, MapLayerApi, MapLayerApiListData, Pagination } from '@/types/api'
-import { formatDateTime } from '@/lib/date'
-import { getMappedErrorMessage } from '@/validators/mapLayerApiValidators'
 import { hasMapLayerApiPermission } from '@/components/map-layer-apis/permissionUtils'
-import { StatusDotBadge } from '@/components/common/StatusDotBadge'
 import { ACTIVE_CLASS, ACTIVE_DOT, ACTIVE_LABEL } from '@/constant/mapLayerConstant'
+import { useAuthStore } from '@/stores/common/useAuthStore'
+import { mapLayerApiService, mapLayerService, useApiMutation, useApiQuery } from '@/service'
+import { getMappedErrorMessage } from '@/validators/mapLayerApiValidators'
+import { StatusDotBadge } from '@/components/common/StatusDotBadge'
+import { formatDateTime } from '@/lib/date'
 import MapLayerApiDetailDialog from './MapLayerApiDetailDialog'
 import MapLayerApiFormDialog from './MapLayerApiFormDialog'
+import type {
+  ApiResponse,
+  MapLayer,
+  MapLayerApi,
+  MapLayerApiListData,
+  MapLayerApiRegenerateKeyData,
+  Pagination,
+} from '@/types/api'
 
 function getMapApis(data: unknown): MapLayerApi[] {
   const response = data as ApiResponse<MapLayerApiListData> | undefined
@@ -124,16 +131,9 @@ export default function MapLayerApiListPage(): JSX.Element {
   }, [apis, searchValue])
 
   const pagination = getPagination(listQuery.data)
-  const lastTotalPagesRef = useRef(1)
-  if (pagination.totalPages !== undefined) {
-    lastTotalPagesRef.current = Math.max(1, pagination.totalPages)
-  }
-  const totalPages = lastTotalPagesRef.current
+  const totalPages = Math.max(1, pagination.totalPages ?? (pagination.total ? Math.ceil(pagination.total / limit) : 1))
   const total = pagination?.total ?? filteredApis.length
 
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages)
-  }, [currentPage, totalPages])
 
   const [selectedApiId, setSelectedApiId] = useState<number | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -162,8 +162,12 @@ export default function MapLayerApiListPage(): JSX.Element {
   const regenerateMutation = useApiMutation(
     (id: number) => mapLayerApiService.regenerate(id),
     {
-      onSuccess: (response: any) => {
-        const key = response?.data?.apiKey || response?.data?.raw_key
+      onSuccess: (response: ApiResponse<MapLayerApiRegenerateKeyData | { apiKey?: string; raw_key?: string }>) => {
+        const payload = response?.data
+        const key =
+          (payload && 'apiKey' in payload && payload.apiKey) ||
+          (payload && 'raw_key' in payload && payload.raw_key) ||
+          null
         toast.success(key ? `Đã xoay key. Key mới: ${key}` : 'Đã xoay key thành công')
         listQuery.refetch()
         setRegenerateDialogOpen(false)

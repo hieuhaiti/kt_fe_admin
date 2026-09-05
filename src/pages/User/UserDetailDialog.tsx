@@ -68,6 +68,15 @@ function PermissionList({ permissions }: { permissions: User['role_permissions']
   )
 }
 
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <span className="font-semibold">{label}:</span>
+      <div className="col-span-2">{children}</div>
+    </div>
+  )
+}
+
 export default function UserDetailDialog({ open, onOpenChange, userId }: UserDetailDialogProps) {
   const dbQuery = useApiQuery(
     ['user', userId],
@@ -88,13 +97,6 @@ export default function UserDetailDialog({ open, onOpenChange, userId }: UserDet
   const createdAt = user?.createdAt ?? user?.created_at ?? null
   const updatedAt = user?.updatedAt ?? user?.updated_at ?? null
 
-  const Row = ({ label, children }: { label: string; children: ReactNode }) => (
-    <div className="grid grid-cols-3 gap-2">
-      <span className="font-semibold">{label}:</span>
-      <div className="col-span-2">{children}</div>
-    </div>
-  )
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
@@ -109,22 +111,22 @@ export default function UserDetailDialog({ open, onOpenChange, userId }: UserDet
           </div>
         ) : user ? (
           <div className="mt-4 space-y-3">
-            <Row label="ID">{user.id}</Row>
-            <Row label="Email">{user.email}</Row>
-            <Row label="Email đã xác thực">
+            <DetailRow label="ID">{user.id}</DetailRow>
+            <DetailRow label="Email">{user.email}</DetailRow>
+            <DetailRow label="Email đã xác thực">
               {isEmailVerified ? (
                 <Badge variant="default">Đã xác thực</Badge>
               ) : (
                 <Badge variant="secondary">Chưa xác thực</Badge>
               )}
-            </Row>
+            </DetailRow>
             {user.email_verified_at && (
-              <Row label="Xác thực lúc">{formatDateTime(user.email_verified_at)}</Row>
+              <DetailRow label="Xác thực lúc">{formatDateTime(user.email_verified_at)}</DetailRow>
             )}
-            <Row label="Họ tên">{fullName || '-'}</Row>
-            <Row label="Điện thoại">{user.phone || '-'}</Row>
-            <Row label="Địa chỉ">{addressDetail || '-'}</Row>
-            <Row label="Avatar">
+            <DetailRow label="Họ tên">{fullName || '-'}</DetailRow>
+            <DetailRow label="Điện thoại">{user.phone || '-'}</DetailRow>
+            <DetailRow label="Địa chỉ">{addressDetail || '-'}</DetailRow>
+            <DetailRow label="Avatar">
               {avatarUrl ? (
                 <img
                   src={parseLink(avatarUrl)}
@@ -134,36 +136,36 @@ export default function UserDetailDialog({ open, onOpenChange, userId }: UserDet
               ) : (
                 '-'
               )}
-            </Row>
-            <Row label="Vai trò">{roleLabel(user)}</Row>
+            </DetailRow>
+            <DetailRow label="Vai trò">{roleLabel(user)}</DetailRow>
             {user.role_permissions && (
               <div className="grid grid-cols-3 gap-2">
                 <span className="font-semibold">Quyền:</span>
                 <PermissionList permissions={user.role_permissions} />
               </div>
             )}
-            <Row label="Kích hoạt">
+            <DetailRow label="Kích hoạt">
               {isActive ? (
                 <Badge variant="default">Kích hoạt</Badge>
               ) : (
                 <Badge variant="secondary">Không kích hoạt</Badge>
               )}
-            </Row>
-            <Row label="Nhà cung cấp">{user.provider || '-'}</Row>
-            <Row label="Có mật khẩu">
+            </DetailRow>
+            <DetailRow label="Nhà cung cấp">{user.provider || '-'}</DetailRow>
+            <DetailRow label="Có mật khẩu">
               {hasPassword ? (
                 <Badge variant="default">Có</Badge>
               ) : (
                 <Badge variant="secondary">Cần đổi mật khẩu</Badge>
               )}
-            </Row>
+            </DetailRow>
             {user.password_changed_at && (
-              <Row label="Đổi mật khẩu lúc">{formatDateTime(user.password_changed_at)}</Row>
+              <DetailRow label="Đổi mật khẩu lúc">{formatDateTime(user.password_changed_at)}</DetailRow>
             )}
-            <Row label="Đăng nhập lần cuối">{lastLoginAt ? formatDateTime(lastLoginAt) : '-'}</Row>
-            {user.last_login_ip && <Row label="IP đăng nhập cuối">{user.last_login_ip}</Row>}
-            <Row label="Ngày tạo">{createdAt ? formatDateTime(createdAt) : '-'}</Row>
-            <Row label="Cập nhật">{updatedAt ? formatDateTime(updatedAt) : '-'}</Row>
+            <DetailRow label="Đăng nhập lần cuối">{lastLoginAt ? formatDateTime(lastLoginAt) : '-'}</DetailRow>
+            {user.last_login_ip && <DetailRow label="IP đăng nhập cuối">{user.last_login_ip}</DetailRow>}
+            <DetailRow label="Ngày tạo">{createdAt ? formatDateTime(createdAt) : '-'}</DetailRow>
+            <DetailRow label="Cập nhật">{updatedAt ? formatDateTime(updatedAt) : '-'}</DetailRow>
           </div>
         ) : (
           <div className="text-muted-foreground py-8 text-center">Không có dữ liệu</div>

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { mapImageService, useApiQuery } from '@/service'
-import type { ApiResponse, MapImage } from '@/types/api'
+import type { ApiResponse, MapImage, MapImageDetailData } from '@/types/api'
 import { parseLink, isPdf } from '@/lib/utils'
 import { formatDateTime } from '@/lib/date'
 import { CalendarClock, FileImage, FileText, Globe, Info, Map as MapIcon } from 'lucide-react'
@@ -72,8 +72,8 @@ export default function MapImageDetailDialog({
     false
   )
   const mapImage = (() => {
-    const d = (dbQuery.data as ApiResponse<any>)?.data
-    return (d ? (d.mapImage ?? d.pdfMap ?? d) : null) as MapImage | null
+    const d = (dbQuery.data as ApiResponse<MapImageDetailData | { mapImage?: MapImage; pdfMap?: MapImage } | MapImage>)?.data
+    return (d ? ('mapImage' in d && d.mapImage ? d.mapImage : 'pdfMap' in d && d.pdfMap ? d.pdfMap : d) : null) as MapImage | null
   })()
 
   const titleVi = mapImage?.translations?.vi?.title || mapImage?.title || mapImage?.name || '-'

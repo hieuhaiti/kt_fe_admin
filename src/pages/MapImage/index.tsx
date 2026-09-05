@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { FileImage, Pencil, Plus, Trash2 } from 'lucide-react'
 import { mapImageService, useApiMutation, useApiQuery } from '@/service'
 import type {
@@ -70,15 +70,7 @@ export default function MapImagePage() {
   const response = query.data as ApiResponse<PdfMapListData> | undefined
   const items = response?.data?.items ?? []
   const pagination = (response?.metadata ?? {}) as Partial<Pagination>
-  const lastTotalPages = useRef(1)
-  if (pagination.totalPages !== undefined) {
-    lastTotalPages.current = Math.max(1, pagination.totalPages)
-  }
-  const totalPages = pagination.totalPages ?? lastTotalPages.current
-
-  useEffect(() => {
-    if (page > totalPages) setPage(Math.max(1, totalPages))
-  }, [page, totalPages])
+  const totalPages = Math.max(1, pagination.totalPages ?? (pagination.total ? Math.ceil(pagination.total / limit) : 1))
 
   const createMutation = useApiMutation((data: FormData) => mapImageService.create(data), {
     onSuccess: () => {

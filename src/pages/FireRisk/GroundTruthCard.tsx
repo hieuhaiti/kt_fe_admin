@@ -107,6 +107,8 @@ function ExplanationBanner() {
 
 // ── ZONES ─────────────────────────────────────────────────────────────────────
 
+import type { GtZoneItem, GtPointItem } from '@/types/api'
+
 function ZonesSection() {
   const [geojsonText, setGeojsonText] = useState('')
   const [severity, setSeverity] = useState(3)
@@ -115,16 +117,16 @@ function ZonesSection() {
   )
 
   const listQ = useApiQuery(['gt-zones'], () => fireRiskService.listGtZones({ limit: 50 }))
-  const bulkM = useApiMutation((fc: any) => fireRiskService.bulkGtZone(fc))
-  const deleteM = useApiMutation((id: number) => fireRiskService.deleteGtZone(id))
+  const bulkM = useApiMutation((fc: Record<string, unknown>) => fireRiskService.bulkGtZone(fc))
+  const deleteM = useApiMutation((id: number | string) => fireRiskService.deleteGtZone(id))
   // OK_LIST server-side wrap: { data: { items: [...] }, metadata: {...} }
   // → apiClient trả nguyên ApiResponse → phải đọc .data.items (không phải .data).
-  const items: any[] = listQ.data?.data?.items ?? []
+  const items: GtZoneItem[] = listQ.data?.data?.items ?? []
 
   const onSubmit = async () => {
-    let parsed: any
+    let parsed: Record<string, unknown>
     try {
-      parsed = JSON.parse(geojsonText)
+      parsed = JSON.parse(geojsonText) as Record<string, unknown>
     } catch {
       toast.error('Dữ liệu vùng không hợp lệ. Vui lòng kiểm tra lại.')
       return
@@ -149,14 +151,16 @@ function ZonesSection() {
       return
     }
     // Set default severity/occurredAt cho features thiếu.
-    parsed.features.forEach((f: any) => {
-      f.properties = f.properties || {}
-      if (!f.properties.severity) f.properties.severity = severity
-      if (!f.properties.occurredAt) f.properties.occurredAt = occurredAt
+    const features = (parsed.features as Array<Record<string, unknown>>) || []
+    features.forEach((f) => {
+      const props = (f.properties as Record<string, unknown>) || {}
+      if (!props.severity) props.severity = severity
+      if (!props.occurredAt) props.occurredAt = occurredAt
+      f.properties = props
     })
 
     bulkM.mutate(parsed, {
-      onSuccess: (res: any) => {
+      onSuccess: (res) => {
         toast.success(`Đã thêm ${res?.data?.inserted ?? '?'} vùng cháy.`)
         setGeojsonText('')
         listQ.refetch()
@@ -165,7 +169,7 @@ function ZonesSection() {
     })
   }
 
-  const onDelete = (id: number) => {
+  const onDelete = (id: number | string) => {
     if (!confirm(`Xoá vùng #${id}?`)) return
     deleteM.mutate(id, { onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() } })
   }
@@ -266,11 +270,11 @@ function PointsSection() {
   })
 
   const listQ = useApiQuery(['gt-points'], () => fireRiskService.listGtPoints({ limit: 100 }))
-  const createM = useApiMutation((body: any) => fireRiskService.createGtPoint(body))
-  const deleteM = useApiMutation((id: number) => fireRiskService.deleteGtPoint(id))
+  const createM = useApiMutation((body: Parameters<typeof fireRiskService.createGtPoint>[0]) => fireRiskService.createGtPoint(body))
+  const deleteM = useApiMutation((id: number | string) => fireRiskService.deleteGtPoint(id))
   // OK_LIST server-side wrap: { data: { items: [...] }, metadata: {...} }
   // → apiClient trả nguyên ApiResponse → phải đọc .data.items (không phải .data).
-  const items: any[] = listQ.data?.data?.items ?? []
+  const items: GtPointItem[] = listQ.data?.data?.items ?? []
 
   const onSubmit = () => {
     const lng = Number(form.lng)
@@ -292,7 +296,7 @@ function PointsSection() {
     )
   }
 
-  const onDelete = (id: number) => {
+  const onDelete = (id: number | string) => {
     if (!confirm(`Xoá điểm #${id}?`)) return
     deleteM.mutate(id, { onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() } })
   }
@@ -381,7 +385,7 @@ function PointsSection() {
             </span>
             <span className="rounded bg-orange-100 px-1 text-orange-700">C{p.severity}</span>
             <span className="flex-1 text-muted-foreground">
-              {formatDate(p.occurred_at)} · {SOURCE_LABELS[p.source] ?? 'Khác'}
+              {formatDate(p.occurred_at)} · {SOURCE_LABELS[p.source ?? 'other'] ?? 'Khác'}
             </span>
             <button
               onClick={() => onDelete(p.id)}

@@ -1,6 +1,5 @@
 import apiClient from './common/apiClient'
 import type {
-  ApiResponse,
   News,
   NewsData,
   NewsListData,
@@ -45,5 +44,5 @@ export default {
 
   /** DELETE /admin/news/:newsId */
   delete: (newsId: number | string) =>
-    apiClient.del<ApiResponse<{}>>(`${serviceAdminNewsPath}/${newsId}`),
+    apiClient.del<void>(`${serviceAdminNewsPath}/${newsId}`),
 }

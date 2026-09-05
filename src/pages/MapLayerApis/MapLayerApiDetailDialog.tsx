@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { mapLayerApiService, useApiQuery } from '@/service'
-import type { ApiResponse, MapLayerApi } from '@/types/api'
+import type { ApiResponse, MapLayerApi, MapLayerApiDetailData } from '@/types/api'
 import { formatDateTime } from '@/lib/date'
 import { getMappedErrorMessage } from '@/validators/mapLayerApiValidators'
 import { StatusDotBadge } from '@/components/common/StatusDotBadge'
@@ -35,8 +35,8 @@ export default function MapLayerApiDetailDialog({
   )
 
   const api = (() => {
-    const data = (detailQuery.data as ApiResponse<any> | undefined)?.data
-    return (data ? (data.api ?? data) : null) as MapLayerApi | null
+    const data = (detailQuery.data as ApiResponse<MapLayerApiDetailData | { api?: MapLayerApi } | MapLayerApi> | undefined)?.data
+    return (data ? ('api' in data && data.api ? data.api : data) : null) as MapLayerApi | null
   })()
 
   const errorMessage = detailQuery.error

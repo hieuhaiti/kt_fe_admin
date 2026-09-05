@@ -4,7 +4,14 @@ import { AlertCircle, Loader2, Pen, Plus } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import MapLayerApiForm from '@/components/map-layer-apis/MapLayerApiForm'
 import { mapLayerApiService, useApiMutation, useApiQuery } from '@/service'
-import type { ApiResponse, CreateMapLayerApiBody, MapLayerApi } from '@/types/api'
+import type {
+  ApiResponse,
+  CreateMapLayerApiBody,
+  MapLayerApi,
+  MapLayerApiCreateData,
+  MapLayerApiDetailData,
+  UpdateMapLayerApiBody,
+} from '@/types/api'
 import {
   getMappedErrorMessage,
   validateCreatePayload,
@@ -35,15 +42,19 @@ export default function MapLayerApiFormDialog({
   )
 
   const initialData = (() => {
-    const d = (detailQuery.data as ApiResponse<any> | undefined)?.data
-    return (d ? (d.api ?? d) : null) as MapLayerApi | null
+    const d = (detailQuery.data as ApiResponse<MapLayerApiDetailData | { api?: MapLayerApi } | MapLayerApi> | undefined)?.data
+    return (d ? ('api' in d && d.api ? d.api : d) : null) as MapLayerApi | null
   })()
 
   const createMutation = useApiMutation(
     (payload: CreateMapLayerApiBody) => mapLayerApiService.create(payload),
     {
-      onSuccess: (response: any) => {
-        const rawKey = response?.data?.apiKey || response?.data?.raw_key
+      onSuccess: (response: ApiResponse<MapLayerApiCreateData | { apiKey?: string; raw_key?: string }>) => {
+        const payload = response?.data
+        const rawKey =
+          (payload && 'apiKey' in payload && payload.apiKey) ||
+          (payload && 'raw_key' in payload && payload.raw_key) ||
+          null
         toast.success(rawKey ? `Tạo API key thành công: ${rawKey}` : 'Tạo API key thành công', {
           autoClose: rawKey ? 12000 : 3000,
         })
@@ -127,7 +138,7 @@ export default function MapLayerApiFormDialog({
                   toast.error(parsed.error.issues[0]?.message ?? 'Payload create không hợp lệ')
                   return
                 }
-                createMutation.mutate(parsed.data as any)
+                createMutation.mutate(parsed.data as CreateMapLayerApiBody)
               }}
               onSubmitUpdate={(payload) => {
                 const parsed = validateUpdatePayload(payload)
@@ -135,7 +146,7 @@ export default function MapLayerApiFormDialog({
                   toast.error(parsed.error.issues[0]?.message ?? 'Payload update không hợp lệ')
                   return
                 }
-                updateMutation.mutate(parsed.data as any)
+                updateMutation.mutate(parsed.data as UpdateMapLayerApiBody)
               }}
             />
           </div>

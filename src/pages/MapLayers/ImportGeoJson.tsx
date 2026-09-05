@@ -20,11 +20,12 @@ import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import { MAP_LAYER_CATEGORY_OPTIONS } from '@/constant/mapLayerConstant'
 
-function extractGeoJson(raw: any): GeoJSON.GeoJSON | null {
+function extractGeoJson(raw: unknown): GeoJSON.GeoJSON | null {
   if (!raw || typeof raw !== 'object') return null
-  if (raw.type === 'FeatureCollection' && Array.isArray(raw.features)) return raw as GeoJSON.FeatureCollection
-  if (raw.type === 'Feature' && raw.geometry) return raw as GeoJSON.Feature
-  if (typeof raw.type === 'string' && raw.coordinates) return raw as GeoJSON.Geometry
+  const obj = raw as Record<string, unknown>
+  if (obj.type === 'FeatureCollection' && Array.isArray(obj.features)) return obj as unknown as GeoJSON.FeatureCollection
+  if (obj.type === 'Feature' && obj.geometry) return obj as unknown as GeoJSON.Feature
+  if (typeof obj.type === 'string' && obj.coordinates) return obj as unknown as GeoJSON.Geometry
   return null
 }
 

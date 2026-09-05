@@ -134,6 +134,12 @@ export interface FeedbackListParams {
   end_date?: string
 }
 
+export interface FeedbackListData {
+  items?: CitizenFeedback[]
+  feedbacks?: CitizenFeedback[]
+  pagination?: import('./index').Pagination
+}
+
 export interface FeedbackFeatureCollection {
   type: 'FeatureCollection'
   features: Array<
