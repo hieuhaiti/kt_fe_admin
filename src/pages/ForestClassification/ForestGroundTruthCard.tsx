@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-toastify'
 import {
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { PaginationCustom } from '@/components/features/PaginationCustom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +33,7 @@ import { formatDate } from '@/lib/date'
 import { hasPerm } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/common/useAuthStore'
-import type { ApiResponse, ForestGtZoneItem, ForestGtPointItem } from '@/types/api'
+import type { ApiResponse, ForestGtZoneItem, ForestGtPointItem, Pagination } from '@/types/api'
 
 /**
  * Ground truth card cho phân loại lớp phủ schema v5.3.
@@ -68,9 +69,6 @@ const CLASSES: Array<{ id: number; name: string; color: string }> = [
 
 const QK_ZONES = ['forest-gt-zones'] as const
 const QK_POINTS = ['forest-gt-points'] as const
-
-// Backend `listQuery` giới hạn limit tối đa 200.
-const LIST_LIMIT = 200
 
 const classLabel = (id?: number | null) => {
   if (id == null) return '—'
@@ -598,18 +596,34 @@ const sid = (id: number | string): SelectionId => String(id)
 
 function SampleDataPanel() {
   const [tab, setTab] = useState<'zones' | 'points'>('points')
+  const [zonePage, setZonePage] = useState(1)
+  const [zoneLimit, setZoneLimit] = useState(50)
+  const [pointPage, setPointPage] = useState(1)
+  const [pointLimit, setPointLimit] = useState(50)
 
-  const zonesQ = useApiQuery(QK_ZONES, () =>
-    forestClassificationService.listGtZones({ limit: LIST_LIMIT }),
+  const zonesQ = useApiQuery(
+    [QK_ZONES[0], { page: zonePage, limit: zoneLimit }],
+    () => forestClassificationService.listGtZones({ page: zonePage, limit: zoneLimit }),
   )
-  const pointsQ = useApiQuery(QK_POINTS, () =>
-    forestClassificationService.listGtPoints({ limit: LIST_LIMIT }),
+  const pointsQ = useApiQuery(
+    [QK_POINTS[0], { page: pointPage, limit: pointLimit }],
+    () => forestClassificationService.listGtPoints({ page: pointPage, limit: pointLimit }),
   )
 
   // OK_LIST server-side wrap: { data: { items: [...] }, metadata: {...} }
   // → apiClient trả nguyên ApiResponse → phải đọc .data.items (không phải .data).
   const zones: ForestGtZoneItem[] = zonesQ.data?.data?.items ?? []
   const points: ForestGtPointItem[] = pointsQ.data?.data?.items ?? []
+
+  const zonesPagination = (zonesQ.data?.metadata ?? {}) as Partial<Pagination>
+  const pointsPagination = (pointsQ.data?.metadata ?? {}) as Partial<Pagination>
+
+  const zoneTotal = zonesPagination.total ?? zones.length
+  const pointTotal = pointsPagination.total ?? points.length
+  const zoneTotalPages =
+    zonesPagination.totalPages ?? (zoneTotal > 0 ? Math.ceil(zoneTotal / zoneLimit) : 0)
+  const pointTotalPages =
+    pointsPagination.totalPages ?? (pointTotal > 0 ? Math.ceil(pointTotal / pointLimit) : 0)
 
   return (
     <div className="rounded-md border">
@@ -619,11 +633,11 @@ function SampleDataPanel() {
           <TabsList className="h-8">
             <TabsTrigger value="points" className="h-6 cursor-pointer gap-1 text-xs">
               <MapPin className="h-3 w-3" />
-              Điểm ({points.length})
+              Điểm ({pointTotal})
             </TabsTrigger>
             <TabsTrigger value="zones" className="h-6 cursor-pointer gap-1 text-xs">
               <Shapes className="h-3 w-3" />
-              Vùng ({zones.length})
+              Vùng ({zoneTotal})
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -638,6 +652,15 @@ function SampleDataPanel() {
             isFetching={pointsQ.isFetching}
             refetch={pointsQ.refetch}
             emptyText="Chưa có điểm mẫu nào."
+            page={pointPage}
+            limit={pointLimit}
+            total={pointTotal}
+            totalPages={pointTotalPages}
+            onPageChange={setPointPage}
+            onLimitChange={(l) => {
+              setPointLimit(l)
+              setPointPage(1)
+            }}
           />
         </TabsContent>
         <TabsContent value="zones" className="mt-0">
@@ -648,6 +671,15 @@ function SampleDataPanel() {
             isFetching={zonesQ.isFetching}
             refetch={zonesQ.refetch}
             emptyText="Chưa có vùng mẫu nào."
+            page={zonePage}
+            limit={zoneLimit}
+            total={zoneTotal}
+            totalPages={zoneTotalPages}
+            onPageChange={setZonePage}
+            onLimitChange={(l) => {
+              setZoneLimit(l)
+              setZonePage(1)
+            }}
           />
         </TabsContent>
       </Tabs>
@@ -662,14 +694,45 @@ interface SampleListProps {
   isFetching: boolean
   refetch: () => unknown
   emptyText: string
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  onPageChange: (page: number) => void
+  onLimitChange: (limit: number) => void
 }
 
-function SampleList({ kind, items, isLoading, isFetching, refetch, emptyText }: SampleListProps) {
+function SampleList({
+  kind,
+  items,
+  isLoading,
+  isFetching,
+  refetch,
+  emptyText,
+  page,
+  limit,
+  total,
+  totalPages,
+  onPageChange,
+  onLimitChange,
+}: SampleListProps) {
   const [selected, setSelected] = useState<Set<SelectionId>>(() => new Set())
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const label = kind === 'zones' ? 'vùng' : 'điểm'
+
+  // Khi đổi trang hoặc đổi số bản ghi, reset selection để tránh thao tác nhầm trên bản ghi ẩn
+  useEffect(() => {
+    setSelected(new Set())
+  }, [page, limit])
+
+  // Nếu sau khi xóa, trang hiện tại vượt quá tổng số trang mới, tự lùi về trang cuối
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      onPageChange(totalPages)
+    }
+  }, [page, totalPages, onPageChange])
 
   // notification=false: message của server đã được gộp vào toast tự soạn bên dưới.
   // Backend nhận cả danh sách id trong 1 statement nên không cần N request.
@@ -736,16 +799,16 @@ function SampleList({ kind, items, isLoading, isFetching, refetch, emptyText }: 
             checked={allSelected}
             disabled={!visibleIds.length || deleting}
             onCheckedChange={toggleAll}
-            aria-label={`Chọn tất cả ${label}`}
+            aria-label={`Chọn tất cả ${label} trang này`}
             className="cursor-pointer"
           />
-          <span>Chọn tất cả</span>
+          <span>Chọn trang này</span>
         </label>
 
         <span className="text-xs text-muted-foreground">
           {activeSelected.length > 0
             ? `Đã chọn ${activeSelected.length}/${visibleIds.length}`
-            : `${visibleIds.length} ${label}`}
+            : `${items.length}/${total} ${label}`}
         </span>
 
         <div className="ml-auto flex items-center gap-2">
@@ -822,6 +885,44 @@ function SampleList({ kind, items, isLoading, isFetching, refetch, emptyText }: 
             )
           })}
         </div>
+      </div>
+
+      {/* Footer phân trang và chọn số lượng bản ghi */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/20 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>
+            {total > 0
+              ? `Hiển thị ${(page - 1) * limit + 1}–${Math.min(page * limit, total)} / ${total} ${label}`
+              : `0 ${label}`}
+          </span>
+          <span className="text-muted-foreground/40">|</span>
+          <label className="flex items-center gap-1.5">
+            <span>Hiển thị</span>
+            <select
+              value={limit}
+              onChange={(e) => onLimitChange(Number(e.target.value))}
+              className="h-7 cursor-pointer rounded border bg-background px-1.5 text-xs text-foreground"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+              <option value={500}>500</option>
+              <option value={1000}>1.000</option>
+              <option value={2000}>2.000 (Tối đa)</option>
+            </select>
+            <span>/ trang</span>
+          </label>
+        </div>
+
+        {totalPages > 1 && (
+          <PaginationCustom
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            className="mx-0 w-auto"
+          />
+        )}
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
