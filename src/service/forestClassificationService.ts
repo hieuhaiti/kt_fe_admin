@@ -9,6 +9,7 @@ import type {
   ForestClassPublishRasterData,
   ForestGtZoneItem,
   ForestGtPointItem,
+  GtBulkDeleteData,
 } from '@/types/api'
 import { serviceForestClassificationPath } from '@/constant/serviceConstant'
 
@@ -93,6 +94,14 @@ export default {
   deleteGtZone: (id: number | string) =>
     apiClient.del<void>(`${serviceForestClassificationPath}/ground-truth/zones/${id}`),
 
+  /** POST .../ground-truth/zones/bulk-delete — soft-delete nhiều zone 1 lần.
+   *  Dùng POST vì proxy/HTTP client thường loại bỏ body của DELETE. */
+  bulkDeleteGtZones: (ids: Array<number | string>) =>
+    apiClient.post<GtBulkDeleteData>(
+      `${serviceForestClassificationPath}/ground-truth/zones/bulk-delete`,
+      { ids: ids.map(Number) }
+    ),
+
   // ── Ground truth: points ────────────────────────────────────────────────
   listGtPoints: (params?: {
     page?: number
@@ -127,4 +136,11 @@ export default {
 
   deleteGtPoint: (id: number | string) =>
     apiClient.del<void>(`${serviceForestClassificationPath}/ground-truth/points/${id}`),
+
+  /** POST .../ground-truth/points/bulk-delete — soft-delete nhiều điểm 1 lần. */
+  bulkDeleteGtPoints: (ids: Array<number | string>) =>
+    apiClient.post<GtBulkDeleteData>(
+      `${serviceForestClassificationPath}/ground-truth/points/bulk-delete`,
+      { ids: ids.map(Number) }
+    ),
 }

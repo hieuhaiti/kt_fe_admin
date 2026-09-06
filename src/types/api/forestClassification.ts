@@ -293,3 +293,13 @@ export interface ForestGtPointItem {
   createdAt?: string
   created_at?: string
 }
+
+/** Response chung cho `.../ground-truth/{zones,points}/bulk-delete`. */
+export interface GtBulkDeleteData {
+  /** Số bản ghi thực sự chuyển sang is_active = false. */
+  deleted: number
+  /** Id đã xóa thành công. */
+  ids: number[]
+  /** Id không tồn tại hoặc đã bị xóa từ trước. */
+  skipped: number[]
+}
