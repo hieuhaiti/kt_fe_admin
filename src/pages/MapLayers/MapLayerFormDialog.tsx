@@ -24,9 +24,16 @@ import type {
   MapLayerLegendEntry,
   MapLayerDefaultStyle,
 } from '@/types/api'
-import { getStyleDefinitions, parseStyleJson, stringifyStyle } from './mapLayerStyle'
+import {
+  cleanStyleObject,
+  getStyleDefinitions,
+  parseStyleJson,
+  stringifyStyle,
+} from './mapLayerStyle'
 import { toast } from 'react-toastify'
 import { MAP_LAYER_CATEGORY_OPTIONS } from '@/constant/mapLayerConstant'
+// [check style] TEMP import
+import { checkStyleLog } from '@/lib/checkStyleDebug'
 
 const COLOR_HEX_REGEX = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/
 
@@ -592,20 +599,35 @@ export default function MapLayerFormDialog({
 
     let default_style: MapLayerDefaultStyle | null = null
     if (styleMode === 'json') {
-      const parsedStyle = parseStyleJson(styleJsonText, geometryType)
-      if (parsedStyle.error) {
-        toast.error(parsedStyle.error)
-        return
+      if (styleJsonText.trim()) {
+        const parsedStyle = parseStyleJson(styleJsonText, geometryType)
+        if (parsedStyle.error) {
+          // [check style] TEMP log
+          checkStyleLog('form.submit.json_error', {
+            mode: 'json',
+            geometryType,
+            styleJsonText,
+            error: parsedStyle.error,
+          }, 'warn')
+          toast.error(parsedStyle.error)
+          return
+        }
+        default_style = cleanStyleObject(parsedStyle.style)
       }
-      default_style = Object.keys(parsedStyle.style).length > 0 ? parsedStyle.style : null
     } else {
-      const parsedStyle = parseStyleJson(JSON.stringify(styleValues), geometryType)
-      if (parsedStyle.error) {
-        toast.error(parsedStyle.error)
-        return
-      }
-      default_style = Object.keys(parsedStyle.style).length > 0 ? parsedStyle.style : null
+      default_style = cleanStyleObject(styleValues)
     }
+
+    // [check style] TEMP log
+    checkStyleLog('form.submit.style_payload', {
+      isEdit,
+      layerCode: isEdit && layer?.code ? layer.code : null,
+      styleMode,
+      geometryType,
+      styleValuesRaw: styleValues,
+      styleJsonTextRaw: styleJsonText,
+      cleanedDefaultStyle: default_style,
+    })
 
     const fullValidation = mapLayerSchema.safeParse({
       category,
@@ -618,12 +640,25 @@ export default function MapLayerFormDialog({
     })
     if (!fullValidation.success) {
       const first = fullValidation.error.issues[0]
+      // [check style] TEMP log
+      checkStyleLog('form.submit.schema_invalid', {
+        firstIssue: first,
+        issues: fullValidation.error.issues,
+      }, 'warn')
       toast.error(first?.message || 'Dữ liệu không hợp lệ')
       return
     }
 
     const code = isEdit && layer?.code ? layer.code : toLayerCode(name.trim())
     const trimmedLayerGroup = layerGroup.trim()
+
+    // [check style] TEMP log
+    checkStyleLog('form.submit.final_payload', {
+      code,
+      geometry_type: toApiGeometryType(geometryType),
+      default_style,
+    })
+
     onSubmit({
       code,
       name_vi: name.trim(),

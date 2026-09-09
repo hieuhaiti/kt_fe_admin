@@ -2,6 +2,8 @@ import type { ApiResponse } from '@/types/api'
 import { tokenManager } from '@/lib/tokenManager'
 import { emitSessionExpired } from '@/lib/sessionEvents'
 import { toast } from 'react-toastify'
+// [check style] TEMP import
+import { checkStyleLog } from '@/lib/checkStyleDebug'
 
 const API_BASE = (
   import.meta.env.VITE_BASE_URL_BE ||
@@ -269,11 +271,29 @@ export async function get<T = unknown>(
 ): Promise<ApiResponse<T>> {
   const opts = normalizeGetOpts(paramsOrOpts)
   const finalUrl = buildQuery(url, opts)
+  const isMapLayerEndpoint = url.includes('/map/layers')
+  if (isMapLayerEndpoint) {
+    // [check style] TEMP log
+    checkStyleLog('http.get.request', {
+      url,
+      finalUrl,
+      params: opts.params,
+    })
+  }
   const res = await requestWithRefresh(finalUrl, {
     method: 'GET',
     headers: buildHeaders(opts, false),
   })
-  return handleResponse<T>(res, isAuthUrl(url))
+  const handled = await handleResponse<T>(res, isAuthUrl(url))
+  if (isMapLayerEndpoint) {
+    // [check style] TEMP log
+    checkStyleLog('http.get.response', {
+      url,
+      status: res.status,
+      response: handled,
+    })
+  }
+  return handled
 }
 
 function normalizeGetOpts(input?: Record<string, unknown> | RequestOptions): RequestOptions {
@@ -296,8 +316,26 @@ export async function post<T = unknown>(
   const body = useForm ? (data as BodyInit) : JSON.stringify(data ?? {})
 
   const finalUrl = buildQuery(url, opts)
+  const isMapLayerEndpoint = url.includes('/map/layers')
+  if (isMapLayerEndpoint) {
+    // [check style] TEMP log
+    checkStyleLog('http.post.request', {
+      url,
+      finalUrl,
+      sentData: data,
+    })
+  }
   const res = await requestWithRefresh(finalUrl, { method: 'POST', headers, body })
-  return handleResponse<T>(res, isAuthUrl(url))
+  const handled = await handleResponse<T>(res, isAuthUrl(url))
+  if (isMapLayerEndpoint) {
+    // [check style] TEMP log
+    checkStyleLog('http.post.response', {
+      url,
+      status: res.status,
+      response: handled,
+    })
+  }
+  return handled
 }
 
 export async function put<T = unknown>(
@@ -326,8 +364,26 @@ export async function patch<T = unknown>(
   const body = useForm ? (data as BodyInit) : JSON.stringify(data ?? {})
 
   const finalUrl = buildQuery(url, opts)
+  const isMapLayerEndpoint = url.includes('/map/layers')
+  if (isMapLayerEndpoint) {
+    // [check style] TEMP log
+    checkStyleLog('http.patch.request', {
+      url,
+      finalUrl,
+      sentData: data,
+    })
+  }
   const res = await requestWithRefresh(finalUrl, { method: 'PATCH', headers, body })
-  return handleResponse<T>(res, isAuthUrl(url))
+  const handled = await handleResponse<T>(res, isAuthUrl(url))
+  if (isMapLayerEndpoint) {
+    // [check style] TEMP log
+    checkStyleLog('http.patch.response', {
+      url,
+      status: res.status,
+      response: handled,
+    })
+  }
+  return handled
 }
 
 export async function del<T = unknown>(

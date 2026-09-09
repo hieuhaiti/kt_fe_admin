@@ -205,9 +205,9 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'opacity',
-    label: 'Độ trong suốt raster',
+    label: 'Độ mờ tổng thể (opacity)',
     type: 'number',
-    geometryTypes: ['raster'],
+    geometryTypes: ['point', 'line', 'polygon', 'raster'],
     min: 0,
     max: 1,
     step: 0.05,
@@ -380,3 +380,16 @@ export function stringifyStyle(value: unknown): string {
   const normalized = normalizeStyleObject(value)
   return Object.keys(normalized).length > 0 ? JSON.stringify(normalized, null, 2) : ''
 }
+
+export function cleanStyleObject(
+  style: Record<string, unknown> | null | undefined
+): MapLayerDefaultStyle | null {
+  if (!style || typeof style !== 'object') return null
+  const entries = Object.entries(style).filter(([, val]) => {
+    if (val === undefined || val === null || val === '') return false
+    return true
+  })
+  if (entries.length === 0) return null
+  return Object.fromEntries(entries) as MapLayerDefaultStyle
+}
+

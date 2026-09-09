@@ -1,6 +1,8 @@
 import type { JSX } from 'react'
 import { useState } from 'react'
 import { mapLayerService, useApiMutation, useApiQuery } from '@/service'
+// [check style] TEMP import
+import { checkStyleLog } from '@/lib/checkStyleDebug'
 import type {
   ApiResponse,
   CreateMapLayerBody,
@@ -116,7 +118,11 @@ export default function MapLayerPage(): JSX.Element {
   const createMutation = useApiMutation(
     (payload: CreateMapLayerBody) => mapLayerService.create(payload),
     {
-      onSuccess: () => {
+      onSuccess: (res) => {
+        // [check style] TEMP log
+        checkStyleLog('mutation.create.success', {
+          response: res,
+        })
         dbQuery.refetch()
         setFormDialogOpen(false)
         setSelectedLayerCode(null)
@@ -129,7 +135,13 @@ export default function MapLayerPage(): JSX.Element {
     (payload: { code: string; data: PatchMapLayerBody }) =>
       mapLayerService.update(payload.code, payload.data),
     {
-      onSuccess: () => {
+      onSuccess: (res, vars) => {
+        // [check style] TEMP log
+        checkStyleLog('mutation.update.success', {
+          layerCode: vars?.code,
+          sentDefaultStyle: vars?.data?.default_style,
+          response: res,
+        })
         dbQuery.refetch()
         setFormDialogOpen(false)
         setSelectedLayerCode(null)
@@ -204,6 +216,12 @@ export default function MapLayerPage(): JSX.Element {
   }
 
   function handleFormSubmit(data: CreateMapLayerBody) {
+    // [check style] TEMP log
+    checkStyleLog('page.submit.dispatch', {
+      selectedLayerCode,
+      code: data.code,
+      default_style: data.default_style,
+    })
     if (selectedLayerCode) {
       updateMutation.mutate({ code: selectedLayerCode, data })
       return
