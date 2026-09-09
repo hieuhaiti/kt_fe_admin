@@ -1,36 +1,9 @@
+import type { MapLayerDefaultStyle } from '@/types/api'
+
+export type { MapLayerDefaultStyle }
+
 export type StyleGeometryKind = 'point' | 'line' | 'polygon' | 'raster'
 export type StyleValueType = 'color' | 'number' | 'boolean' | 'enum' | 'dasharray'
-
-export interface MapLayerDefaultStyle {
-  fillColor?: string
-  fillOpacity?: number
-  fillAntialias?: boolean
-  strokeColor?: string
-  strokeOpacity?: number
-  strokeWidth?: number
-  strokeBlur?: number
-  strokeDasharray?: number[]
-  strokeOffset?: number
-  lineCap?: 'butt' | 'round' | 'square'
-  lineJoin?: 'bevel' | 'round' | 'miter'
-  circleColor?: string
-  circleOpacity?: number
-  circleRadius?: number
-  circleBlur?: number
-  circleStrokeColor?: string
-  circleStrokeOpacity?: number
-  circleStrokeWidth?: number
-  opacity?: number
-  rasterOpacity?: number
-  brightnessMin?: number
-  brightnessMax?: number
-  contrast?: number
-  saturation?: number
-  hueRotate?: number
-  fadeDuration?: number
-  resampling?: 'linear' | 'nearest'
-  visible_by_default?: boolean
-}
 
 export interface StylePropertyDefinition {
   key: keyof MapLayerDefaultStyle
@@ -382,7 +355,7 @@ export function stringifyStyle(value: unknown): string {
 }
 
 export function cleanStyleObject(
-  style: Record<string, unknown> | null | undefined
+  style: MapLayerDefaultStyle | Record<string, unknown> | null | undefined
 ): MapLayerDefaultStyle | null {
   if (!style || typeof style !== 'object') return null
   const entries = Object.entries(style).filter(([, val]) => {
