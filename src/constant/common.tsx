@@ -141,9 +141,10 @@ export const navConfig: NavItem[] = [
     path: '/users',
     permission: { resource: 'users', action: 'read' },
   },
-  {
-    icon: <MessageSquare />,
-    name: 'Tài liệu hệ thống',
-    path: 'https://adminkontum.tourismpj.pro.vn/uploads/HDSD_KONTUM_ADMIN.pdf',
-  },
+{
+  icon: <MessageSquare />,
+  name: 'Tài liệu hệ thống',
+  path: `${import.meta.env.VITE_BASE_URL || 'https://apikontum.tourismpj.pro.vn'}/uploads/HDSD_KONTUM_ADMIN.pdf`,
+},
+
 ]
