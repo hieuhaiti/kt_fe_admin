@@ -17,7 +17,7 @@ import {
   Trees,
 } from 'lucide-react'
 
-const HDSD_URL = 'https://adminkontum.tourismpj.pro.vn/uploads/HDSD_ADMIN_CAMPHA.pdf'
+const HDSD_URL = 'https://adminkontum.tourismpj.pro.vn/uploads/HDSD_KONTUM_ADMIN.pdf'
 
 function formatPct(v?: number | null) {
   if (v == null) return '—'

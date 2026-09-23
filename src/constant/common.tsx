@@ -144,6 +144,6 @@ export const navConfig: NavItem[] = [
   {
     icon: <MessageSquare />,
     name: 'Tài liệu hệ thống',
-    path: 'https://adminkontum.tourismpj.pro.vn/uploads/HDSD_ADMIN_CAMPHA.pdf',
+    path: 'https://adminkontum.tourismpj.pro.vn/uploads/HDSD_KONTUM_ADMIN.pdf',
   },
 ]
