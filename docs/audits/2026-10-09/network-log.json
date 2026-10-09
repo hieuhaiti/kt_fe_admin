@@ -1,0 +1,2083 @@
+{
+  "system_admin": {
+    "account": "admin@kontum.gov.vn",
+    "rows": [
+      {
+        "role": "system_admin",
+        "path": "/dashboard",
+        "name": "Tổng quan",
+        "actualPath": "/dashboard",
+        "checkedAt": "2026-10-09T08:21:02.331Z",
+        "headings": [
+          "Bảng điều khiển"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/notifications?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:00.495Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:00.670Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/notifications/unread-count?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:00.496Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:00.659Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/stats/dashboard?force=false&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:00.498Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:00.684Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/map-layers",
+        "name": "Quản lý lớp dữ liệu",
+        "actualPath": "/map-layers",
+        "checkedAt": "2026-10-09T08:21:04.795Z",
+        "headings": [
+          "Quản lý lớp dữ liệu"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/map/layers?page=1&limit=10&sortBy=created_at&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:03.471Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:03.573Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/map-layers/import-geojson",
+        "name": "Nhập tệp GIS",
+        "actualPath": "/map-layers/import-geojson",
+        "checkedAt": "2026-10-09T08:21:06.997Z",
+        "headings": [
+          "Nhập GeoJSON"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": []
+      },
+      {
+        "role": "system_admin",
+        "path": "/layer-series",
+        "name": "Ảnh theo thời gian",
+        "actualPath": "/layer-series",
+        "checkedAt": "2026-10-09T08:21:09.201Z",
+        "headings": [
+          "Lớp ảnh theo thời gian"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/map/layer-groups?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:07.346Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:07.387Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/map-apis",
+        "name": "API bản đồ",
+        "actualPath": "/map-apis",
+        "checkedAt": "2026-10-09T08:21:11.405Z",
+        "headings": [
+          "Khóa API bản đồ"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/map-apis?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:09.551Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:09.609Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/map-images",
+        "name": "Ảnh bản đồ",
+        "actualPath": "/map-images",
+        "checkedAt": "2026-10-09T08:21:13.610Z",
+        "headings": [
+          "Ảnh bản đồ"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/pdf-maps?page=1&limit=10&sortBy=id&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:11.761Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:11.825Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/forest-classification",
+        "name": "Phân loại rừng",
+        "actualPath": "/forest-classification",
+        "checkedAt": "2026-10-09T08:21:25.782Z",
+        "headings": [
+          "Phân loại lớp phủ rừng"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/forest-classification/latest?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.576Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:23.690Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/forest-classification/history?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.577Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:23.649Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/forest-classification/snapshots/33/districts?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.773Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:23.825Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/235.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.795Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:23.949Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/234.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.796Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:23.952Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/410/235.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.796Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:23.948Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/410/234.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.797Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:23.952Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/408/235.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.887Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:24.009Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/408/234.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.887Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:24.010Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/117.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.998Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:24.121Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/117.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.998Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:24.122Z"
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=11975542.095495135,1565430.3392804079,12053813.612459153,1643701.85624443",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.999Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:25.480Z"
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=11975542.095495135,1643701.85624443,12053813.612459153,1721973.373208452",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:23.999Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:25.528Z"
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=12053813.612459153,1565430.3392804079,12132085.129423175,1643701.85624443",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:24.000Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:25.244Z"
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=12053813.612459153,1643701.85624443,12132085.129423175,1721973.373208452",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:24.000Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:25.235Z"
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=11897270.578531113,1565430.3392804079,11975542.095495135,1643701.85624443",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:24.001Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:25.245Z"
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=11897270.578531113,1643701.85624443,11975542.095495135,1721973.373208452",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:24.001Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:25.308Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/58.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:25.239Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:25.360Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/6/51/29.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:25.485Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:25.607Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/fire-risk",
+        "name": "Cảnh báo cháy rừng",
+        "actualPath": "/fire-risk",
+        "checkedAt": "2026-10-09T08:21:27.987Z",
+        "headings": [
+          "Cảnh báo cháy rừng"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/latest?minRiskLevel=1&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.157Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:26.333Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/map?minRiskLevel=1&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.158Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:26.333Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/history?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.159Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:26.251Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/235.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.189Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:26.308Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/234.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.189Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:26.309Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/236.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.190Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:26.309Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/233.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.191Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:26.316Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/117.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.329Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:26.449Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/118.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.330Z",
+            "status": "ERROR_NETWORK",
+            "error": "TypeError: Failed to fetch",
+            "finishedAt": "2026-10-09T08:21:26.450Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/116.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.330Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:26.578Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/snapshots/77/districts?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.389Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:26.484Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/58.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.598Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:26.674Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/59.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:26.599Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:26.662Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/weather",
+        "name": "Thời tiết",
+        "actualPath": "/weather",
+        "checkedAt": "2026-10-09T08:21:30.191Z",
+        "headings": [
+          "Thời tiết"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/weather/layers?type=temp&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:28.344Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:28.380Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/news-comments",
+        "name": "Bình luận",
+        "actualPath": "/news-comments",
+        "checkedAt": "2026-10-09T08:21:34.608Z",
+        "headings": [
+          "Bình luận tin tức"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/comments?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:32.755Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:32.821Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users/4?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:32.842Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:32.873Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/documents",
+        "name": "Báo cáo và văn bản",
+        "actualPath": "/documents",
+        "checkedAt": "2026-10-09T08:21:36.821Z",
+        "headings": [
+          "Báo cáo và văn bản"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/documents?page=1&limit=10&sortBy=created_at&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:21:34.968Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:21:35.058Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/news",
+        "name": "Tin tức",
+        "actualPath": "/news",
+        "checkedAt": "2026-10-09T08:22:23.974Z",
+        "headings": [
+          "Tin tức"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/notifications?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:22.456Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:22.525Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/notifications/unread-count?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:22.457Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:22.525Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/news?page=1&limit=10&sortBy=created_at&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:22.462Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:22.525Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/feedbacks",
+        "name": "Phản ánh hiện trường",
+        "actualPath": "/feedbacks",
+        "checkedAt": "2026-10-09T08:22:26.178Z",
+        "headings": [
+          "Phản ánh hiện trường"
+        ],
+        "tabs": [
+          "Bảng",
+          "Bản đồ"
+        ],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/feedback?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:24.330Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:24.410Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users/7?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:24.470Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:24.518Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users/3?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:24.476Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:24.518Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/field-measurements",
+        "name": "Phiên đo thực địa",
+        "actualPath": "/field-measurements",
+        "checkedAt": "2026-10-09T08:22:28.636Z",
+        "headings": [
+          "Đo đạc thực địa"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/stats/administrative-units?level=district&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:26.785Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:26.843Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/field-measurements?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:26.786Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:26.843Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/monitored-areas",
+        "name": "Khu vực theo dõi",
+        "actualPath": "/monitored-areas",
+        "checkedAt": "2026-10-09T08:22:30.839Z",
+        "headings": [
+          "Khu vực theo dõi"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/monitored-areas?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:28.989Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:29.033Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/notifications/send",
+        "name": "Gửi thông báo",
+        "actualPath": "/notifications/send",
+        "checkedAt": "2026-10-09T08:22:33.043Z",
+        "headings": [
+          "Gửi thông báo"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": []
+      },
+      {
+        "role": "system_admin",
+        "path": "/users",
+        "name": "Người dùng",
+        "actualPath": "/users",
+        "checkedAt": "2026-10-09T08:22:35.248Z",
+        "headings": [
+          "Người dùng"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users?page=1&limit=10&sortBy=id&sortOrder=ASC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:33.399Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:33.460Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/auth/me?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:22:33.400Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:22:33.459Z"
+          }
+        ]
+      },
+      {
+        "role": "system_admin",
+        "path": "/feedbacks#map",
+        "name": "Phản ánh · Bản đồ",
+        "checkedAt": "2026-10-09T08:23:40.277Z",
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/feedback/map?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.369Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.428Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/117.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.418Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.549Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/117.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.418Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.549Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/118.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.419Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.602Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/118.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.419Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.549Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/116.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.420Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.429Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/116.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.420Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.546Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/119.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.727Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.786Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/119.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.727Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.786Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/58.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.789Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.794Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/59.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.790Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.794Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/57.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:23:31.801Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:23:31.892Z"
+          }
+        ],
+        "selected": "Bản đồ"
+      },
+      {
+        "role": "system_admin",
+        "path": "https://apikontum.tourismpj.pro.vn/uploads/HDSD_KONTUM_ADMIN.pdf",
+        "name": "Tài liệu hệ thống",
+        "checkedAt": "2026-10-09T08:23:58.520Z",
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/uploads/HDSD_KONTUM_ADMIN.pdf",
+            "method": "GET",
+            "status": 200
+          }
+        ],
+        "note": "Kiểm tra URL tài liệu bằng GET; không thao tác nghiệp vụ"
+      }
+    ]
+  },
+  "ubnd_tinh": {
+    "account": "ubnd@kontum.gov.vn",
+    "rows": [
+      {
+        "role": "ubnd_tinh",
+        "path": "/dashboard",
+        "name": "Tổng quan",
+        "actualPath": "/dashboard",
+        "checkedAt": "2026-10-09T08:25:03.770Z",
+        "headings": [
+          "Bảng điều khiển"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/stats/dashboard?force=false&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:01.622Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:01.652Z"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/map-layers",
+        "name": "Quản lý lớp dữ liệu",
+        "actualPath": "/map-layers",
+        "checkedAt": "2026-10-09T08:25:06.228Z",
+        "headings": [
+          "Quản lý lớp dữ liệu"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/map/layers?page=1&limit=10&sortBy=created_at&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:04.093Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:04.161Z"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/layer-series",
+        "name": "Ảnh theo thời gian",
+        "actualPath": "/layer-series",
+        "checkedAt": "2026-10-09T08:25:08.432Z",
+        "headings": [
+          "Lớp ảnh theo thời gian"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/map/layer-groups?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:06.278Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:06.307Z"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/map-apis",
+        "name": "API bản đồ",
+        "actualPath": "/map-apis",
+        "checkedAt": "2026-10-09T08:25:10.635Z",
+        "headings": [
+          "Khóa API bản đồ"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/map-apis?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:08.494Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:08.545Z"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/map-images",
+        "name": "Ảnh bản đồ",
+        "actualPath": "/map-images",
+        "checkedAt": "2026-10-09T08:25:12.840Z",
+        "headings": [
+          "Ảnh bản đồ"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/pdf-maps?page=1&limit=10&sortBy=id&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:10.690Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:10.747Z"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/feedbacks",
+        "name": "Phản ánh hiện trường",
+        "actualPath": "/feedbacks",
+        "checkedAt": "2026-10-09T08:25:55.299Z",
+        "headings": [
+          "Phản ánh hiện trường"
+        ],
+        "tabs": [
+          "Bảng",
+          "Bản đồ"
+        ],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/notifications?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:53.162Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:53.285Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/notifications/unread-count?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:53.163Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:53.286Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/feedback?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:53.170Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:53.286Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users/7?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:53.352Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:53.393Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users/3?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:53.358Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:53.394Z"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/field-measurements",
+        "name": "Phiên đo thực địa",
+        "actualPath": "/field-measurements",
+        "checkedAt": "2026-10-09T08:25:57.757Z",
+        "headings": [
+          "Đo đạc thực địa"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/stats/administrative-units?level=district&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:55.610Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:55.675Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/field-measurements?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:55.611Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:55.675Z"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/monitored-areas",
+        "name": "Khu vực theo dõi",
+        "actualPath": "/monitored-areas",
+        "checkedAt": "2026-10-09T08:25:59.961Z",
+        "headings": [
+          "Khu vực theo dõi"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/monitored-areas?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:57.808Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:57.856Z"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/users",
+        "name": "Người dùng",
+        "actualPath": "/users",
+        "checkedAt": "2026-10-09T08:26:02.165Z",
+        "headings": [
+          "Người dùng"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users?page=1&limit=10&sortBy=id&sortOrder=ASC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:26:00.018Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:26:00.092Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/auth/me?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:26:00.019Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:26:00.091Z"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/forest-classification",
+        "name": "Phân loại rừng",
+        "actualPath": "/forest-classification",
+        "checkedAt": "2026-10-09T08:25:26.830Z",
+        "headings": [
+          "Phân loại lớp phủ rừng"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/forest-classification/latest?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:24.690Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:24.732Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/forest-classification/snapshots/33/districts?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:24.770Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:24.803Z"
+          }
+        ],
+        "otherRequests": [
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "geoserver.humgsoftware.pro.vn",
+            "status": 200
+          },
+          {
+            "host": "geoserver.humgsoftware.pro.vn",
+            "status": 200
+          },
+          {
+            "host": "geoserver.humgsoftware.pro.vn",
+            "status": 200
+          },
+          {
+            "host": "geoserver.humgsoftware.pro.vn",
+            "status": 200
+          },
+          {
+            "host": "geoserver.humgsoftware.pro.vn",
+            "status": 200
+          },
+          {
+            "host": "geoserver.humgsoftware.pro.vn",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/fire-risk",
+        "name": "Cảnh báo cháy rừng",
+        "actualPath": "/fire-risk",
+        "checkedAt": "2026-10-09T08:25:29.034Z",
+        "headings": [
+          "Cảnh báo cháy rừng"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/latest?minRiskLevel=1&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:26.895Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:27.009Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/map?minRiskLevel=1&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:26.896Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:27.007Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/snapshots/77/districts?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:27.066Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:27.146Z"
+          }
+        ],
+        "otherRequests": [
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          },
+          {
+            "host": "tile.openstreetmap.org",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/weather",
+        "name": "Thời tiết",
+        "actualPath": "/weather",
+        "checkedAt": "2026-10-09T08:25:31.238Z",
+        "headings": [
+          "Thời tiết"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/weather/layers?type=temp&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:29.089Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:29.121Z"
+          }
+        ],
+        "otherRequests": []
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/news",
+        "name": "Tin tức",
+        "actualPath": "/news",
+        "checkedAt": "2026-10-09T08:25:33.697Z",
+        "headings": [
+          "Tin tức"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/news?page=1&limit=10&sortBy=created_at&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:31.545Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:31.605Z"
+          }
+        ],
+        "otherRequests": []
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/news-comments",
+        "name": "Bình luận",
+        "actualPath": "/news-comments",
+        "checkedAt": "2026-10-09T08:25:35.901Z",
+        "headings": [
+          "Bình luận tin tức"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/comments?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:33.751Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:33.803Z"
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users/4?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:33.821Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:33.846Z"
+          }
+        ],
+        "otherRequests": []
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/documents",
+        "name": "Báo cáo và văn bản",
+        "actualPath": "/documents",
+        "checkedAt": "2026-10-09T08:25:38.104Z",
+        "headings": [
+          "Báo cáo và văn bản"
+        ],
+        "tabs": [],
+        "alerts": [],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/documents?page=1&limit=10&sortBy=created_at&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:25:35.958Z",
+            "status": 200,
+            "finishedAt": "2026-10-09T08:25:36.030Z"
+          }
+        ],
+        "otherRequests": []
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/map-layers/import-geojson",
+        "name": "Nhập tệp GIS",
+        "outcome": "Ẩn đúng theo quyền API",
+        "requests": [],
+        "note": "Đã quan sát menu/permission tại lượt 15:25–15:26; không phát sinh request nghiệp vụ."
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/notifications/send",
+        "name": "Gửi thông báo",
+        "outcome": "Ẩn đúng theo quyền API",
+        "requests": [],
+        "note": "Đã quan sát menu/permission tại lượt 15:25–15:26; không phát sinh request nghiệp vụ."
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "/feedbacks#map",
+        "name": "Phản ánh · Bản đồ",
+        "checkedAt": "2026-10-09T08:38:18.370Z",
+        "selected": "Bản đồ",
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/feedback/map?lang=vi",
+            "status": 200,
+            "startedAt": "2026-10-09T08:38:04.735Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/117.png",
+            "method": "GET",
+            "status": "ERROR_NETWORK",
+            "networkStatus": "net::ERR_CONNECTION_RESET",
+            "reqid": 165,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở",
+            "error": "net::ERR_CONNECTION_RESET"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/117.png",
+            "method": "GET",
+            "status": "ERROR_NETWORK",
+            "networkStatus": "net::ERR_CONNECTION_RESET",
+            "reqid": 166,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở",
+            "error": "net::ERR_CONNECTION_RESET"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/118.png",
+            "method": "GET",
+            "status": "ERROR_NETWORK",
+            "networkStatus": "net::ERR_CONNECTION_RESET",
+            "reqid": 167,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở",
+            "error": "net::ERR_CONNECTION_RESET"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/118.png",
+            "method": "GET",
+            "status": "ERROR_NETWORK",
+            "networkStatus": "net::ERR_CONNECTION_RESET",
+            "reqid": 168,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở",
+            "error": "net::ERR_CONNECTION_RESET"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/116.png",
+            "method": "GET",
+            "status": "ERROR_NETWORK",
+            "networkStatus": "net::ERR_CONNECTION_RESET",
+            "reqid": 169,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở",
+            "error": "net::ERR_CONNECTION_RESET"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/116.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 170,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/58.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 171,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/59.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 172,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/57.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 173,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          }
+        ]
+      },
+      {
+        "role": "ubnd_tinh",
+        "path": "https://apikontum.tourismpj.pro.vn/uploads/HDSD_KONTUM_ADMIN.pdf",
+        "name": "Tài liệu hệ thống",
+        "checkedAt": "2026-10-09T08:38:18.395Z",
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/uploads/HDSD_KONTUM_ADMIN.pdf",
+            "status": 200
+          }
+        ],
+        "note": "GET URL tài liệu, không click link mở tab"
+      }
+    ]
+  },
+  "so_nnmt": {
+    "account": "sonn@kontum.gov.vn",
+    "rows": [
+      {
+        "role": "so_nnmt",
+        "path": "/dashboard",
+        "name": "Tổng quan",
+        "actualPath": "/dashboard",
+        "checkedAt": "2026-10-09T08:31:18.127Z",
+        "headings": [
+          "Bảng điều khiển"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/stats/dashboard?force=false&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:16.191Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/map-layers",
+        "name": "Quản lý lớp dữ liệu",
+        "actualPath": "/map-layers",
+        "checkedAt": "2026-10-09T08:31:20.685Z",
+        "headings": [
+          "Quản lý lớp dữ liệu"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/map/layers?page=1&limit=10&sortBy=created_at&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:18.778Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/map-layers/import-geojson",
+        "name": "Nhập tệp GIS",
+        "actualPath": "/map-layers/import-geojson",
+        "checkedAt": "2026-10-09T08:31:22.989Z",
+        "headings": [
+          "Nhập GeoJSON"
+        ],
+        "requests": []
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/layer-series",
+        "name": "Ảnh theo thời gian",
+        "actualPath": "/layer-series",
+        "checkedAt": "2026-10-09T08:31:25.290Z",
+        "headings": [
+          "Lớp ảnh theo thời gian"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/map/layer-groups?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:23.345Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/map-apis",
+        "name": "API bản đồ",
+        "actualPath": "/map-apis",
+        "checkedAt": "2026-10-09T08:31:27.593Z",
+        "headings": [
+          "Khóa API bản đồ"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/map-apis?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:25.640Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/map-images",
+        "name": "Ảnh bản đồ",
+        "actualPath": "/map-images",
+        "checkedAt": "2026-10-09T08:31:29.896Z",
+        "headings": [
+          "Ảnh bản đồ"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/notifications?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:27.931Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/notifications/unread-count?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:27.933Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/pdf-maps?page=1&limit=10&sortBy=id&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:27.938Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/forest-classification",
+        "name": "Phân loại rừng",
+        "actualPath": "/forest-classification",
+        "checkedAt": "2026-10-09T08:31:39.881Z",
+        "headings": [
+          "Phân loại lớp phủ rừng"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/forest-classification/latest?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:37.942Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/forest-classification/history?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:37.943Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/forest-classification/snapshots/33/districts?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.100Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/235.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.121Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/234.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.122Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/410/235.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.122Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/410/234.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.122Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/408/235.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.246Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/408/234.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.246Z",
+            "status": 200
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=11975542.095495135,1565430.3392804079,12053813.612459153,1643701.85624443",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.247Z",
+            "status": 200
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=11975542.095495135,1643701.85624443,12053813.612459153,1721973.373208452",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.247Z",
+            "status": 200
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=12053813.612459153,1565430.3392804079,12132085.129423175,1643701.85624443",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.248Z",
+            "status": 200
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=12053813.612459153,1643701.85624443,12132085.129423175,1721973.373208452",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.248Z",
+            "status": 200
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=11897270.578531113,1565430.3392804079,11975542.095495135,1643701.85624443",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.248Z",
+            "status": 200
+          },
+          {
+            "url": "https://geoserver.humgsoftware.pro.vn/geoserver/kontum/wms?service=WMS&version=1.3.0&request=GetMap&layers=kontum%3Aforest_class_610_202609_s33%2Ckontum%3Aforest_class_615_202609_s33%2Ckontum%3Aforest_class_612_202609_s33%2Ckontum%3Aforest_class_618_202609_s33%2Ckontum%3Aforest_class_613_202609_s33%2Ckontum%3Aforest_class_614_202609_s33%2Ckontum%3Aforest_class_611_202609_s33%2Ckontum%3Aforest_class_616_202609_s33%2Ckontum%3Aforest_class_617_202609_s33%2Ckontum%3Aforest_class_608_202609_s33&styles=&width=256&height=256&crs=EPSG%3A3857&format=image%2Fpng&transparent=true&tiled=true&bbox=11897270.578531113,1643701.85624443,11975542.095495135,1721973.373208452",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:38.249Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/fire-risk",
+        "name": "Cảnh báo cháy rừng",
+        "actualPath": "/fire-risk",
+        "checkedAt": "2026-10-09T08:31:42.184Z",
+        "headings": [
+          "Cảnh báo cháy rừng"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/latest?minRiskLevel=1&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.238Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/map?minRiskLevel=1&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.239Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/history?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.240Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/235.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.273Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/234.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.274Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/236.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.274Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/9/409/233.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.275Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/fire-risk/snapshots/77/districts?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.422Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/117.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.427Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/118.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.427Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/116.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.428Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/117.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.458Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/118.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.458Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/116.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.459Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/58.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.529Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/59.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.530Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/57.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.530Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/6/51/29.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.575Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/6/51/28.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.576Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/6/50/29.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.580Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/6/50/28.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.581Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/6/51/30.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.595Z",
+            "status": 200
+          },
+          {
+            "url": "https://tile.openstreetmap.org/6/50/30.png",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:40.596Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/weather",
+        "name": "Thời tiết",
+        "actualPath": "/weather",
+        "checkedAt": "2026-10-09T08:31:44.487Z",
+        "headings": [
+          "Thời tiết"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/weather/layers?type=temp&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:42.533Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/news",
+        "name": "Tin tức",
+        "actualPath": "/news",
+        "checkedAt": "2026-10-09T08:31:47.045Z",
+        "headings": [
+          "Tin tức"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/news?page=1&limit=10&sortBy=created_at&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:45.088Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/news-comments",
+        "name": "Bình luận",
+        "actualPath": "/news-comments",
+        "checkedAt": "2026-10-09T08:31:49.350Z",
+        "headings": [
+          "Bình luận tin tức"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/comments?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:47.393Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users/4?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:47.458Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/documents",
+        "name": "Báo cáo và văn bản",
+        "actualPath": "/documents",
+        "checkedAt": "2026-10-09T08:31:51.653Z",
+        "headings": [
+          "Báo cáo và văn bản"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/documents?page=1&limit=10&sortBy=created_at&sortOrder=DESC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:49.695Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/feedbacks",
+        "name": "Phản ánh hiện trường",
+        "actualPath": "/feedbacks",
+        "checkedAt": "2026-10-09T08:32:01.935Z",
+        "headings": [
+          "Phản ánh hiện trường"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/feedback?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:31:59.991Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users/7?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:32:00.128Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users/3?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:32:00.135Z",
+            "status": 403,
+            "error": "{\"success\":false,\"message\":\"Bạn không có quyền manage trên users\",\"errors\":[]}"
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/field-measurements",
+        "name": "Phiên đo thực địa",
+        "actualPath": "/field-measurements",
+        "checkedAt": "2026-10-09T08:32:04.486Z",
+        "headings": [
+          "Đo đạc thực địa"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/stats/administrative-units?level=district&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:32:02.536Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/field-measurements?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:32:02.537Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/monitored-areas",
+        "name": "Khu vực theo dõi",
+        "actualPath": "/monitored-areas",
+        "checkedAt": "2026-10-09T08:32:06.790Z",
+        "headings": [
+          "Khu vực theo dõi"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/monitored-areas?page=1&limit=10&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:32:04.836Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/notifications/send",
+        "name": "Gửi thông báo",
+        "actualPath": "/notifications/send",
+        "checkedAt": "2026-10-09T08:32:09.094Z",
+        "headings": [
+          "Gửi thông báo"
+        ],
+        "requests": []
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/users",
+        "name": "Người dùng",
+        "actualPath": "/users",
+        "checkedAt": "2026-10-09T08:32:11.402Z",
+        "headings": [
+          "Người dùng"
+        ],
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/users?page=1&limit=10&sortBy=id&sortOrder=ASC&lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:32:09.444Z",
+            "status": 200
+          },
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/auth/me?lang=vi",
+            "method": "GET",
+            "startedAt": "2026-10-09T08:32:09.445Z",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "/feedbacks#map",
+        "name": "Phản ánh · Bản đồ",
+        "checkedAt": "2026-10-09T08:39:42.576Z",
+        "selected": "Bản đồ",
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/api/v1/admin/feedback/map?lang=vi",
+            "status": 200,
+            "startedAt": "2026-10-09T08:39:30.872Z"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/117.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 161,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/117.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 162,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/118.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 163,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/118.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 164,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/116.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 165,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/116.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 166,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/204/119.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 167,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/8/205/119.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 168,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/58.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 169,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/59.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 170,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          },
+          {
+            "url": "https://tile.openstreetmap.org/7/102/57.png",
+            "method": "GET",
+            "status": 200,
+            "networkStatus": "200",
+            "reqid": 171,
+            "evidence": "Direct Chrome Network output, 15:38 UBND / 15:39 Sở"
+          }
+        ]
+      },
+      {
+        "role": "so_nnmt",
+        "path": "https://apikontum.tourismpj.pro.vn/uploads/HDSD_KONTUM_ADMIN.pdf",
+        "name": "Tài liệu hệ thống",
+        "checkedAt": "2026-10-09T08:39:42.599Z",
+        "requests": [
+          {
+            "url": "https://apikontum.tourismpj.pro.vn/uploads/HDSD_KONTUM_ADMIN.pdf",
+            "status": 200
+          }
+        ],
+        "note": "GET URL tài liệu; không click link mở tab"
+      }
+    ]
+  },
+  "citizen": {
+    "account": "citizen@kontum.gov.vn",
+    "checkedAt": "2026-10-09T08:35:38+00:00",
+    "outcome": "Đăng nhập hợp lệ nhưng không được vào Admin; ở /login, không có sidebar.",
+    "message": "Tài khoản không có quyền quản trị.",
+    "requests": [
+      {
+        "url": "https://apikontum.tourismpj.pro.vn/api/v1/auth/login?lang=vi",
+        "method": "POST",
+        "status": 200,
+        "reqid": 106
+      },
+      {
+        "url": "https://apikontum.tourismpj.pro.vn/api/v1/auth/me?lang=vi",
+        "method": "GET",
+        "status": 200,
+        "reqid": 107
+      }
+    ]
+  }
+}
