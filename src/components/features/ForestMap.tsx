@@ -58,6 +58,12 @@ export default function ForestMap({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
+      locale: {
+        'Map.Title': 'Bản đồ',
+        'NavigationControl.ZoomIn': 'Phóng to',
+        'NavigationControl.ZoomOut': 'Thu nhỏ',
+        'NavigationControl.ResetBearing': 'Kéo để xoay bản đồ; nhấn để hướng về phía bắc',
+      },
       style: {
         version: 8,
         sources: {
@@ -82,7 +88,6 @@ export default function ForestMap({
       map.remove()
       mapRef.current = null
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Raster lifecycle theo URL. Đổi URL → xoá source cũ + add lại.
@@ -157,7 +162,7 @@ export default function ForestMap({
       <div ref={containerRef} className="h-full w-full overflow-hidden rounded-md border" />
       {rasterStatus === 'idle' && (
         <div className="pointer-events-none absolute inset-x-0 top-2 mx-auto w-fit rounded-md bg-amber-50/95 px-3 py-1 text-xs text-amber-800 shadow">
-          Chưa có dữ liệu bản đồ khả dụng.
+          Chưa có dữ liệu để hiển thị bản đồ.
         </div>
       )}
       {rasterStatus === 'loading' && (

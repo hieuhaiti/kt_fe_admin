@@ -38,9 +38,9 @@ export default function PublicSlugTester() {
   async function handleCopyData() {
     try {
       await navigator.clipboard.writeText(JSON.stringify(json, null, 2))
-      toast.success('Đã copy dữ liệu')
+      toast.success('Đã sao chép dữ liệu')
     } catch {
-      toast.error('Không thể copy dữ liệu')
+      toast.error('Không thể sao chép dữ liệu')
     }
   }
 
@@ -51,7 +51,7 @@ export default function PublicSlugTester() {
     setMeta({})
 
     if (!apiKey.trim()) {
-      setError('Vui lòng nhập API key')
+      setError('Vui lòng nhập khóa API')
       return
     }
 
@@ -67,7 +67,7 @@ export default function PublicSlugTester() {
       setJson(response.data ?? response)
       setMeta({ fetchedAt: new Date().toISOString() })
     } catch (err) {
-      setError(getMappedErrorMessage(err, 'Không gọi được API dữ liệu bản đồ'))
+      setError(getMappedErrorMessage(err, 'Không thể truy cập API bản đồ'))
     } finally {
       setLoading(false)
     }
@@ -80,7 +80,7 @@ export default function PublicSlugTester() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
               <ShieldCheck className="h-5 w-5" />
-              Kiểm tra Map Data API
+              Kiểm tra API bản đồ
             </CardTitle>
             <Badge variant="secondary">GET</Badge>
           </div>
@@ -94,7 +94,7 @@ export default function PublicSlugTester() {
             <div className="space-y-2">
               <Label htmlFor="public-apikey" className="inline-flex items-center gap-2">
                 <KeyRound className="h-4 w-4" />
-                API key
+                Khóa API
               </Label>
               <Input
                 id="public-apikey"
@@ -105,20 +105,23 @@ export default function PublicSlugTester() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bbox">Bbox truy vấn features</Label>
+              <Label htmlFor="bbox">Vùng truy vấn (bbox)</Label>
               <Input
                 id="bbox"
                 value={bbox}
                 onChange={(event) => setBbox(event.target.value)}
-                placeholder="107.3,13.7,108.3,15.3"
+                placeholder="107.3375,13.9194,108.5417,15.4542"
               />
               <p className="text-muted-foreground text-xs">
-                Bỏ trống bbox để chỉ kiểm tra metadata của lớp dữ liệu.
+                Nếu bạn cần xem dữ liệu dạng GeoJSON, xin vui lòng nhập bbox (107.3375,13.9194,108.5417,15.4542).
+              </p>
+              <p className="text-muted-foreground text-xs">
+                Bỏ trống để chỉ xem thông tin lớp dữ liệu.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="limit">Giới hạn features</Label>
+              <Label htmlFor="limit">Số đối tượng tối đa</Label>
               <Input
                 id="limit"
                 type="number"
@@ -130,14 +133,14 @@ export default function PublicSlugTester() {
             </div>
 
             <div className="bg-background/70 rounded-lg border p-3">
-              <p className="text-muted-foreground text-xs font-medium">Endpoint sẽ gọi</p>
+              <p className="text-muted-foreground text-xs font-medium">Địa chỉ API</p>
               <p className="text-foreground mt-1 font-mono text-xs break-all">{endpointPreview}</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={loading} className="min-w-[140px]">
                 <Play className="mr-2 h-4 w-4" />
-                {loading ? 'Đang gọi...' : 'Kiểm tra API'}
+                {loading ? 'Đang kiểm tra...' : 'Kiểm tra API'}
               </Button>
               <Button type="button" variant="outline" onClick={resetAll}>
                 <RotateCcw className="mr-2 h-4 w-4" />
@@ -166,7 +169,7 @@ export default function PublicSlugTester() {
           </div>
           <CardDescription className="inline-flex items-center gap-2">
             <Link2 className="h-4 w-4" />
-            Dữ liệu lấy từ endpoint `/map-data/*` bằng API key đã cấp
+            Kết quả từ API bản đồ với khóa đã nhập.
           </CardDescription>
         </CardHeader>
 
@@ -179,7 +182,7 @@ export default function PublicSlugTester() {
 
           <div className="overflow-hidden rounded-md border bg-slate-950">
             <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2 text-xs text-slate-300">
-              <span>JSON response</span>
+              <span>Kết quả JSON</span>
               <Button
                 type="button"
                 variant="outline"
@@ -188,7 +191,7 @@ export default function PublicSlugTester() {
                 className="h-7 border-slate-700 bg-slate-900 px-2 text-slate-200 hover:bg-slate-800 hover:text-white"
               >
                 <Copy className="mr-1 h-3.5 w-3.5" />
-                Copy
+                Sao chép
               </Button>
             </div>
             <pre className="max-h-[500px] overflow-auto p-4 text-xs text-slate-100">

@@ -92,7 +92,8 @@ export default function UserDetailDialog({ open, onOpenChange, userId }: UserDet
   const addressDetail = user?.addressDetail ?? user?.address_detail ?? null
   const isActive = user?.isActive ?? user?.is_active ?? null
   const isEmailVerified = user?.isEmailVerified ?? user?.email_verified ?? false
-  const hasPassword = user?.hasPassword ?? !user?.must_change_password
+  const hasPassword = user?.hasPassword ?? user?.has_password ?? null
+  const mustChangePassword = user?.must_change_password ?? null
   const lastLoginAt = user?.lastLoginAt ?? user?.last_login_at ?? user?.last_login ?? null
   const createdAt = user?.createdAt ?? user?.created_at ?? null
   const updatedAt = user?.updatedAt ?? user?.updated_at ?? null
@@ -101,7 +102,7 @@ export default function UserDetailDialog({ open, onOpenChange, userId }: UserDet
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogTitle>Chi tiết người dùng</DialogTitle>
-        <DialogDescription>Thông tin chi tiết người dùng đã chọn</DialogDescription>
+        <DialogDescription>Thông tin tài khoản và quyền truy cập.</DialogDescription>
 
         {dbQuery.isLoading ? (
           <div className="text-muted-foreground py-8 text-center">Đang tải dữ liệu...</div>
@@ -123,14 +124,14 @@ export default function UserDetailDialog({ open, onOpenChange, userId }: UserDet
             {user.email_verified_at && (
               <DetailRow label="Xác thực lúc">{formatDateTime(user.email_verified_at)}</DetailRow>
             )}
-            <DetailRow label="Họ tên">{fullName || '-'}</DetailRow>
-            <DetailRow label="Điện thoại">{user.phone || '-'}</DetailRow>
+            <DetailRow label="Họ và tên">{fullName || '-'}</DetailRow>
+            <DetailRow label="Số điện thoại">{user.phone || '-'}</DetailRow>
             <DetailRow label="Địa chỉ">{addressDetail || '-'}</DetailRow>
-            <DetailRow label="Avatar">
+            <DetailRow label="Ảnh đại diện">
               {avatarUrl ? (
                 <img
                   src={parseLink(avatarUrl)}
-                  alt={fullName || 'Avatar'}
+                  alt={fullName || 'Ảnh đại diện'}
                   className="h-20 w-20 rounded-full border object-cover"
                 />
               ) : (
@@ -144,21 +145,32 @@ export default function UserDetailDialog({ open, onOpenChange, userId }: UserDet
                 <PermissionList permissions={user.role_permissions} />
               </div>
             )}
-            <DetailRow label="Kích hoạt">
+            <DetailRow label="Trạng thái hoạt động">
               {isActive ? (
-                <Badge variant="default">Kích hoạt</Badge>
+                <Badge variant="default">Đang hoạt động</Badge>
               ) : (
-                <Badge variant="secondary">Không kích hoạt</Badge>
+                <Badge variant="secondary">Đã vô hiệu hóa</Badge>
               )}
             </DetailRow>
-            <DetailRow label="Nhà cung cấp">{user.provider || '-'}</DetailRow>
+            <DetailRow label="Cách đăng nhập">{user.provider || '-'}</DetailRow>
             <DetailRow label="Có mật khẩu">
-              {hasPassword ? (
+              {hasPassword === true ? (
                 <Badge variant="default">Có</Badge>
+              ) : hasPassword === false ? (
+                <Badge variant="secondary">Chưa đặt mật khẩu</Badge>
               ) : (
-                <Badge variant="secondary">Cần đổi mật khẩu</Badge>
+                <span className="text-muted-foreground">-</span>
               )}
             </DetailRow>
+            {mustChangePassword !== null && (
+              <DetailRow label="Yêu cầu đổi mật khẩu">
+                {mustChangePassword ? (
+                  <Badge variant="destructive">Cần đổi mật khẩu</Badge>
+                ) : (
+                  <Badge variant="outline">Bình thường</Badge>
+                )}
+              </DetailRow>
+            )}
             {user.password_changed_at && (
               <DetailRow label="Đổi mật khẩu lúc">{formatDateTime(user.password_changed_at)}</DetailRow>
             )}

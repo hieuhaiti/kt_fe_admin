@@ -84,6 +84,7 @@ import LoadingInline from '@/components/common/LoadingInline'
 import { PaginationCustom } from '@/components/features/PaginationCustom'
 import ForestGroundTruthCard from './ForestGroundTruthCard'
 import { hasPerm } from '@/lib/permissions'
+import { QueryErrorNotice } from '@/components/common/QueryErrorNotice'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
 /**
@@ -453,7 +454,7 @@ function StatusBadge({ status }: { status?: string }) {
       className: 'bg-slate-100 text-slate-800 border-slate-300',
     },
     cancelled: { label: 'Đã hủy', className: 'bg-slate-100 text-slate-800 border-slate-300' },
-    failed: { label: 'Chưa hoàn tất', className: 'bg-red-100 text-red-800 border-red-300' },
+    failed: { label: 'Không thành công', className: 'bg-red-100 text-red-800 border-red-300' },
   }
   const meta = map[s] || {
     label: status ? 'Chưa xác định' : '—',
@@ -499,8 +500,10 @@ export default function ForestClassificationPage() {
   const latestQuery = useApiQuery(['forest-class-latest'], () =>
     forestClassificationService.getLatest()
   )
-  const historyQuery = useApiQuery(['forest-class-history', page], () =>
-    forestClassificationService.getHistory({ page, limit: 10 })
+  const historyQuery = useApiQuery(
+    ['forest-class-history', user?.id, page],
+    () => forestClassificationService.getHistory({ page, limit: 10 }),
+    { enabled: canManage }
   )
   const comparisonPeriodsQuery = useApiQuery(
     ['forest-class-published-history'],
@@ -543,10 +546,10 @@ export default function ForestClassificationPage() {
     if (!activeStatus) return
     const timer = setInterval(() => {
       latestQuery.refetch()
-      historyQuery.refetch()
+      if (canManage) historyQuery.refetch()
     }, ANALYSIS_POLL_INTERVAL_MS)
     return () => clearInterval(timer)
-  }, [activeStatus, latestQuery, historyQuery])
+  }, [activeStatus, canManage, latestQuery, historyQuery])
 
   // Per-district export URLs (migration 040) — fetch khi snapshot completed.
   // Không fetch nếu đang computing — giảm noise, chờ snapshot done rồi mới có
@@ -695,7 +698,7 @@ export default function ForestClassificationPage() {
                   ? 'Bản xem trước đã hết hạn'
                   : temporaryTileStatus === 'invalid'
                     ? 'Liên kết bản xem trước không hợp lệ'
-                    : 'Chưa có dữ liệu bản đồ khả dụng'
+                    : 'Chưa có dữ liệu để hiển thị bản đồ'
   const legend = Object.entries(CLASS_META).map(([id, meta]) => ({
     classId: Number(id),
     name: meta.name,
@@ -719,7 +722,7 @@ export default function ForestClassificationPage() {
           const run = response?.data?.run
           const queueState = run?.processing?.queue
           if (run?.deduplicated) {
-            toast.info('Kỳ này đã có trong hàng chờ xử lý, hệ thống không tạo thêm lượt chạy.')
+            toast.info('Kỳ này đã có trong hàng chờ, không cần gửi lại.')
           } else {
             toast.success(
               queueState?.status === 'queued' && queueState?.position
@@ -731,7 +734,7 @@ export default function ForestClassificationPage() {
           setPage(1)
           setTimeout(() => {
             latestQuery.refetch()
-            historyQuery.refetch()
+            if (canManage) historyQuery.refetch()
           }, 2000)
         },
         onError: (error) => {
@@ -807,6 +810,20 @@ export default function ForestClassificationPage() {
     }
   }
 
+  if (latestQuery.isError) {
+    return (
+      <div className="space-y-4 p-4 sm:p-6">
+        <h1 className="text-2xl font-bold">Phân loại lớp phủ rừng</h1>
+        <QueryErrorNotice
+          title="Kết quả phân loại rừng"
+          error={latestQuery.error}
+          onRetry={() => { void latestQuery.refetch() }}
+          isFetching={latestQuery.isFetching}
+        />
+      </div>
+    )
+  }
+
   return (
     // Layout admin (`mainLayout.tsx`) là `h-screen overflow-hidden` — mỗi
     // page tự tạo scroll container. `flex-1 overflow-y-auto` expand full
@@ -820,8 +837,7 @@ export default function ForestClassificationPage() {
             Phân loại lớp phủ rừng
           </h1>
           <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
-            Theo dõi 11 nhóm lớp phủ và diện tích rừng; kết quả được cập nhật mỗi tháng từ ảnh của
-            12 tháng gần nhất.
+            Theo dõi 11 lớp phủ và diện tích rừng. Cập nhật hằng tháng.
           </p>
           {snapshot && (
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
@@ -840,8 +856,7 @@ export default function ForestClassificationPage() {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs leading-relaxed">
-                    Kỳ dữ liệu mới nhất đã xử lý xong. Số liệu được tổng hợp từ ảnh của 12 tháng
-                    gần nhất, không phải dữ liệu thời gian thực.
+                    Kết quả mới nhất dùng ảnh của 12 tháng gần nhất, không phản ánh hiện trạng theo thời gian thực.
                   </TooltipContent>
                 </Tooltip>
               </span>
@@ -863,7 +878,7 @@ export default function ForestClassificationPage() {
                       ? 'Bản đồ sẵn sàng'
                       : temporaryTileStatus === 'expired'
                         ? 'Bản xem trước đã hết hạn'
-                        : 'Chưa có dữ liệu bản đồ khả dụng'}
+                        : 'Chưa có dữ liệu để hiển thị bản đồ'}
               </span>
             </div>
           )}
@@ -974,7 +989,7 @@ export default function ForestClassificationPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRefreshing}>Huỷ</AlertDialogCancel>
+            <AlertDialogCancel disabled={isRefreshing}>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={onConfirmRefresh} disabled={isRefreshing}>
               {isRefreshing
                 ? 'Đang cập nhật...'
@@ -1011,14 +1026,12 @@ export default function ForestClassificationPage() {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-xs font-normal leading-relaxed">
-                    Đối chiếu diện tích và cơ cấu 11 lớp phủ giữa hai kỳ đã công bố. Nên chọn cùng
-                    tháng giữa các năm để giảm khác biệt theo mùa.
+                    So sánh diện tích 11 lớp phủ giữa hai kỳ đã công bố. Chọn cùng tháng giữa các năm để giảm khác biệt theo mùa.
                   </TooltipContent>
                 </Tooltip>
               </h2>
               <p className="text-muted-foreground mt-1 text-xs">
-                Chọn kỳ cần xem và kỳ đối chiếu. Cùng tháng giữa hai năm thường dễ đánh giá hơn vì
-                ít bị ảnh hưởng bởi mùa.
+                Chọn kỳ cần xem và kỳ đối chiếu, ưu tiên cùng tháng giữa các năm.
               </p>
             </div>
             <Button
@@ -1234,7 +1247,7 @@ export default function ForestClassificationPage() {
                     />
                     {hasChange && topChange && (
                       <Stat
-                        label="Lớp biến động nhiều nhất"
+                        label="Nhóm có diện tích thay đổi lớn nhất"
                         hint={`So với kỳ ${formatPeriod(
                           comparison!.previousSnapshot.year,
                           comparison!.previousSnapshot.month
@@ -1335,62 +1348,71 @@ export default function ForestClassificationPage() {
       </Card>
 
       {/* ── History ──────────────────────────────────── */}
-      <Card>
-        <CardContent className="p-4 sm:p-6">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Lịch sử chạy phân loại</h2>
+      {canManage && historyQuery.isError && (
+        <QueryErrorNotice
+          title="Lịch sử chạy phân loại"
+          error={historyQuery.error}
+          onRetry={() => { void historyQuery.refetch() }}
+          isFetching={historyQuery.isFetching}
+        />
+      )}
+      {canManage && !historyQuery.isError && (
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Lịch sử chạy phân loại</h2>
+              </div>
             </div>
-          </div>
-          {/* History table — max-h giới hạn để không đẩy pagination xa khỏi
-              tầm nhìn khi expand nhiều row detail. Scroll cả 2 chiều. */}
-          <div className="max-h-[70vh] overflow-auto rounded-md border">
-            {/* Đếm số lần chạy trên mỗi kỳ để show "#n" khi cùng (year, month)
-                xuất hiện nhiều lần (migration 040 cho phép nhiều attempt/kỳ).
-                Không group vì cần thấy được mỗi attempt riêng biệt cho audit. */}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10" />
-                  <TableHead>Kỳ</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead className="text-right">Độ chính xác</TableHead>
-                  <TableHead className="text-right">Tổng ha</TableHead>
-                  <TableHead className="text-right">Rừng ha</TableHead>
-                  <TableHead>Cập nhật lúc</TableHead>
-                  <TableHead className="text-right">Tải theo huyện</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {history.map((h) => {
-                  const key = String(h.id)
-                  const isExpanded = expandedHistoryId === key
-                  const summary = h.province_summary || {}
-                  const hbc: Record<string, number> = summary.byClass || {}
-                  const hTotal = Number(summary.totalHa) || 0
-                  const hForest = FOREST_CLASS_IDS.reduce(
-                    (sum, id) => sum + (Number(hbc[String(id)]) || 0),
-                    0
-                  )
-                  const attempt = (h as ForestClassHistoryItem & { attempt?: number }).attempt
-                  // Show attempt badge chỉ khi >1 (attempt=1 là mặc định, không cần chú thích).
-                  const showAttempt = attempt != null && attempt > 1
-                  const canQuickDownload = ['completed', 'published'].includes(
-                    String(h.status || '').toLowerCase()
-                  )
-                  const rowDownloadProgress =
-                    quickDownloadProgress?.snapshotId === key ? quickDownloadProgress : null
-                  return (
-                    <Fragment key={key}>
-                      <TableRow
-                        className="hover:bg-muted/40 cursor-pointer"
-                        onClick={() => setExpandedHistoryId((cur) => (cur === key ? null : key))}
-                      >
-                        <TableCell>
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
+            {/* History table — max-h giới hạn để không đẩy pagination xa khỏi
+                tầm nhìn khi expand nhiều row detail. Scroll cả 2 chiều. */}
+            <div className="max-h-[70vh] overflow-auto rounded-md border">
+              {/* Đếm số lần chạy trên mỗi kỳ để show "#n" khi cùng (year, month)
+                  xuất hiện nhiều lần (migration 040 cho phép nhiều attempt/kỳ).
+                  Không group vì cần thấy được mỗi attempt riêng biệt cho audit. */}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10" />
+                    <TableHead>Kỳ</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead className="text-right">Độ chính xác</TableHead>
+                    <TableHead className="text-right">Tổng diện tích (ha)</TableHead>
+                    <TableHead className="text-right">Diện tích rừng (ha)</TableHead>
+                    <TableHead>Cập nhật lúc</TableHead>
+                    <TableHead className="text-right">Tải theo huyện</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {history.map((h) => {
+                    const key = String(h.id)
+                    const isExpanded = expandedHistoryId === key
+                    const summary = h.province_summary || {}
+                    const hbc: Record<string, number> = summary.byClass || {}
+                    const hTotal = Number(summary.totalHa) || 0
+                    const hForest = FOREST_CLASS_IDS.reduce(
+                      (sum, id) => sum + (Number(hbc[String(id)]) || 0),
+                      0
+                    )
+                    const attempt = (h as ForestClassHistoryItem & { attempt?: number }).attempt
+                    // Show attempt badge chỉ khi >1 (attempt=1 là mặc định, không cần chú thích).
+                    const showAttempt = attempt != null && attempt > 1
+                    const canQuickDownload = ['completed', 'published'].includes(
+                      String(h.status || '').toLowerCase()
+                    )
+                    const rowDownloadProgress =
+                      quickDownloadProgress?.snapshotId === key ? quickDownloadProgress : null
+                    return (
+                      <Fragment key={key}>
+                        <TableRow
+                          className="hover:bg-muted/40 cursor-pointer"
+                          onClick={() => setExpandedHistoryId((cur) => (cur === key ? null : key))}
+                        >
+                          <TableCell>
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
                           )}
                         </TableCell>
                         <TableCell>
@@ -1469,7 +1491,7 @@ export default function ForestClassificationPage() {
                 {!history.length && (
                   <TableRow>
                     <TableCell colSpan={8} className="text-muted-foreground text-center">
-                      Chưa có bản ghi lịch sử.
+                      {historyQuery.isLoading ? 'Đang tải lịch sử...' : 'Chưa có bản ghi lịch sử.'}
                     </TableCell>
                   </TableRow>
                 )}
@@ -1491,6 +1513,7 @@ export default function ForestClassificationPage() {
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   )
 }
@@ -1674,7 +1697,7 @@ function ComparisonCard({ comparison }: { comparison: ForestClassComparison }) {
           </p>
         </div>
         <div>
-          <p className="text-muted-foreground mb-1 text-xs">Lớp biến động nhiều nhất</p>
+          <p className="text-muted-foreground mb-1 text-xs">Nhóm có diện tích thay đổi lớn nhất</p>
           {topChanges.length > 0 ? (
             <div className="divide-y">
               {topChanges.map((item) => (
@@ -1843,10 +1866,10 @@ function DistrictAreaTable({
           <TableRow>
             <TableHead className="w-20 whitespace-nowrap">Mã huyện</TableHead>
             <TableHead>Huyện</TableHead>
-            <TableHead className="text-right">Tổng ha</TableHead>
-            <TableHead className="text-right">Rừng ha</TableHead>
-            <TableHead className="text-right">Rừng %</TableHead>
-            {comparison && <TableHead className="text-right">Δ rừng</TableHead>}
+            <TableHead className="text-right">Tổng diện tích (ha)</TableHead>
+            <TableHead className="text-right">Diện tích rừng (ha)</TableHead>
+            <TableHead className="text-right">Tỷ lệ rừng (%)</TableHead>
+            {comparison && <TableHead className="text-right">Thay đổi diện tích rừng</TableHead>}
             <TableHead>Lớp phủ chính</TableHead>
           </TableRow>
         </TableHeader>
@@ -2016,13 +2039,18 @@ function LayerManager({
             {rasterAvailable && (
               <input
                 type="range"
+                aria-label="Mức hiển thị lớp phân loại rừng"
+                aria-valuemin={0}
+                aria-valuemax={1}
+                aria-valuenow={heatOpacity}
+                aria-valuetext={`${Math.round(heatOpacity * 100)}%`}
                 min={0}
                 max={1}
                 step={0.05}
                 value={heatOpacity}
                 onChange={(e) => onHeatOpacityChange(Number(e.target.value))}
-                className="accent-primary mt-2 block w-full"
-                title={`Độ trong suốt: ${Math.round(heatOpacity * 100)}%`}
+                className="accent-primary mt-2 block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm cursor-pointer"
+                title={`Mức hiển thị: ${Math.round(heatOpacity * 100)}%`}
               />
             )}
           </div>
@@ -2033,10 +2061,10 @@ function LayerManager({
             <div className="border-warning/30 bg-warning/10 text-warning rounded-md border p-2 text-xs">
               <div className="flex items-center gap-1.5 font-semibold">
                 <Download size={14} />
-                <span>Tệp tải xuống chưa khả dụng</span>
+                <span>Tệp chưa sẵn sàng để tải xuống</span>
               </div>
               <p className="mt-1">
-                Không tải được danh sách huyện. Không có liên kết tải nào được hiển thị.
+                Không thể tải danh sách huyện và liên kết tải dữ liệu.
               </p>
             </div>
           ) : !isLoadingDistricts && !hasDownloadArtifacts && !districts.length ? (
@@ -2161,9 +2189,9 @@ function LayerManager({
                               <Badge
                                 variant="outline"
                                 className="border-emerald-300 bg-emerald-50 text-[9px] text-emerald-700"
-                                title="Đã phân phát ổn định"
+                                title="Đã công bố bản đồ"
                               >
-                                Ổn định
+                                Đã công bố
                               </Badge>
                             )}
                             {previewUrl ? (
@@ -2209,7 +2237,7 @@ function LayerManager({
 
                   {districtExports?.failed && districtExports.failed > 0 ? (
                     <p className="text-warning">
-                      {districtExports.failed} huyện thất bại. Chạy lại phân tích để thử lại.
+                      Chưa tạo được dữ liệu cho {districtExports.failed} huyện. Chọn “Cập nhật dữ liệu” để thử lại.
                     </p>
                   ) : null}
                 </div>
@@ -2407,7 +2435,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
     ['forest-ingest-job', ingestJobId],
     () => forestClassificationService.getIngestJob(ingestJobId as number),
     {
-      enabled: ingestJobId != null,
+      enabled: canPublishRaster && ingestJobId != null,
       refetchInterval: (query: { state: { data?: ApiResponse<{ status?: string }> } }) => {
         const st = query.state.data?.data?.status
         return st && ['completed', 'failed', 'cancelled'].includes(st)
@@ -2429,7 +2457,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
     setPublishGoalCount(null)
     publishStartedAtRef.current = 0
     if (job?.status === 'completed') {
-      toast.success('Đã cập nhật bản đồ thành công.')
+      toast.success('Đã cập nhật bản đồ.')
       void Promise.all([
         queryClient.invalidateQueries({
           queryKey: ['forest-class-latest'],
@@ -2483,7 +2511,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
       setPublishGoalCount(null)
       publishStartedAtRef.current = 0
       toast.error(
-        `Công bố chưa hoàn tất: ${districtReadyCount}/${districtTotal} huyện đã được lưu ổn định.`
+        `Công bố chưa hoàn tất: ${districtReadyCount}/${districtTotal} huyện đã được lưu.`
       )
     }
   }, [
@@ -2566,7 +2594,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
           Đã công bố {districtPublishedCount}/{districtTotal} huyện
         </span>
       ) : geoserverLayer ? (
-        <span className="text-emerald-700">Đã lưu ổn định</span>
+        <span className="text-emerald-700">Đã lưu lâu dài</span>
       ) : temporaryTileStatus === 'available' ? (
         <span className="text-warning">Bản xem trước có thời hạn</span>
       ) : temporaryTileStatus === 'expired' ? (
@@ -2602,8 +2630,8 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
             <p className="text-muted-foreground mt-0.5">
               {published
                 ? hasDistrictArtifacts
-                  ? `Đã công bố bản đồ ổn định cho ${districtPublishedCount}/${districtTotal} huyện.`
-                  : 'Kết quả này đã có bản đồ ổn định.'
+                  ? `Đã công bố bản đồ cho ${districtPublishedCount}/${districtTotal} huyện.`
+                  : 'Kết quả này đã có bản đồ được lưu lâu dài.'
                 : districtExportsQuery.isLoading
                   ? 'Đang kiểm tra dữ liệu và trạng thái công bố của từng huyện...'
                   : districtExportsQuery.isError
@@ -2611,7 +2639,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
                     : hasDistrictArtifacts
                       ? `${districtSourceCount}/${districtTotal} huyện có dữ liệu; ${districtPublishedCount}/${districtTotal} huyện đã được công bố trên bản đồ.`
                       : hasLegacyDownload
-                        ? 'Công bố kết quả này để dùng ổn định trên trang quản trị và cổng bản đồ công khai.'
+                        ? 'Công bố kết quả này trên trang quản trị và cổng bản đồ.'
                         : temporaryDownloadStatus === 'expired'
                           ? 'Liên kết dữ liệu nguồn đã hết hạn. Hãy chạy lại kỳ này để tạo liên kết mới.'
                           : 'Kết quả này chưa có dữ liệu nguồn để công bố lên bản đồ.'}
@@ -2632,7 +2660,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
             )}
             {job?.status === 'completed' && Boolean(job.geoserver_layer) && (
               <p className="mt-1 flex items-center gap-2 text-emerald-700">
-                <span>Đã cập nhật bản đồ thành công</span>
+                <span>Đã cập nhật bản đồ</span>
                 <Button
                   type="button"
                   variant="link"
@@ -2662,7 +2690,7 @@ function SnapshotDetailPanel({ item }: { item: ForestClassHistoryItem }) {
           {published ? (
             <Badge variant="outline" className="border-emerald-300 text-emerald-700">
               {hasDistrictArtifacts
-                ? `Ổn định ${districtReadyCount}/${districtTotal}`
+                ? `Đã lưu lâu dài ${districtReadyCount}/${districtTotal}`
                 : 'Đã công bố'}
             </Badge>
           ) : districtExportsQuery.isLoading ? (

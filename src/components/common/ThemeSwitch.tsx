@@ -49,7 +49,7 @@ const ThemeSwitch: React.FC = () => {
             height={28}
             width={56}
             className="react-switch"
-            aria-label="Toggle theme"
+            aria-label="Đổi giao diện sáng/tối"
           />
         </div>
       </TooltipTrigger>

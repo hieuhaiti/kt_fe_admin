@@ -94,7 +94,7 @@ export function ForestAnalysisPeriodNotice({
       title={`Kết quả cập nhật đến hết tháng ${formatMonth(period)}`}
       summary={`${window.label} · tổng hợp 12 tháng gần nhất`}
       tone="border-info/30 bg-info/10"
-      ariaLabel={`Cách hiểu kỳ cập nhật ${formatMonth(period)}`}
+      ariaLabel={`Kỳ dữ liệu ${formatMonth(period)}`}
     >
       <div className="space-y-1.5">
         <p className="text-foreground/85 text-sm leading-relaxed">
@@ -104,15 +104,15 @@ export function ForestAnalysisPeriodNotice({
         {!compact && (
           <div className="grid gap-2 pt-1 sm:grid-cols-2">
             <div className="bg-background/60 rounded-md border p-2.5">
-              <p className="text-xs font-semibold">Nền ổn định — 12 tháng</p>
+              <p className="text-xs font-semibold">Ảnh tổng hợp — 12 tháng</p>
               <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                Giúp quan sát đủ các mùa và bổ sung những nơi thường bị mây che.
+                Bao quát các mùa và bổ sung khu vực bị mây che.
               </p>
             </div>
             <div className="bg-background/60 rounded-md border p-2.5">
               <p className="text-xs font-semibold">Thông tin gần nhất — 3 tháng</p>
               <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                Giúp kết quả phản ánh rõ hơn tình trạng mới vào cuối kỳ.
+                Phản ánh hiện trạng gần nhất vào cuối kỳ.
               </p>
             </div>
           </div>
@@ -140,27 +140,27 @@ export function ForestComparisonPeriodNotice({
   const currentWindow = getForestAnalysisWindow(current)
   const referenceWindow = getForestAnalysisWindow(reference)
 
-  let title = 'Hai kỳ sử dụng các khoảng ảnh khác nhau'
-  let summary = 'Nên ưu tiên cùng tháng giữa các năm'
-  let description = 'Nên ưu tiên đối chiếu cùng tháng giữa các năm để hạn chế chênh lệch do mùa.'
+  let title = 'Hai kỳ dùng khoảng ảnh khác nhau'
+  let summary = 'Nên so sánh cùng tháng giữa các năm'
+  let description = 'Chọn cùng tháng giữa các năm để giảm khác biệt theo mùa.'
   let tone = 'border-warning/35 bg-warning/10'
 
   if (referenceIsNewer) {
-    title = 'Kỳ đối chiếu đang mới hơn kỳ cần xem'
-    summary = 'Nên đổi lại thứ tự hai kỳ'
+    title = 'Kỳ đối chiếu mới hơn kỳ đang xem'
+    summary = 'Nên đổi thứ tự hai kỳ'
     description =
-      'Chênh lệch sẽ khó đọc đúng chiều thời gian. Nên đổi vị trí hai kỳ trước khi nhận xét kết quả.'
+      'Đổi thứ tự hai kỳ để xem thay đổi theo thời gian.'
   } else if (sameMonth && distance >= 12) {
-    title = 'So sánh cùng mùa — phù hợp hơn'
+    title = 'Hai kỳ cùng mùa'
     summary = `${formatMonth(reference)} → ${formatMonth(current)}`
     description =
-      'Hai kỳ cùng tháng giúp hạn chế khác biệt tự nhiên giữa mùa mưa, mùa khô và giai đoạn cây thay lá.'
+      'Cùng tháng giúp giảm khác biệt do mùa mưa, mùa khô và cây thay lá.'
     tone = 'border-success/35 bg-success/10'
   } else if (overlapMonths > 0) {
     title = 'Hai kỳ dùng chung'
     summary = `${overlapMonths}/12 tháng dữ liệu`
     description =
-      'Chênh lệch phù hợp để theo dõi xu hướng, nhưng không đại diện cho biến động chỉ xảy ra trong riêng hai tháng đã chọn.'
+      'Hai kỳ dùng chung ảnh nên chênh lệch chỉ cho thấy xu hướng, không phải thay đổi riêng trong hai tháng.'
   }
 
   return (

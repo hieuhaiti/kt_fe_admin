@@ -59,7 +59,7 @@ function App() {
       onSessionExpired(() => {
         expireSession()
         queryClient.clear()
-        toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', {
+        toast.error('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.', {
           toastId: 'session-expired',
         })
         navigate('/login', { replace: true })
@@ -85,7 +85,13 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
               <Route path="/" element={<LandingPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route
+                element={
+                  <ProtectedRoute permission={{ resource: 'statistics', action: 'dashboard' }} />
+                }
+              >
+                <Route path="/dashboard" element={<DashboardPage />} />
+              </Route>
 
               {/* Users */}
               <Route element={<ProtectedRoute permission={{ resource: 'users', action: 'read' }} />}>
@@ -96,7 +102,7 @@ function App() {
               <Route element={<ProtectedRoute permission={{ resource: 'news', action: 'read' }} />}>
                 <Route path="/news" element={<NewsPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission={{ resource: 'comments', action: 'approve' }} />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'comments', action: 'read' }} />}>
                 <Route path="/news-comments" element={<NewsCommentsPage />} />
               </Route>
               <Route element={<ProtectedRoute permission={{ resource: 'documents', action: 'read' }} />}>
@@ -107,7 +113,7 @@ function App() {
               <Route element={<ProtectedRoute permission={{ resource: 'map_layers', action: 'read' }} />}>
                 <Route path="/map-layers" element={<MapLayerPage />} />
               </Route>
-              <Route element={<ProtectedRoute permission={{ resource: 'map_layers', action: 'create' }} />}>
+              <Route element={<ProtectedRoute permission={{ resource: 'map_layers', action: 'import' }} />}>
                 <Route path="/map-layers/import-geojson" element={<ImportGeoJsonPage />} />
               </Route>
               <Route element={<ProtectedRoute permission={{ resource: 'map_layers', action: 'read' }} />}>
@@ -160,7 +166,27 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
-      <ToastContainer position="top-right" className="z-9999" autoClose={3000} />
+      <ToastContainer
+        aria-label="Thông báo (Alt+T)"
+        closeButton={({ closeToast, theme }) => (
+          <button
+            type="button"
+            className={`Toastify__close-button Toastify__close-button--${theme}`}
+            aria-label="Đóng thông báo"
+            onClick={(event) => {
+              event.stopPropagation()
+              closeToast(true)
+            }}
+          >
+            <svg aria-hidden="true" viewBox="0 0 14 16">
+              <path fillRule="evenodd" d="M7.71 8.23l3.75 3.75-1.48 1.48-3.75-3.75-3.75 3.75L1 11.98l3.75-3.75L1 4.48 2.48 3l3.75 3.75L9.98 3l1.48 1.48-3.75 3.75z" />
+            </svg>
+          </button>
+        )}
+        position="top-right"
+        className="z-9999"
+        autoClose={3000}
+      />
     </>
   )
 }

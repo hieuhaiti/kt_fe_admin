@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { KeyRound, LogOut, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,16 +19,19 @@ export function UserMenu() {
   const storeLogout = useAuthStore((s) => s.logout)
   const displayName = user?.full_name?.trim() || user?.username || user?.email || user?.phone || ''
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
 
   const handleLogout = async () => {
     try {
       await authService.logout()
       storeLogout()
+      queryClient.clear()
       navigate('/login', { replace: true })
     } catch {
       // API call failed – still clear tokens and redirect for security
       storeLogout()
+      queryClient.clear()
       navigate('/login', { replace: true })
     }
   }

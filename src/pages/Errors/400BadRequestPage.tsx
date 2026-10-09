@@ -11,7 +11,7 @@ export default function BadRequestPage(): JSX.Element {
           {'Yêu cầu không hợp lệ'}
         </h1>
         <p className="text-foreground mt-6 text-lg font-medium sm:text-xl">
-          {'Xin lỗi, yêu cầu của bạn không hợp lệ.'}
+          {'Không thể xử lý yêu cầu. Hãy kiểm tra thông tin rồi thử lại.'}
         </p>
         <div className="mt-10 flex items-center justify-center">
           <button

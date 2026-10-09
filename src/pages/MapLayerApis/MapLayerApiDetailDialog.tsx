@@ -40,14 +40,14 @@ export default function MapLayerApiDetailDialog({
   })()
 
   const errorMessage = detailQuery.error
-    ? getMappedErrorMessage(detailQuery.error, 'Không tải được chi tiết API key')
+    ? getMappedErrorMessage(detailQuery.error, 'Không thể tải thông tin khóa API')
     : ''
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-4xl overflow-y-auto">
-        <DialogTitle>Chi tiết API key bản đồ</DialogTitle>
-        <DialogDescription>Thông tin key, lớp dữ liệu được chia sẻ và giới hạn truy cập</DialogDescription>
+        <DialogTitle>Chi tiết khóa API bản đồ</DialogTitle>
+        <DialogDescription>Lớp dữ liệu, trạng thái và giới hạn truy cập của khóa.</DialogDescription>
 
         {errorMessage && (
           <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -60,17 +60,17 @@ export default function MapLayerApiDetailDialog({
         {api ? (
           <div className="mt-4 space-y-3">
             <DetailRow label="ID">{api.id}</DetailRow>
-            <DetailRow label="Tên key">{api.name}</DetailRow>
+            <DetailRow label="Tên khóa">{api.name}</DetailRow>
             <DetailRow label="Lớp dữ liệu">
               <span>{api.layer_name_vi ?? api.layer_code ?? '-'}</span>
               {api.layer_code && <span className="text-muted-foreground ml-2 text-xs">({api.layer_code})</span>}
             </DetailRow>
-            <DetailRow label="Key nhận diện">
+            <DetailRow label="Mã nhận diện khóa">
               <span className="font-mono text-sm">
                 {api.key_prefix ? `${api.key_prefix}...${api.key_last4 ?? ''}` : '-'}
               </span>
             </DetailRow>
-            <DetailRow label="Scope">
+            <DetailRow label="Phạm vi truy cập">
               <span className="font-mono text-sm break-all">{JSON.stringify(api.scope ?? {}, null, 2)}</span>
             </DetailRow>
             <DetailRow label="Trạng thái">

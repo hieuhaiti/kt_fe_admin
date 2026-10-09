@@ -34,10 +34,10 @@ import {
 } from '@/components/ui/file-upload'
 
 const mapImageSchema = z.object({
-  titleVi: z.string().trim().min(2, 'Tiêu đề tiếng Việt phải có ít nhất 2 ký tự').max(255),
-  titleEn: z.string().trim().max(255).optional().or(z.literal('')),
-  descriptionVi: z.string().trim().max(2000).optional().or(z.literal('')),
-  descriptionEn: z.string().trim().max(2000).optional().or(z.literal('')),
+  titleVi: z.string().trim().min(2, 'Tiêu đề tiếng Việt phải có ít nhất 2 ký tự').max(255, 'Tiêu đề không được quá 255 ký tự'),
+  titleEn: z.string().trim().max(255, 'Tiêu đề không được quá 255 ký tự').optional().or(z.literal('')),
+  descriptionVi: z.string().trim().max(2000, 'Mô tả không được quá 2000 ký tự').optional().or(z.literal('')),
+  descriptionEn: z.string().trim().max(2000, 'Mô tả không được quá 2000 ký tự').optional().or(z.literal('')),
   themeCode: z.string().trim().min(1, 'Vui lòng chọn chủ đề'),
   year: z
     .string()
@@ -47,10 +47,10 @@ const mapImageSchema = z.object({
     })
     .optional()
     .or(z.literal('')),
-  scale: z.string().trim().max(120).optional().or(z.literal('')),
-  region: z.string().trim().max(255).optional().or(z.literal('')),
+  scale: z.string().trim().max(120, 'Tỷ lệ không được quá 120 ký tự').optional().or(z.literal('')),
+  region: z.string().trim().max(255, 'Khu vực không được quá 255 ký tự').optional().or(z.literal('')),
   isPublic: z.boolean(),
-  thumbnailUrl: z.string().trim().max(500).optional().or(z.literal('')),
+  thumbnailUrl: z.string().trim().max(500, 'Đường dẫn ảnh không được quá 500 ký tự').optional().or(z.literal('')),
 })
 
 type MapImageFormValues = z.infer<typeof mapImageSchema>
@@ -153,7 +153,7 @@ export default function MapImageFormDialog({
 
   const onImageValidate = useCallback((file: File): string | null => {
     if (!ACCEPTED_MIME.includes(file.type)) return 'Chỉ chấp nhận PDF hoặc ảnh (JPG, PNG, WebP, GIF)'
-    if (file.size > MAX_FILE_SIZE) return 'Kích thước file không được quá 20MB'
+    if (file.size > MAX_FILE_SIZE) return 'Tệp không được quá 20 MB'
     return null
   }, [])
 
@@ -216,7 +216,7 @@ export default function MapImageFormDialog({
       return
     }
     if (imageFiles.length === 0) {
-      toast.error('Vui lòng chọn file ảnh bản đồ')
+      toast.error('Vui lòng chọn tệp bản đồ')
       return
     }
     onSubmit(buildCreateFormData(data))
@@ -232,8 +232,8 @@ export default function MapImageFormDialog({
           <DialogTitle>{isEdit ? 'Chỉnh sửa ảnh bản đồ' : 'Thêm ảnh bản đồ mới'}</DialogTitle>
           <DialogDescription className="mt-1">
             {isEdit
-              ? 'Cập nhật thông tin ảnh bản đồ. Các trường không đổi sẽ không được gửi lên.'
-              : 'Điền đầy đủ thông tin và tải lên file bản đồ.'}
+              ? 'Sửa thông tin bản đồ cần cập nhật.'
+              : 'Nhập thông tin và tải tệp bản đồ lên.'}
           </DialogDescription>
         </div>
 
@@ -269,12 +269,12 @@ export default function MapImageFormDialog({
                       )}
                     </div>
                     <div>
-                      <p className="text-muted-foreground text-xs font-medium">Thumbnail</p>
+                      <p className="text-muted-foreground text-xs font-medium">Ảnh xem trước</p>
                       {existingThumbnailUrl ? (
                         <div className="bg-muted/40 mt-1 flex h-32 items-center justify-center overflow-hidden rounded-md border">
                           <img
                             src={parseLink(existingThumbnailUrl)}
-                            alt="Thumbnail"
+                            alt="Ảnh xem trước"
                             className="h-full w-full object-cover"
                           />
                         </div>
@@ -286,7 +286,7 @@ export default function MapImageFormDialog({
                     </div>
                   </div>
                   <p className="text-muted-foreground text-xs">
-                    File chính không thay đổi được từ đây. Bạn có thể cập nhật link thumbnail bên dưới.
+                    Không thể đổi tệp chính tại đây. Bạn có thể đổi đường dẫn ảnh xem trước bên dưới.
                   </p>
                 </div>
               )}
@@ -294,7 +294,7 @@ export default function MapImageFormDialog({
               {!isEdit && (
                 <div className="space-y-2">
                   <Label>
-                    File bản đồ <span className="text-destructive">*</span>
+                    Tệp bản đồ <span className="text-destructive">*</span>
                   </Label>
                   <FileUpload
                     value={imageFiles}
@@ -308,14 +308,14 @@ export default function MapImageFormDialog({
                     <FileUploadDropzone className="border-dashed">
                       <div className="flex flex-col items-center gap-1 text-center">
                         <FileImage className="text-muted-foreground size-6" />
-                        <p className="text-sm font-medium">Kéo thả file vào đây</p>
+                        <p className="text-sm font-medium">Kéo tệp vào đây</p>
                         <FileUploadTrigger asChild>
                           <Button type="button" variant="outline" size="sm">
-                            Chọn file
+                            Chọn tệp
                           </Button>
                         </FileUploadTrigger>
                         <p className="text-muted-foreground text-xs">
-                          PDF, JPG, PNG, WebP, GIF · tối đa 20MB
+                          PDF, JPG, PNG, WebP, GIF · tối đa 20 MB
                         </p>
                       </div>
                     </FileUploadDropzone>
@@ -341,7 +341,7 @@ export default function MapImageFormDialog({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="titleVi">
-                    Tiêu đề (VI) <span className="text-destructive">*</span>
+                    Tiêu đề tiếng Việt <span className="text-destructive">*</span>
                   </Label>
                   <Input id="titleVi" {...register('titleVi')} placeholder="Biến động lớp phủ..." />
                   {errors.titleVi && (
@@ -349,8 +349,8 @@ export default function MapImageFormDialog({
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="titleEn">Tiêu đề (EN)</Label>
-                  <Input id="titleEn" {...register('titleEn')} placeholder="Land cover change..." />
+                  <Label htmlFor="titleEn">Tiêu đề tiếng Anh</Label>
+                  <Input id="titleEn" {...register('titleEn')} placeholder="Nhập tiêu đề tiếng Anh" />
                   {errors.titleEn && (
                     <p className="text-destructive text-xs">{errors.titleEn.message}</p>
                   )}
@@ -359,7 +359,7 @@ export default function MapImageFormDialog({
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="descriptionVi">Mô tả (VI)</Label>
+                  <Label htmlFor="descriptionVi">Mô tả tiếng Việt</Label>
                   <Textarea
                     id="descriptionVi"
                     rows={3}
@@ -368,12 +368,12 @@ export default function MapImageFormDialog({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="descriptionEn">Mô tả (EN)</Label>
+                  <Label htmlFor="descriptionEn">Mô tả tiếng Anh</Label>
                   <Textarea
                     id="descriptionEn"
                     rows={3}
                     {...register('descriptionEn')}
-                    placeholder="English description"
+                    placeholder="Nhập mô tả tiếng Anh"
                   />
                 </div>
               </div>
@@ -421,7 +421,7 @@ export default function MapImageFormDialog({
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="scale">Tỉ lệ</Label>
+                  <Label htmlFor="scale">Tỷ lệ</Label>
                   <Input id="scale" {...register('scale')} placeholder="1:50000" />
                 </div>
                 <div className="space-y-2">
@@ -429,7 +429,7 @@ export default function MapImageFormDialog({
                   <Input id="region" {...register('region')} placeholder="Tỉnh Kon Tum" />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="thumbnailUrl">Đường dẫn thumbnail (tùy chọn)</Label>
+                  <Label htmlFor="thumbnailUrl">Đường dẫn ảnh xem trước (tùy chọn)</Label>
                   <Input
                     id="thumbnailUrl"
                     {...register('thumbnailUrl')}

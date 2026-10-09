@@ -19,8 +19,8 @@ export default function MapLayerApiPublicPage() {
 
   return (
     <PageLayout
-      title="Kiểm tra Map Data API"
-      description="Kiểm tra endpoint consumer /map-data/layer và /map-data/features bằng X-Map-Api-Key"
+      title="Kiểm tra API bản đồ"
+      description="Kiểm tra thông tin lớp và đối tượng bản đồ bằng khóa API."
     >
       <Tabs
         value={currentTab}
@@ -29,7 +29,7 @@ export default function MapLayerApiPublicPage() {
         }}
       >
         <TabsList>
-          <TabsTrigger value="tester">Test API</TabsTrigger>
+          <TabsTrigger value="tester">Kiểm tra API</TabsTrigger>
           <TabsTrigger value="guide">Hướng dẫn</TabsTrigger>
         </TabsList>
 
@@ -40,7 +40,7 @@ export default function MapLayerApiPublicPage() {
         <TabsContent value="guide">
           <Card>
             <CardHeader className="space-y-2">
-              <CardTitle className="text-xl">Cách dùng Map Data API</CardTitle>
+              <CardTitle className="text-xl">Cách dùng API bản đồ</CardTitle>
               <div className="flex flex-wrap items-center gap-2">
                 <StatusDotBadge
                   label="GET /map-data/layer"
@@ -58,22 +58,21 @@ export default function MapLayerApiPublicPage() {
               <div className="bg-muted/30 rounded-md border p-3">
                 <p className="font-medium">Bước 1</p>
                 <p className="text-muted-foreground mt-1">
-                  Tạo khóa truy cập trong màn Quản lý kết nối bản đồ và lưu lại mã đầy đủ
-                  vì hệ thống chỉ hiển thị một lần.
+                  Tạo khóa trong “Khóa API bản đồ” và lưu mã ngay. Mã đầy đủ chỉ hiển thị một lần.
                 </p>
               </div>
 
               <div className="bg-muted/30 rounded-md border p-3">
                 <p className="font-medium">Bước 2</p>
                 <p className="text-muted-foreground mt-1">
-                  Gọi endpoint consumer với header <b>X-Map-Api-Key</b>. Bỏ trống bbox để kiểm tra metadata layer.
+                  Gửi yêu cầu với header <b>X-Map-Api-Key</b>. Bỏ trống bbox để xem thông tin lớp.
                 </p>
               </div>
 
               <div className="bg-muted/30 rounded-md border p-3">
                 <p className="font-medium">Bước 3</p>
                 <p className="text-muted-foreground mt-1">
-                  Khi gọi features, truyền bbox dạng <b>minLng,minLat,maxLng,maxLat</b> và limit phù hợp với scope của key.
+                  Khi lấy đối tượng, truyền bbox theo thứ tự <b>minLng,minLat,maxLng,maxLat</b> và limit trong giới hạn của khóa.
                 </p>
               </div>
             </CardContent>

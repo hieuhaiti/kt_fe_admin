@@ -187,7 +187,7 @@ export default function MapLayerDetailDialog({
         <div className="shrink-0 border-b px-6 py-5 pr-12">
           <DialogTitle>Chi tiết lớp dữ liệu bản đồ</DialogTitle>
           <DialogDescription className="mt-1">
-            Thông tin metadata, nguồn dữ liệu và cấu hình công bố của lớp đã chọn
+            Thông tin lớp, nguồn dữ liệu và trạng thái công bố.
           </DialogDescription>
         </div>
 
@@ -250,9 +250,9 @@ export default function MapLayerDetailDialog({
                     title={
                       canDownload
                         ? preferTiff
-                          ? 'Tải file GeoTIFF gốc (WCS)'
-                          : 'Tải feature vector dạng GeoJSON (WFS)'
-                        : 'Layer chưa công bố lên GeoServer'
+                          ? 'Tải tệp GeoTIFF gốc (WCS)'
+                          : 'Tải đối tượng dạng GeoJSON (WFS)'
+                        : 'Lớp chưa công bố lên GeoServer'
                     }
                   >
                     <Download className="size-4" aria-hidden="true" />
@@ -333,8 +333,8 @@ export default function MapLayerDetailDialog({
                     <DetailField label="Số đối tượng">
                       {formatCount(layer.feature_count)}
                     </DetailField>
-                    <DetailField label="Mức zoom nhỏ nhất">{layer.min_zoom ?? '-'}</DetailField>
-                    <DetailField label="Mức zoom lớn nhất">{layer.max_zoom ?? '-'}</DetailField>
+                    <DetailField label="Mức thu phóng nhỏ nhất">{layer.min_zoom ?? '-'}</DetailField>
+                    <DetailField label="Mức thu phóng lớn nhất">{layer.max_zoom ?? '-'}</DetailField>
                     <DetailField label="Trường nhãn">
                       <CodeValue>{layer.label_field}</CodeValue>
                     </DetailField>
@@ -352,7 +352,7 @@ export default function MapLayerDetailDialog({
                   <CardHeader className="pb-4">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <Palette className="text-primary size-4" aria-hidden="true" />
-                      Chú giải lớp bản đồ (Legend)
+                      Chú giải lớp bản đồ
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -394,7 +394,7 @@ export default function MapLayerDetailDialog({
                     <DetailField label="Ngày tạo">
                       {createdAt ? formatDateTime(createdAt) : '-'}
                     </DetailField>
-                    <DetailField label="Cập nhật metadata">
+                    <DetailField label="Cập nhật thông tin lớp">
                       {updatedAt ? formatDateTime(updatedAt) : '-'}
                     </DetailField>
                     <DetailField label="Cập nhật dữ liệu gần nhất">

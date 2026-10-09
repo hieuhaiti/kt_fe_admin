@@ -22,8 +22,8 @@ const SOURCE_LABELS: Record<string, string> = {
  *   - Zones: GeoJSON MultiPolygon (paste text hoặc upload file)
  *   - Points: Form đơn lẻ + bulk CSV
  *
- * Data lưu vào PostGIS local (fire.fire_gt_*). Cron chạy sáng hôm sau sẽ
- * pick up trong cửa sổ N ngày → blend vào Random Forest (50% weight).
+ * Dữ liệu lưu trong PostGIS (fire.fire_gt_*); thời điểm xử lý và cửa sổ dữ liệu
+ * phụ thuộc cấu hình backend đang chạy.
  *
  * Section này collapsible mặc định đóng để không choán chỗ trang chính.
  */
@@ -46,7 +46,7 @@ export default function GroundTruthCard() {
             <MapPin className="h-4 w-4 text-red-600" />
             <h2 className="text-lg font-semibold">Dữ liệu xác minh thực địa</h2>
             <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700">
-              Cải thiện độ chính xác
+              Dùng cho phân tích tiếp theo
             </span>
           </div>
           {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -79,22 +79,19 @@ function ExplanationBanner() {
       </div>
       <ul className="ml-5 list-disc space-y-1 text-sky-800">
         <li>
-          <b>Vùng</b>: khu vực cháy đã được xác nhận qua khảo sát hoặc nguồn cảnh
-          báo chính thức.
+          <b>Vùng</b>: khu vực cháy đã xác nhận qua khảo sát hoặc nguồn chính thức.
         </li>
         <li>
-          <b>Điểm</b>: quan sát đơn lẻ của kiểm lâm hoặc người dân, gồm tọa độ,
-          thời gian và cấp độ 1-5.
+          <b>Điểm</b>: ghi nhận tại một tọa độ, kèm thời gian và cấp độ 1–5.
         </li>
         <li>
-          Dữ liệu được tự động đưa vào kỳ phân tích tiếp theo lúc <b>06:00 hôm sau</b>,
-          với trọng số <b>50%</b>.
+          Dữ liệu mẫu có thể được dùng ở lần phân tích tiếp theo.
         </li>
         <li>
-          Mặc định hệ thống sử dụng dữ liệu xác minh trong <b>30 ngày gần nhất</b>.
+          Dữ liệu được sử dụng tùy theo thiết lập phân tích.
         </li>
         <li>
-          Muốn áp dụng ngay: bấm <b>"Chạy lại phân tích"</b> sau khi nhập dữ liệu.
+          Muốn áp dụng ngay: chọn <b>"Cập nhật dữ liệu"</b> sau khi nhập dữ liệu.
         </li>
         <li>
           Dữ liệu đã xóa không còn được dùng cho kỳ sau; kết quả lịch sử vẫn được
@@ -147,7 +144,7 @@ function ZonesSection() {
       parsed = { type: 'FeatureCollection', features: [parsed] }
     }
     if (parsed.type !== 'FeatureCollection') {
-      toast.error('Dữ liệu chưa đúng định dạng vùng bản đồ được hỗ trợ.')
+      toast.error('Dữ liệu phải là vùng bản đồ ở định dạng GeoJSON.')
       return
     }
     // Set default severity/occurredAt cho features thiếu.
@@ -171,7 +168,7 @@ function ZonesSection() {
 
   const onDelete = (id: number | string) => {
     if (!confirm(`Xoá vùng #${id}?`)) return
-    deleteM.mutate(id, { onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() } })
+    deleteM.mutate(id, { onSuccess: () => { toast.success('Đã xóa.'); listQ.refetch() } })
   }
 
   return (
@@ -202,7 +199,7 @@ function ZonesSection() {
 
         <label className="block space-y-0.5">
           <span className="text-xs text-muted-foreground">
-            Dán dữ liệu vùng bản đồ (định dạng GeoJSON)
+            Dán vùng bản đồ (GeoJSON)
           </span>
           <textarea
             value={geojsonText}
@@ -244,7 +241,7 @@ function ZonesSection() {
             <button
               onClick={() => onDelete(z.id)}
               className="text-red-500 hover:text-red-700"
-              title="Xoá"
+              title="Xóa"
             >
               <Trash2 size={12} />
             </button>
@@ -298,7 +295,7 @@ function PointsSection() {
 
   const onDelete = (id: number | string) => {
     if (!confirm(`Xoá điểm #${id}?`)) return
-    deleteM.mutate(id, { onSuccess: () => { toast.success('Đã xoá.'); listQ.refetch() } })
+    deleteM.mutate(id, { onSuccess: () => { toast.success('Đã xóa.'); listQ.refetch() } })
   }
 
   return (
@@ -335,7 +332,7 @@ function PointsSection() {
           />
         </label>
         <label className="space-y-0.5">
-          <span className="text-xs text-muted-foreground">Mức C</span>
+          <span className="text-xs text-muted-foreground">Cấp nguy cơ</span>
           <select
             value={form.severity}
             onChange={(e) => setForm((s) => ({ ...s, severity: Number(e.target.value) }))}
@@ -390,7 +387,7 @@ function PointsSection() {
             <button
               onClick={() => onDelete(p.id)}
               className="text-red-500 hover:text-red-700"
-              title="Xoá"
+              title="Xóa"
             >
               <Trash2 size={12} />
             </button>

@@ -45,6 +45,7 @@ import { formatDate } from '@/lib/date'
 import { toApprovedFlag } from '@/lib/newsComment'
 import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
+import { QueryErrorNotice } from '@/components/common/QueryErrorNotice'
 
 export default function NewsComments(): JSX.Element {
   const user = useAuthStore((s) => s.user)
@@ -143,7 +144,7 @@ export default function NewsComments(): JSX.Element {
   }
 
   return (
-    <PageLayout title="Bình luận tin tức" description="Quản lý bình luận bài viết">
+    <PageLayout title="Bình luận tin tức" description="Xem bình luận của người đọc.">
       <ToolTableCustom
         searchValue={searchValue}
         setSearchValue={(v) => {
@@ -203,14 +204,31 @@ export default function NewsComments(): JSX.Element {
               <TableHead>Nội dung</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead>Ngày tạo</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
+              <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredComments.length === 0 ? (
+            {dbQuery.isError ? (
+              <TableRow>
+                <TableCell colSpan={7}>
+                  <QueryErrorNotice
+                    title="Bình luận"
+                    error={dbQuery.error}
+                    onRetry={() => void dbQuery.refetch()}
+                    isFetching={dbQuery.isFetching}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : dbQuery.isPending ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center" role="status">
+                  Đang tải bình luận...
+                </TableCell>
+              </TableRow>
+            ) : filteredComments.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center">
-                  Không có dữ liệu
+                  Không có bình luận
                 </TableCell>
               </TableRow>
             ) : (
@@ -313,7 +331,7 @@ export default function NewsComments(): JSX.Element {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.
+              Xóa bình luận này? Không thể khôi phục sau khi xóa.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

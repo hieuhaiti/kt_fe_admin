@@ -130,19 +130,17 @@ function ExplanationBanner() {
       </div>
       <ul className="ml-5 list-disc space-y-1 text-sky-800">
         <li>
-          <b>Vùng</b>: mẫu diện tích rộng, ví dụ một lô rừng đã được khảo sát
-          toàn bộ.
+          <b>Vùng</b>: khu vực đã khảo sát, ví dụ một lô rừng.
         </li>
         <li>
-          <b>Điểm</b>: mẫu đơn lẻ do kiểm lâm hoặc cán bộ khảo sát ghi nhận tại
-          một tọa độ. Mỗi mẫu được gán một nhóm lớp phủ.
+          <b>Điểm</b>: ghi nhận tại một tọa độ, kèm nhóm lớp phủ.
         </li>
         <li>
           Dữ liệu trong <b>180 ngày gần nhất</b> được đưa vào kỳ phân loại tiếp
           theo với trọng số <b>50%</b>.
         </li>
         <li>
-          Sau khi thêm dữ liệu, bấm <b>"Chạy lại phân tích"</b> để áp dụng ngay
+          Sau khi thêm dữ liệu, bấm <b>"Cập nhật dữ liệu"</b> để áp dụng ngay
           hoặc chờ kỳ phân loại tháng sau.
         </li>
         <li>
@@ -441,9 +439,7 @@ function ImportSection() {
           className="min-h-[120px] w-full rounded-md border bg-background p-2 font-mono text-xs"
         />
         <span className="block text-[10px] text-muted-foreground">
-          Đối tượng dạng vùng được thêm vào danh sách vùng mẫu, đối tượng dạng
-          điểm được thêm vào danh sách điểm mẫu. Ngày và nhóm lớp phủ trong tệp
-          được ưu tiên hơn giá trị mặc định ở trên.
+          Vùng và điểm được thêm vào danh sách tương ứng. Ngày và nhóm lớp phủ trong tệp được ưu tiên hơn thiết lập ở trên.
         </span>
       </label>
 
@@ -774,7 +770,7 @@ function SampleList({
       const deleted = res?.data?.deleted ?? ids.length
       const skipped = res?.data?.skipped?.length ?? 0
       setSelected(new Set())
-      toast.success(`Đã xoá ${deleted} ${label}.`)
+      toast.success(`Đã xóa ${deleted} ${label}.`)
       if (skipped) {
         toast.warning(`Bỏ qua ${skipped} ${label} không còn tồn tại.`)
       }
@@ -830,7 +826,7 @@ function SampleList({
             onClick={() => setConfirmOpen(true)}
           >
             <Trash2 className="mr-1 h-3 w-3" />
-            {deleting ? 'Đang xoá...' : `Xoá đã chọn (${activeSelected.length})`}
+            {deleting ? 'Đang xóa...' : `Xóa đã chọn (${activeSelected.length})`}
           </Button>
         </div>
       </div>
@@ -877,7 +873,7 @@ function SampleList({
                     void runDelete([id])
                   }}
                   className="shrink-0 cursor-pointer text-red-500 transition-colors hover:text-red-700 disabled:opacity-50"
-                  aria-label={`Xoá ${label} #${id}`}
+                  aria-label={`Xóa ${label} #${id}`}
                 >
                   <Trash2 size={12} />
                 </button>
@@ -928,19 +924,18 @@ function SampleList({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xoá {activeSelected.length} {label} đã chọn?</AlertDialogTitle>
+            <AlertDialogTitle>Xóa {activeSelected.length} {label} đã chọn?</AlertDialogTitle>
             <AlertDialogDescription>
-              Dữ liệu đã xoá sẽ không còn được dùng cho kỳ phân loại tiếp theo.
-              Kết quả của các kỳ đã chạy trước đó vẫn được giữ nguyên.
+              Dữ liệu đã xóa không dùng cho kỳ tiếp theo. Kết quả các kỳ trước vẫn được giữ nguyên.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="cursor-pointer">Huỷ</AlertDialogCancel>
+            <AlertDialogCancel className="cursor-pointer">Hủy</AlertDialogCancel>
             <AlertDialogAction
               className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={onConfirmDelete}
             >
-              Xoá
+              Xóa
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

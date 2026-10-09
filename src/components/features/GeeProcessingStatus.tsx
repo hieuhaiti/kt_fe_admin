@@ -35,7 +35,7 @@ function resolvePresentation(processing: GeeProcessingState) {
       description:
         ahead > 0
           ? `Hệ thống đang xử lý ${ahead} yêu cầu trước. Dữ liệu sẽ tự cập nhật khi đến lượt.`
-          : 'Yêu cầu đã được tiếp nhận và sẽ bắt đầu trong ít phút.',
+          : 'Đã tiếp nhận yêu cầu, đang chờ xử lý.',
     }
   }
 
@@ -45,7 +45,7 @@ function resolvePresentation(processing: GeeProcessingState) {
       icon: Database,
       title: 'Số liệu mới đã sẵn sàng',
       description:
-        'Bạn đã có thể xem số liệu và bản đồ tổng quan. Bản đồ chi tiết theo huyện đang được hoàn thiện.',
+        'Số liệu và bản đồ tổng quan đã sẵn sàng. Đang tạo bản đồ chi tiết theo huyện.',
     }
   }
 
@@ -67,7 +67,7 @@ function resolvePresentation(processing: GeeProcessingState) {
         ? `Quá trình bị gián đoạn. Hệ thống sẽ tự thử lại lúc ${formatDateTime(
             processing.retry.nextRetryAt
           )}.`
-        : 'Hãy gửi lại yêu cầu. Nếu lỗi tiếp tục, vui lòng liên hệ quản trị viên.',
+        : 'Gửi lại yêu cầu. Nếu vẫn gặp lỗi, hãy liên hệ quản trị viên.',
     }
   }
 
@@ -87,7 +87,7 @@ function resolvePresentation(processing: GeeProcessingState) {
     tone: 'muted' as Tone,
     icon: Clock3,
     title: 'Sẵn sàng cập nhật dữ liệu',
-    description: 'Chọn “Cập nhật dữ liệu” khi bạn muốn tạo kết quả mới.',
+    description: 'Chọn “Cập nhật dữ liệu” để tạo kết quả mới.',
   }
 }
 

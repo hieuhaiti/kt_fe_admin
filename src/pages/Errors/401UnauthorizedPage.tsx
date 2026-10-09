@@ -9,7 +9,7 @@ export default function UnauthorizedPage(): JSX.Element {
       <div className="text-center">
         <p className="text-4xl text-(--error-401-bg-color)">401</p>
         <h1 className="text-foreground mt-4 text-5xl tracking-tight sm:text-7xl">
-          {'Không được ủy quyền'}
+          {'Bạn cần đăng nhập'}
         </h1>
         <p className="text-foreground mt-6 text-lg font-medium sm:text-xl">
           {'Bạn cần đăng nhập để truy cập trang này.'}

@@ -127,7 +127,7 @@ export default function FeedbackUpdateDialog({
             />
             {allowedStatuses.length === 0 && (
               <p className="text-muted-foreground text-xs">
-                Phản ánh này đã ở trạng thái kết thúc và không thể chuyển trạng thái tiếp.
+                Phản ánh đã kết thúc xử lý, không thể đổi trạng thái.
               </p>
             )}
           </div>

@@ -108,12 +108,12 @@ export default function ImportGeoJsonPage(): JSX.Element {
       const parsed = JSON.parse(text)
       const geojson = extractGeoJson(parsed)
       if (!geojson) {
-        setPreviewError('File không chứa GeoJSON hợp lệ để preview')
+        setPreviewError('Tệp không chứa GeoJSON hợp lệ để xem trước')
         return
       }
       setPreviewGeoJson(geojson)
     } catch {
-      setPreviewError('Không đọc được GeoJSON hoặc file JSON không hợp lệ')
+      setPreviewError('Không thể đọc tệp. Hãy kiểm tra định dạng GeoJSON.')
     }
   }
 
@@ -130,7 +130,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
       return
     }
     if (!file) {
-      toast.error('Vui lòng chọn file GeoJSON')
+      toast.error('Vui lòng chọn tệp GeoJSON')
       return
     }
 
@@ -199,7 +199,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
             </div>
 
             <div className="space-y-2">
-              <Label>Trạng thái sau import</Label>
+              <Label>Trạng thái sau khi nhập</Label>
               <Select
                 value={publishAfterImport}
                 onValueChange={(v) => setPublishAfterImport(v as 'true' | 'false')}
@@ -225,7 +225,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
 
             <div className="space-y-2">
               <Label htmlFor="geojson-file">
-                File GeoJSON <span className="text-destructive">*</span>
+                Tệp GeoJSON <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="geojson-file"
@@ -237,7 +237,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
               {previewError && <p className="text-destructive text-xs">{previewError}</p>}
               {previewGeoJson && (
                 <div className="space-y-2">
-                  <p className="text-muted-foreground text-xs">Preview bản đồ từ file GeoJSON</p>
+                  <p className="text-muted-foreground text-xs">Xem trước bản đồ từ tệp GeoJSON</p>
                   <GeoJsonMapPreview geojson={previewGeoJson} />
                 </div>
               )}
@@ -274,7 +274,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
             </div>
             <div>
               <p className="font-semibold">Hướng dẫn GeoJSON</p>
-              <p className="text-muted-foreground text-xs">Chuẩn bị file trước khi import</p>
+              <p className="text-muted-foreground text-xs">Chuẩn bị tệp trước khi nhập</p>
             </div>
           </div>
 
@@ -289,18 +289,18 @@ export default function ImportGeoJsonPage(): JSX.Element {
           </div>
 
           <div className="space-y-2 text-sm">
-            <p className="font-medium">Checklist nhanh</p>
+            <p className="font-medium">Kiểm tra trước khi nhập</p>
             <p className="text-muted-foreground flex items-start gap-2 text-xs">
               <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
-              File có phần mở rộng `.geojson` hoặc `.json`.
+              Tệp có đuôi `.geojson` hoặc `.json`.
             </p>
             <p className="text-muted-foreground flex items-start gap-2 text-xs">
               <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
-              Mỗi feature có `geometry` hợp lệ và tọa độ đúng thứ tự.
+              Mỗi đối tượng có `geometry` hợp lệ và tọa độ đúng thứ tự.
             </p>
             <p className="text-muted-foreground flex items-start gap-2 text-xs">
               <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
-              Tên lớp rõ nghĩa để hệ thống sinh mã lớp ổn định.
+              Đặt tên lớp rõ nghĩa.
             </p>
           </div>
 
@@ -313,7 +313,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
 
           <Button type="button" variant="outline" className="w-full" onClick={downloadGeoJsonSample}>
             <Download size={16} />
-            Tải file mẫu GeoJSON
+            Tải tệp GeoJSON mẫu
           </Button>
         </Card>
       </div>

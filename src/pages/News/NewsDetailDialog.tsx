@@ -65,7 +65,7 @@ export default function NewsDetailDialog({ open, onOpenChange, newsId }: NewsDet
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogTitle>Chi tiết tin tức</DialogTitle>
-        <DialogDescription>Thông tin chi tiết bài viết đã chọn</DialogDescription>
+        <DialogDescription>Nội dung và thông tin xuất bản.</DialogDescription>
 
         {dbQuery.isLoading ? (
           <div className="text-muted-foreground mt-4 text-sm">Đang tải dữ liệu...</div>
@@ -82,7 +82,7 @@ export default function NewsDetailDialog({ open, onOpenChange, newsId }: NewsDet
               <span className="col-span-2">{title || '-'}</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <span className="font-semibold">Slug:</span>
+              <span className="font-semibold">Đường dẫn bài viết:</span>
               <span className="col-span-2 font-mono text-sm">{slug || '-'}</span>
             </div>
             {summary && (

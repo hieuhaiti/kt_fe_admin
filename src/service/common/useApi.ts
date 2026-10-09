@@ -35,7 +35,7 @@ interface MessageHolder {
 const SESSION_EXPIRED_TOAST_ID = 'session-expired'
 
 function notifyUnauthorized() {
-  toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.', {
+  toast.error('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.', {
     toastId: SESSION_EXPIRED_TOAST_ID,
   })
 }

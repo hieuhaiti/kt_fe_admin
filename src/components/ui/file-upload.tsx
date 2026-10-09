@@ -471,7 +471,7 @@ function FileUpload(props: FileUploadProps) {
               store.dispatch({
                 type: "SET_ERROR",
                 file,
-                error: "Không thể tải tệp lên. Vui lòng thử lại.",
+                error: "Không thể tải tệp lên. Hãy thử lại.",
               });
             },
           });
@@ -481,7 +481,7 @@ function FileUpload(props: FileUploadProps) {
           }
         }
       } catch {
-        const errorMessage = "Không thể tải tệp lên. Vui lòng thử lại.";
+        const errorMessage = "Không thể tải tệp lên. Hãy thử lại.";
         for (const file of files) {
           store.dispatch({
             type: "SET_ERROR",
@@ -512,7 +512,7 @@ function FileUpload(props: FileUploadProps) {
           filesToProcess = filesToProcess.slice(0, remainingSlotCount);
 
           for (const file of rejectedFiles) {
-            let rejectionMessage = `Maximum ${maxFiles} files allowed`;
+            let rejectionMessage = `Maximum ${maxFiles} tệp được phép`;
 
             if (propsRef.current.onFileValidate) {
               const validationMessage = propsRef.current.onFileValidate(file);
@@ -1016,9 +1016,9 @@ function FileUploadItem(props: FileUploadItemProps) {
   const statusText = fileState.error
     ? `Lỗi: ${fileState.error}`
     : fileState.status === "uploading"
-      ? `Đang tải lên: hoàn tất ${fileState.progress}%`
+      ? `Đang tải lên: ${fileState.progress}%`
       : fileState.status === "success"
-        ? "Tải lên hoàn tất"
+        ? "Đã tải lên"
         : "Sẵn sàng tải lên";
 
   const ItemPrimitive = asChild ? Slot : "div";

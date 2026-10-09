@@ -9,10 +9,10 @@ export default function InternalServerErrorPage(): JSX.Element {
       <div className="text-center">
         <p className="text-4xl text-(--error-500-bg-color)">500</p>
         <h1 className="text-foreground mt-4 text-5xl tracking-tight sm:text-7xl">
-          {'Lỗi máy chủ nội bộ'}
+          {'Lỗi máy chủ'}
         </h1>
         <p className="text-foreground mt-6 text-lg font-medium sm:text-xl">
-          {'Đã xảy ra lỗi trên phía máy chủ.'}
+          {'Máy chủ gặp lỗi. Hãy thử lại sau.'}
         </p>
         <div className="mt-10 flex items-center justify-center">
           <button

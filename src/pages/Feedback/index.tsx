@@ -187,7 +187,7 @@ export default function FeedbackPage(): JSX.Element {
           <SelectValue placeholder="Trạng thái" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Tất cả TT</SelectItem>
+          <SelectItem value="all">Tất cả trạng thái</SelectItem>
           <SelectItem value="new">Mới tiếp nhận</SelectItem>
           <SelectItem value="in_progress">Đang xử lý</SelectItem>
           <SelectItem value="resolved">Đã xử lý</SelectItem>
@@ -206,7 +206,7 @@ export default function FeedbackPage(): JSX.Element {
           <SelectValue placeholder="Ưu tiên" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Tất cả UT</SelectItem>
+          <SelectItem value="all">Tất cả mức ưu tiên</SelectItem>
           <SelectItem value="low">Thấp</SelectItem>
           <SelectItem value="normal">Bình thường</SelectItem>
           <SelectItem value="high">Cao</SelectItem>
@@ -238,7 +238,7 @@ export default function FeedbackPage(): JSX.Element {
   return (
     <PageLayout
       title="Phản ánh hiện trường"
-      description="Tiếp nhận và xử lý phản ánh do người dân gửi từ cổng bản đồ"
+      description="Tiếp nhận và xử lý phản ánh của người dân."
     >
       <Tabs value={view} onValueChange={(value) => setView(value as 'table' | 'map')}>
         <TabsList className="mb-3">
@@ -278,7 +278,7 @@ export default function FeedbackPage(): JSX.Element {
                 <TableHead className="w-28">Trạng thái</TableHead>
                 <TableHead className="w-36">Người gửi</TableHead>
                 <TableHead className="w-32">Ngày tạo</TableHead>
-                {showActions && <TableHead className="w-24 text-right">Hành động</TableHead>}
+                {showActions && <TableHead className="w-24 text-right">Thao tác</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>

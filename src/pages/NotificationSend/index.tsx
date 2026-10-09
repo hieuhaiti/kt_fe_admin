@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
+import { useDebounce } from '@/hooks/useDebounce'
 import { notificationService, useApiMutation, useApiQuery, userService } from '@/service'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -40,43 +41,43 @@ const TYPE_GROUPS: { group: string; items: { value: string; label: string }[] }[
   {
     group: 'Hệ thống',
     items: [
-      { value: 'announcement', label: 'Thông báo chung (announcement)' },
-      { value: 'system_alert', label: 'Cảnh báo hệ thống (system_alert)' },
-      { value: 'backup_success', label: 'Sao lưu thành công (backup_success)' },
-      { value: 'maintenance', label: 'Bảo trì (maintenance)' },
+      { value: 'announcement', label: 'Thông báo chung' },
+      { value: 'system_alert', label: 'Cảnh báo hệ thống' },
+      { value: 'backup_success', label: 'Sao lưu thành công' },
+      { value: 'maintenance', label: 'Bảo trì' },
     ],
   },
   {
     group: 'Cháy rừng',
     items: [
-      { value: 'fire_danger_alert', label: 'Cảnh báo nguy cơ cháy (fire_danger_alert)' },
-      { value: 'fire_warning', label: 'Cảnh báo cháy (fire_warning)' },
+      { value: 'fire_danger_alert', label: 'Cảnh báo nguy cơ cháy' },
+      { value: 'fire_warning', label: 'Cảnh báo cháy' },
     ],
   },
   {
     group: 'Phản ánh',
     items: [
-      { value: 'feedback_created', label: 'Phản ánh mới (feedback_created)' },
-      { value: 'feedback_fire_report', label: 'Phản ánh cháy rừng (feedback_fire_report)' },
+      { value: 'feedback_created', label: 'Phản ánh mới' },
+      { value: 'feedback_fire_report', label: 'Phản ánh cháy rừng' },
       {
         value: 'feedback_status_changed',
-        label: 'Đổi trạng thái phản ánh (feedback_status_changed)',
+        label: 'Đổi trạng thái phản ánh',
       },
-      { value: 'feedback_resolved', label: 'Phản ánh đã xử lý (feedback_resolved)' },
+      { value: 'feedback_resolved', label: 'Phản ánh đã xử lý' },
     ],
   },
   {
     group: 'Bình luận',
     items: [
-      { value: 'comment_created', label: 'Bình luận mới (comment_created)' },
-      { value: 'comment_approved', label: 'Bình luận đã duyệt (comment_approved)' },
-      { value: 'comment_rejected', label: 'Bình luận bị từ chối (comment_rejected)' },
-      { value: 'comment_removed', label: 'Bình luận bị gỡ (comment_removed)' },
+      { value: 'comment_created', label: 'Bình luận mới' },
+      { value: 'comment_approved', label: 'Bình luận đã duyệt' },
+      { value: 'comment_rejected', label: 'Bình luận bị từ chối' },
+      { value: 'comment_removed', label: 'Bình luận bị gỡ' },
     ],
   },
   {
     group: 'Tin tức',
-    items: [{ value: 'news_published', label: 'Tin mới xuất bản (news_published)' }],
+    items: [{ value: 'news_published', label: 'Tin mới xuất bản' }],
   },
 ]
 
@@ -99,7 +100,9 @@ function userRoleOf(user: User) {
 export default function NotificationSendPage() {
   const [target, setTarget] = useState<NotificationTarget>('all')
   const [userId, setUserId] = useState('')
+  const [selectedUserObj, setSelectedUserObj] = useState<User | null>(null)
   const [userSearch, setUserSearch] = useState('')
+  const debouncedUserSearch = useDebounce(userSearch, 300)
   const [userPickerOpen, setUserPickerOpen] = useState(false)
   const [roleCode, setRoleCode] = useState('citizen')
   const [channel, setChannel] = useState('system')
@@ -111,13 +114,16 @@ export default function NotificationSendPage() {
     notificationService.send(payload)
   )
 
-  const userQueryParams = {
-    page: 1,
-    limit: 50,
-    sortBy: 'id',
-    sortOrder: 'ASC' as const,
-    ...(userSearch.trim() && { q: userSearch.trim() }),
-  }
+  const userQueryParams = useMemo(
+    () => ({
+      page: 1,
+      limit: 50,
+      sortBy: 'id',
+      sortOrder: 'ASC' as const,
+      ...(debouncedUserSearch.trim() ? { q: debouncedUserSearch.trim() } : {}),
+    }),
+    [debouncedUserSearch]
+  )
 
   const usersQuery = useApiQuery(
     ['notification-send-users', userQueryParams],
@@ -128,7 +134,7 @@ export default function NotificationSendPage() {
   )
 
   const userData = (usersQuery.data as ApiResponse<UserListData> | undefined)?.data
-  const users = userData?.users ?? userData?.items ?? []
+  const users = useMemo(() => userData?.users ?? userData?.items ?? [], [userData])
 
   const typeLabel = useMemo(() => {
     for (const g of TYPE_GROUPS) {
@@ -164,10 +170,10 @@ export default function NotificationSendPage() {
     })
   }, [userSearch, users])
 
-  const selectedUser = useMemo(
-    () => users.find((user) => String(user.id) === userId) ?? null,
-    [userId, users]
-  )
+  const selectedUser = useMemo(() => {
+    if (selectedUserObj && String(selectedUserObj.id) === userId) return selectedUserObj
+    return users.find((user) => String(user.id) === userId) ?? null
+  }, [userId, users, selectedUserObj])
 
   const onSend = () => {
     if (!title.trim() || !body.trim()) {
@@ -207,15 +213,14 @@ export default function NotificationSendPage() {
       <div>
         <h1 className="text-2xl font-bold">Gửi thông báo</h1>
         <p className="text-muted-foreground text-sm">
-          Gửi thông báo hệ thống, phản ánh, bình luận, tin tức hoặc cảnh báo cháy tới người dùng cụ
-          thể, theo vai trò hoặc tất cả.
+          Gửi thông báo cho người dùng, theo vai trò hoặc cho tất cả.
         </p>
       </div>
 
       <Card>
         <CardContent className="space-y-4 p-6">
           <div>
-            <label className="mb-1 block text-sm font-medium">Đối tượng</label>
+            <label className="mb-1 block text-sm font-medium">Người nhận</label>
             <div className="flex flex-wrap gap-2">
               {(['all', 'role', 'user'] as NotificationTarget[]).map((t) => (
                 <Button
@@ -273,6 +278,7 @@ export default function NotificationSendPage() {
                           className="hover:bg-accent focus-visible:ring-ring flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-left text-sm outline-none focus-visible:ring-2"
                           onClick={() => {
                             setUserId(String(user.id))
+                            setSelectedUserObj(user)
                             setUserPickerOpen(false)
                           }}
                         >
@@ -325,7 +331,7 @@ export default function NotificationSendPage() {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm">Kênh</label>
+              <label className="mb-1 block text-sm">Nhóm thông báo</label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full justify-between">

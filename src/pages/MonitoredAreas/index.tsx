@@ -49,19 +49,19 @@ const polygonSchema = z.object({
 })
 
 const createSchema = z.object({
-  name: z.string().max(200).optional(),
-  communeCode: z.string().max(20).optional(),
-  note: z.string().max(2000).optional(),
+  name: z.string().max(200, 'Tên vùng không được quá 200 ký tự').optional(),
+  communeCode: z.string().max(20, 'Mã xã không được quá 20 ký tự').optional(),
+  note: z.string().max(2000, 'Ghi chú không được quá 2000 ký tự').optional(),
   geomText: z
     .string()
-    .min(1, 'Nhập polygon GeoJSON')
+    .min(1, 'Nhập vùng ở định dạng GeoJSON')
     .refine((value) => {
       try {
         return polygonSchema.safeParse(JSON.parse(value)).success
       } catch {
         return false
       }
-    }, 'GeoJSON phải là Polygon hợp lệ, có ít nhất 4 điểm'),
+    }, 'Vùng GeoJSON phải là Polygon hợp lệ, có ít nhất 4 điểm'),
 })
 
 type CreateForm = z.infer<typeof createSchema>
@@ -277,7 +277,7 @@ export default function MonitoredAreasPage() {
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
           <DialogTitle>Thêm khu vực theo dõi</DialogTitle>
           <DialogDescription>
-            Tạo khu vực tham chiếu để liên kết các phiên đo ngoài hiện trường
+            Tạo khu vực để liên kết các phiên đo thực địa.
           </DialogDescription>
           <form
             onSubmit={form.handleSubmit((values) => createMutation.mutate(values))}
@@ -294,7 +294,7 @@ export default function MonitoredAreasPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="area-geom">Polygon GeoJSON</Label>
+              <Label htmlFor="area-geom">Ranh giới vùng (GeoJSON)</Label>
               <Textarea
                 id="area-geom"
                 className="min-h-40 font-mono text-xs"

@@ -60,15 +60,15 @@ interface MapLayerFormDialogProps {
 type MapLayerDetailData = MapLayer | { mapLayer?: MapLayer }
 
 const mapLayerSchema = z.object({
-  category: z.string().trim().min(1, { message: 'Vui lòng chọn nhóm lớp' }).max(60),
-  layer_group: z.string().trim().max(80).optional().or(z.literal('')),
+  category: z.string().trim().min(1, { message: 'Vui lòng chọn nhóm lớp' }).max(60, 'Nhóm lớp không được quá 60 ký tự'),
+  layer_group: z.string().trim().max(80, 'Nhóm hiển thị không được quá 80 ký tự').optional().or(z.literal('')),
   name: z
-    .string({ message: 'Tên lớp bản đồ là bắt buộc' })
+    .string({ message: 'Vui lòng nhập tên lớp bản đồ' })
     .trim()
     .min(2, { message: 'Tên lớp bản đồ phải có ít nhất 2 ký tự' })
     .max(200, { message: 'Tên lớp bản đồ không được vượt quá 200 ký tự' }),
   geometry_type: z.enum(['polygon', 'line', 'point', 'raster'], {
-    message: "Kiểu hình học phải là một trong: 'polygon', 'line', 'point', 'raster'",
+    message: 'Vui lòng chọn kiểu hình học hợp lệ',
   }),
   properties: z.record(z.string(), z.unknown()).nullable().optional(),
   is_active: z.boolean().optional(),
@@ -251,7 +251,7 @@ export default function MapLayerFormDialog({
     if (isTiffFile(file)) {
       const isTiff = await detectTiffMagicBytes(file)
       if (!isTiff) {
-        toast.error('File có đuôi .tif/.tiff nhưng không phải GeoTIFF hợp lệ')
+        toast.error('Tệp có đuôi .tif/.tiff nhưng không phải GeoTIFF hợp lệ')
         return
       }
       setGeometryType('raster')
@@ -260,7 +260,7 @@ export default function MapLayerFormDialog({
       setLongitude('')
       setGeometryDataText('')
       toast.success(
-        `Đã ghi nhận ${file.name} là raster — nạp thực tế qua Import Raster / Ingest GEE`
+        `Đã ghi nhận ${file.name} là lớp ảnh — cần nạp tệp qua Import Raster / Ingest GEE`
       )
       return
     }
@@ -270,7 +270,7 @@ export default function MapLayerFormDialog({
       const parsed = JSON.parse(text)
       const kind = inferGeometryKind(parsed)
       if (!kind) {
-        toast.error('Không nhận diện được GeoJSON hợp lệ trong file')
+        toast.error('Tệp không chứa GeoJSON hợp lệ')
         return
       }
       setGeometryType(kind)
@@ -282,7 +282,7 @@ export default function MapLayerFormDialog({
           setLatitude(String(point.lat))
           setLongitude(String(point.lng))
           setGeometryDataText('')
-          toast.success(`Đã nạp Point từ ${file.name}`)
+          toast.success(`Đã nạp điểm từ ${file.name}`)
           return
         }
       }
@@ -292,8 +292,8 @@ export default function MapLayerFormDialog({
       setLongitude('')
       toast.success(`Đã nạp GeoJSON từ ${file.name}`)
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'lỗi parse'
-      toast.error(`File không phải GeoJSON/TIFF hợp lệ: ${message}`)
+      const message = error instanceof Error ? error.message : 'lỗi đọc dữ liệu'
+      toast.error(`Tệp không phải GeoJSON/TIFF hợp lệ: ${message}`)
     }
   }
 
@@ -488,10 +488,10 @@ export default function MapLayerFormDialog({
       const lat = toNumber(latitude)
       const lng = toNumber(longitude)
       if (lat === null || lng === null) {
-        return { error: 'Latitude/Longitude không hợp lệ', geojson: null }
+        return { error: 'Kinh độ hoặc vĩ độ không hợp lệ', geojson: null }
       }
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        return { error: 'Latitude/Longitude vượt phạm vi hợp lệ', geojson: null }
+        return { error: 'Kinh độ hoặc vĩ độ ngoài phạm vi cho phép', geojson: null }
       }
       return {
         error: null,
@@ -504,7 +504,7 @@ export default function MapLayerFormDialog({
     try {
       const parsed = JSON.parse(geometryDataText.trim())
       const geojson = extractGeoJson(parsed)
-      if (!geojson) return { error: 'Không nhận diện được GeoJSON để preview', geojson: null }
+      if (!geojson) return { error: 'Không nhận diện được GeoJSON để xem trước', geojson: null }
       return { error: null, geojson }
     } catch {
       return { error: 'JSON không hợp lệ', geojson: null }
@@ -521,11 +521,11 @@ export default function MapLayerFormDialog({
       const lat = toNumber(latitude)
       const lng = toNumber(longitude)
       if (lat === null || lng === null) {
-        toast.error('Latitude/Longitude không hợp lệ')
+        toast.error('Kinh độ hoặc vĩ độ không hợp lệ')
         return
       }
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        toast.error('Latitude/Longitude vượt phạm vi hợp lệ')
+        toast.error('Kinh độ hoặc vĩ độ ngoài phạm vi cho phép')
         return
       }
     }
@@ -537,11 +537,11 @@ export default function MapLayerFormDialog({
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           properties = parsed as Record<string, unknown>
         } else {
-          toast.error('Properties phải là JSON object hợp lệ')
+          toast.error('Thuộc tính phải là đối tượng JSON hợp lệ')
           return
         }
       } catch {
-        toast.error('Properties phải là JSON hợp lệ')
+        toast.error('Thuộc tính phải ở định dạng JSON hợp lệ')
         return
       }
     }
@@ -724,8 +724,8 @@ export default function MapLayerFormDialog({
             </Select>
             <p className="text-muted-foreground text-xs">
               {layerKind === 'basemap'
-                ? 'Lớp nền sẽ tự động được bật khi user vào bản đồ, hiển thị ở mục "Lớp nền" trong sidebar.'
-                : 'Lớp phủ mặc định tắt, được gom nhóm theo "Nhóm lớp" trong sidebar.'}
+                ? 'Lớp nền tự bật khi mở bản đồ và hiển thị trong mục “Lớp nền”.'
+                : 'Lớp phủ mặc định tắt, hiển thị theo nhóm trong danh mục lớp.'}
             </p>
           </div>
 
@@ -953,7 +953,7 @@ export default function MapLayerFormDialog({
               <div>
                 <Label className="text-sm font-semibold">Chú giải lớp bản đồ</Label>
                 <p className="text-muted-foreground text-xs">
-                  Cấu hình màu sắc và nhãn hiển thị trong bảng chú giải trên WebGIS.
+                  Chọn màu và nhãn cho chú giải trên WebGIS.
                 </p>
               </div>
               <div className="bg-background flex items-center gap-1 rounded-md border p-0.5">
@@ -984,8 +984,7 @@ export default function MapLayerFormDialog({
               <div className="space-y-2.5">
                 {legendEntries.length === 0 ? (
                   <div className="text-muted-foreground rounded-md border border-dashed py-4 text-center text-xs">
-                    Chưa có mục chú giải nào. Nhấn &quot;Thêm mục chú giải&quot; bên dưới để tạo
-                    mới.
+                    Chưa có chú giải. Chọn “Thêm mục chú giải” để tạo.
                   </div>
                 ) : (
                   <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
@@ -1090,24 +1089,24 @@ export default function MapLayerFormDialog({
                 onClick={() => fileInputRef.current?.click()}
               >
                 <FileJson className="size-4" aria-hidden="true" />
-                Mở file GeoJSON / GeoTIFF
+                Mở tệp GeoJSON / GeoTIFF
               </Button>
             </div>
             {geometryType === 'raster' ? (
               <div className="border-muted bg-muted/20 space-y-1 rounded-md border p-3">
                 <p className="text-sm font-medium">Raster (GeoTIFF)</p>
                 <p className="text-muted-foreground text-xs">
-                  {rasterFileName ? `Đã ghi nhận: ${rasterFileName}` : 'Chưa chọn file raster.'}
+                  {rasterFileName ? `Đã ghi nhận: ${rasterFileName}` : 'Chưa chọn tệp ảnh.'}
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  Form chỉ lưu metadata (geometry_type = RASTER). Nạp file thực tế qua chức năng{' '}
+                  Biểu mẫu chỉ lưu thông tin lớp ảnh, không nạp tệp. Nạp tệp qua{' '}
                   <strong>Ingest Raster</strong> hoặc <strong>GeoServer Coverage Store</strong>.
                 </p>
               </div>
             ) : geometryType === 'point' ? (
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="latitude">Latitude</Label>
+                  <Label htmlFor="latitude">Vĩ độ</Label>
                   <Input
                     id="latitude"
                     value={latitude}
@@ -1116,7 +1115,7 @@ export default function MapLayerFormDialog({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="longitude">Longitude</Label>
+                  <Label htmlFor="longitude">Kinh độ</Label>
                   <Input
                     id="longitude"
                     value={longitude}
@@ -1139,14 +1138,14 @@ export default function MapLayerFormDialog({
             )}
             {geometryType !== 'raster' && !geometryPreview.error && geometryPreview.geojson && (
               <div className="border-muted bg-muted/20 rounded-md border p-2">
-                <p className="text-muted-foreground mb-2 text-xs">Preview bản đồ</p>
+                <p className="text-muted-foreground mb-2 text-xs">Xem trước bản đồ</p>
                 <GeoJsonMapPreview geojson={geometryPreview.geojson} />
               </div>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="properties">Properties (JSON, tùy chọn)</Label>
+            <Label htmlFor="properties">Thuộc tính (JSON, tùy chọn)</Label>
             <Textarea
               id="properties"
               rows={6}

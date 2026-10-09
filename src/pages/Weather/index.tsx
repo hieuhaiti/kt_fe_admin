@@ -31,7 +31,7 @@ const LAYER_TYPES: {
   description: string
   icon: ComponentType<{ className?: string }>
 }[] = [
-  { value: 'temp', label: 'Nhiệt độ', description: 'Lớp nhiệt bề mặt', icon: Thermometer },
+  { value: 'temp', label: 'Nhiệt độ không khí', description: 'Lớp nhiệt độ thời tiết', icon: Thermometer },
   { value: 'rain', label: 'Mưa', description: 'Cường độ mưa', icon: CloudRain },
   { value: 'cloud', label: 'Mây', description: 'Độ phủ mây', icon: Cloud },
   { value: 'wind', label: 'Gió', description: 'Trường gió', icon: Wind },
@@ -102,8 +102,7 @@ export default function WeatherPage() {
               <h1 className="text-2xl font-bold">Thời tiết</h1>
             </div>
             <p className="text-muted-foreground mt-2 text-sm">
-              Quản lý các lớp thời tiết, kiểm tra dữ liệu tại điểm và cập nhật dữ liệu
-              phục vụ bản đồ.
+              Quản lý lớp thời tiết và tra cứu dữ liệu tại điểm.
             </p>
           </div>
           {canManage && (
@@ -133,7 +132,7 @@ export default function WeatherPage() {
           />
           <MetricCard
             icon={CloudSun}
-            label="Lớp dữ liệu khả dụng"
+            label="Lớp dữ liệu hiện có"
             value={formatNumber(layers.length, '', 0)}
             hint={layersQuery.isFetching ? 'Đang tải danh sách' : 'Theo cấu hình hệ thống'}
           />
@@ -154,7 +153,7 @@ export default function WeatherPage() {
                   Lớp thời tiết bản đồ
                 </CardTitle>
                 <CardDescription>
-                  Chọn lớp dữ liệu để kiểm tra trước khi hiển thị trên bản đồ nghiệp vụ.
+                  Chọn lớp thời tiết để kiểm tra.
                 </CardDescription>
               </div>
               <Badge variant="outline" className="w-fit">
@@ -217,7 +216,7 @@ export default function WeatherPage() {
               Tra cứu thời tiết tại điểm
             </CardTitle>
             <CardDescription>
-              Nhập tọa độ để kiểm tra dữ liệu thời tiết tại khu vực cần theo dõi.
+              Nhập tọa độ nơi cần xem thời tiết.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -292,8 +291,7 @@ export default function WeatherPage() {
               </div>
             ) : (
               <div className="text-muted-foreground rounded-md border border-dashed p-4 text-sm">
-                Nhập tọa độ và bấm tra cứu để xem nhiệt độ, gió, mây, mưa và thời điểm
-                cập nhật dữ liệu.
+                Nhập tọa độ rồi chọn “Tra cứu” để xem thời tiết.
               </div>
             )}
           </CardContent>
@@ -323,7 +321,7 @@ function LayerCard({ layer }: { layer: WeatherLayer }) {
         <div className="bg-muted mt-3 flex items-start gap-2 rounded-md p-2">
           <Activity className="text-muted-foreground mt-0.5 size-3.5 shrink-0" />
           <p className="text-muted-foreground text-xs">
-            Sẵn sàng hiển thị trên bản đồ nghiệp vụ
+            Sẵn sàng hiển thị trên bản đồ
           </p>
         </div>
       )}

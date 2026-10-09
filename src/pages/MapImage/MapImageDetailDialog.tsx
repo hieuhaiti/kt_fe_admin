@@ -93,7 +93,7 @@ export default function MapImageDetailDialog({
         <div className="shrink-0 border-b px-6 py-5 pr-12">
           <DialogTitle>Chi tiết ảnh bản đồ</DialogTitle>
           <DialogDescription className="mt-1">
-            Thông tin chi tiết ảnh bản đồ đã chọn
+            Thông tin bản đồ và tệp nguồn.
           </DialogDescription>
         </div>
 
@@ -165,7 +165,7 @@ export default function MapImageDetailDialog({
                       </div>
                       <div className="space-y-3">
                         <div>
-                          <p className="text-muted-foreground text-xs font-medium">Thumbnail</p>
+                          <p className="text-muted-foreground text-xs font-medium">Ảnh xem trước</p>
                           {thumbnailUrl ? (
                             <div className="bg-muted/40 mt-1 flex h-40 items-center justify-center overflow-hidden rounded-md border">
                               <img
@@ -176,7 +176,7 @@ export default function MapImageDetailDialog({
                             </div>
                           ) : (
                             <div className="text-muted-foreground bg-muted/20 mt-1 flex h-40 items-center justify-center rounded-md border border-dashed text-xs">
-                              Chưa có thumbnail
+                              Chưa có ảnh xem trước
                             </div>
                           )}
                         </div>
@@ -207,18 +207,18 @@ export default function MapImageDetailDialog({
                       </CodeValue>
                     </DetailField>
                     <DetailField label="Năm">{mapImage.year ?? '-'}</DetailField>
-                    <DetailField label="Tỉ lệ">{mapImage.scale || '-'}</DetailField>
+                    <DetailField label="Tỷ lệ">{mapImage.scale || '-'}</DetailField>
                     <DetailField label="Khu vực">{mapImage.region || '-'}</DetailField>
-                    <DetailField label="Tiêu đề (VI)" wide>
+                    <DetailField label="Tiêu đề tiếng Việt" wide>
                       {mapImage.translations?.vi?.title || '-'}
                     </DetailField>
-                    <DetailField label="Tiêu đề (EN)" wide>
+                    <DetailField label="Tiêu đề tiếng Anh" wide>
                       {mapImage.translations?.en?.title || '-'}
                     </DetailField>
-                    <DetailField label="Mô tả (VI)" wide>
+                    <DetailField label="Mô tả tiếng Việt" wide>
                       <span className="whitespace-pre-wrap">{descriptionVi || '-'}</span>
                     </DetailField>
-                    <DetailField label="Mô tả (EN)" wide>
+                    <DetailField label="Mô tả tiếng Anh" wide>
                       <span className="whitespace-pre-wrap">{descriptionEn || '-'}</span>
                     </DetailField>
                   </dl>
@@ -240,11 +240,11 @@ export default function MapImageDetailDialog({
                     <DetailField label="Loại tệp">
                       <CodeValue>{mapImage.mimeType}</CodeValue>
                     </DetailField>
-                    <DetailField label="Kích thước">{formatFileSize(mapImage.fileSize)}</DetailField>
+                    <DetailField label="Dung lượng">{formatFileSize(mapImage.fileSize)}</DetailField>
                     <DetailField label="Đường dẫn tệp" wide>
                       <CodeValue>{fileUrl}</CodeValue>
                     </DetailField>
-                    <DetailField label="Đường dẫn thumbnail" wide>
+                    <DetailField label="Đường dẫn ảnh xem trước" wide>
                       <CodeValue>{thumbnailUrl}</CodeValue>
                     </DetailField>
                     <DetailField label="Người tải lên">{uploader}</DetailField>

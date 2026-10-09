@@ -27,7 +27,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'fillOpacity',
-    label: 'Độ trong suốt nền vùng',
+    label: 'Mức hiển thị nền vùng (0 ẩn, 1 hiện)',
     type: 'number',
     geometryTypes: ['polygon'],
     min: 0,
@@ -51,7 +51,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'strokeOpacity',
-    label: 'Độ trong suốt đường viền',
+    label: 'Mức hiển thị đường viền (0 ẩn, 1 hiện)',
     type: 'number',
     geometryTypes: ['polygon', 'line'],
     min: 0,
@@ -121,7 +121,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'circleOpacity',
-    label: 'Độ trong suốt điểm',
+    label: 'Mức hiển thị điểm (0 ẩn, 1 hiện)',
     type: 'number',
     geometryTypes: ['point'],
     min: 0,
@@ -158,7 +158,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'circleStrokeOpacity',
-    label: 'Độ trong suốt viền điểm',
+    label: 'Mức hiển thị viền điểm (0 ẩn, 1 hiện)',
     type: 'number',
     geometryTypes: ['point'],
     min: 0,
@@ -178,7 +178,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'opacity',
-    label: 'Độ mờ tổng thể (opacity)',
+    label: 'Mức hiển thị tổng thể',
     type: 'number',
     geometryTypes: ['point', 'line', 'polygon', 'raster'],
     min: 0,
@@ -188,7 +188,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'rasterOpacity',
-    label: 'Độ trong suốt raster (tên mới)',
+    label: 'Mức hiển thị lớp ảnh',
     type: 'number',
     geometryTypes: ['raster'],
     min: 0,
@@ -198,7 +198,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'brightnessMin',
-    label: 'Độ sáng tối thiểu raster',
+    label: 'Độ sáng tối thiểu ảnh',
     type: 'number',
     geometryTypes: ['raster'],
     min: 0,
@@ -208,7 +208,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'brightnessMax',
-    label: 'Độ sáng tối đa raster',
+    label: 'Độ sáng tối đa ảnh',
     type: 'number',
     geometryTypes: ['raster'],
     min: 0,
@@ -218,7 +218,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'contrast',
-    label: 'Độ tương phản raster',
+    label: 'Độ tương phản ảnh',
     type: 'number',
     geometryTypes: ['raster'],
     min: -1,
@@ -228,7 +228,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'saturation',
-    label: 'Độ bão hòa raster',
+    label: 'Độ bão hòa ảnh',
     type: 'number',
     geometryTypes: ['raster'],
     min: -1,
@@ -238,7 +238,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'hueRotate',
-    label: 'Xoay màu raster',
+    label: 'Xoay màu ảnh',
     type: 'number',
     geometryTypes: ['raster'],
     min: -360,
@@ -248,7 +248,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'fadeDuration',
-    label: 'Thời gian chuyển raster',
+    label: 'Thời gian chuyển ảnh',
     type: 'number',
     geometryTypes: ['raster'],
     min: 0,
@@ -258,7 +258,7 @@ export const STYLE_PROPERTY_DEFINITIONS: readonly StylePropertyDefinition[] = [
   },
   {
     key: 'resampling',
-    label: 'Nội suy raster',
+    label: 'Nội suy ảnh',
     type: 'enum',
     geometryTypes: ['raster'],
     options: ['linear', 'nearest'],
@@ -319,7 +319,7 @@ export function validateStyleObject(
 ): { style: MapLayerDefaultStyle; error?: string } {
   if (value === null || value === undefined || value === '') return { style: {} }
   if (typeof value !== 'object' || Array.isArray(value))
-    return { style: {}, error: 'Kiểu vẽ phải là JSON object' }
+    return { style: {}, error: 'Kiểu vẽ phải là đối tượng JSON' }
 
   const allowed = getStyleDefinitions(geometryType)
   const style: Record<string, unknown> = {}

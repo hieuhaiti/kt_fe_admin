@@ -53,7 +53,7 @@ export default function NewsCommentDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
         <DialogTitle>Chi tiết bình luận</DialogTitle>
-        <DialogDescription>Thông tin chi tiết bình luận đã chọn</DialogDescription>
+        <DialogDescription>Nội dung và trạng thái duyệt.</DialogDescription>
 
         {comment ? (
           <div className="mt-4 space-y-3">
@@ -62,7 +62,7 @@ export default function NewsCommentDetailDialog({
               <span className="col-span-2">{comment.id}</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <span className="font-semibold">Bài viết ID:</span>
+              <span className="font-semibold">Mã bài viết:</span>
               <span className="col-span-2">{newsId}</span>
             </div>
             <div className="grid grid-cols-3 gap-2">

@@ -7,6 +7,7 @@ import { mapLayerApiService, useApiMutation, useApiQuery } from '@/service'
 import type {
   ApiResponse,
   CreateMapLayerApiBody,
+  MapLayer,
   MapLayerApi,
   MapLayerApiCreateData,
   MapLayerApiDetailData,
@@ -22,6 +23,7 @@ interface MapLayerApiFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   apiId: number | null
+  initialLayer?: MapLayer | null
   onSaved?: () => void
 }
 
@@ -29,6 +31,7 @@ export default function MapLayerApiFormDialog({
   open,
   onOpenChange,
   apiId,
+  initialLayer,
   onSaved,
 }: MapLayerApiFormDialogProps) {
   const isEdit = !!apiId
@@ -55,7 +58,7 @@ export default function MapLayerApiFormDialog({
           (payload && 'apiKey' in payload && payload.apiKey) ||
           (payload && 'raw_key' in payload && payload.raw_key) ||
           null
-        toast.success(rawKey ? `Tạo API key thành công: ${rawKey}` : 'Tạo API key thành công', {
+        toast.success(rawKey ? `Đã tạo khóa API: ${rawKey}` : 'Đã tạo khóa API', {
           autoClose: rawKey ? 12000 : 3000,
         })
         onSaved?.()
@@ -72,7 +75,7 @@ export default function MapLayerApiFormDialog({
     (payload: Partial<CreateMapLayerApiBody>) => mapLayerApiService.update(apiId!, payload),
     {
       onSuccess: () => {
-        toast.success('Cập nhật API thành công')
+        toast.success('Đã cập nhật khóa API')
         onSaved?.()
         onOpenChange(false)
       },
@@ -101,12 +104,12 @@ export default function MapLayerApiFormDialog({
           </div>
           <div>
             <DialogTitle className="text-lg">
-              {isEdit ? 'Chỉnh sửa API lớp bản đồ' : 'Thêm API lớp bản đồ mới'}
+              {isEdit ? 'Sửa khóa API bản đồ' : 'Tạo khóa API bản đồ'}
             </DialogTitle>
             <DialogDescription className="mt-0.5">
               {isEdit
                 ? `Cập nhật thông tin API #${apiId}`
-                : 'Điền các thông tin bên dưới để tạo một API mới cho lớp bản đồ'}
+                : 'Chọn lớp bản đồ và thiết lập khóa truy cập.'}
             </DialogDescription>
           </div>
         </div>
@@ -129,13 +132,14 @@ export default function MapLayerApiFormDialog({
           <div className="mt-2">
             <MapLayerApiForm
               mode={isEdit ? 'edit' : 'create'}
-              initialData={initialData}
+              initialData={isEdit ? initialData : null}
+              initialLayer={isEdit ? null : initialLayer}
               submitting={createMutation.isPending || updateMutation.isPending}
               onCancel={() => onOpenChange(false)}
               onSubmitCreate={(payload) => {
                 const parsed = validateCreatePayload(payload)
                 if (!parsed.success) {
-                  toast.error(parsed.error.issues[0]?.message ?? 'Payload create không hợp lệ')
+                  toast.error(parsed.error.issues[0]?.message ?? 'Thông tin tạo khóa không hợp lệ')
                   return
                 }
                 createMutation.mutate(parsed.data as CreateMapLayerApiBody)
@@ -143,7 +147,7 @@ export default function MapLayerApiFormDialog({
               onSubmitUpdate={(payload) => {
                 const parsed = validateUpdatePayload(payload)
                 if (!parsed.success) {
-                  toast.error(parsed.error.issues[0]?.message ?? 'Payload update không hợp lệ')
+                  toast.error(parsed.error.issues[0]?.message ?? 'Thông tin cập nhật khóa không hợp lệ')
                   return
                 }
                 updateMutation.mutate(parsed.data as UpdateMapLayerApiBody)

@@ -37,9 +37,9 @@ export const navConfig: NavItem[] = [
         permission: { resource: 'map_layers', action: 'read' },
       },
       {
-        name: 'Nhập file GIS',
+        name: 'Nhập tệp GIS',
         path: '/map-layers/import-geojson',
-        permission: { resource: 'map_layers', action: 'create' },
+        permission: { resource: 'map_layers', action: 'import' },
       },
     ],
   },
@@ -91,13 +91,13 @@ export const navConfig: NavItem[] = [
       {
         name: 'Bình luận',
         path: '/news-comments',
-        permission: { resource: 'comments', action: 'approve' },
+        permission: { resource: 'comments', action: 'read' },
       },
     ],
   },
   {
     icon: <FileText />,
-    name: 'Báo cáo / Văn bản',
+    name: 'Báo cáo và văn bản',
     path: '/documents',
     permission: { resource: 'documents', action: 'read' },
   },

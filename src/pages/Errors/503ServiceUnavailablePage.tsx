@@ -9,10 +9,10 @@ export default function ServiceUnavailablePage(): JSX.Element {
       <div className="text-center">
         <p className="text-4xl text-(--error-503-bg-color)">503</p>
         <h1 className="text-foreground mt-4 text-5xl tracking-tight sm:text-7xl">
-          {'Dịch vụ tạm thời không khả dụng'}
+          {'Dịch vụ tạm gián đoạn'}
         </h1>
         <p className="text-foreground mt-6 text-lg font-medium sm:text-xl">
-          {'Máy chủ hiện không sẵn sàng. Vui lòng thử lại sau.'}
+          {'Hiện chưa thể sử dụng dịch vụ. Hãy thử lại sau.'}
         </p>
         <div className="mt-10 flex items-center justify-center">
           <button

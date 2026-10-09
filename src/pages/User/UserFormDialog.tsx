@@ -33,8 +33,8 @@ const createUserSchema = z.object({
   fullName: z
     .string()
     .trim()
-    .min(2, 'Họ tên phải có ít nhất 2 ký tự')
-    .max(100, 'Họ tên không được quá 100 ký tự'),
+    .min(2, 'Họ và tên cần ít nhất 2 ký tự')
+    .max(100, 'Họ và tên không được quá 100 ký tự'),
   phone: z
     .string()
     .trim()
@@ -135,7 +135,7 @@ export default function UserFormDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
           <DialogTitle>Chỉnh sửa người dùng</DialogTitle>
-          <DialogDescription>Vui lòng sử dụng các thao tác riêng bên dưới.</DialogDescription>
+          <DialogDescription>Đổi vai trò, trạng thái hoặc mật khẩu từ danh sách người dùng.</DialogDescription>
 
           <div className="mt-4 space-y-3 text-sm">
             <div className="grid grid-cols-3 gap-2">
@@ -143,11 +143,11 @@ export default function UserFormDialog({
               <span className="col-span-2">{user?.email || '-'}</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <span className="font-semibold">Họ tên:</span>
+              <span className="font-semibold">Họ và tên:</span>
               <span className="col-span-2">{user?.fullName || user?.full_name || '-'}</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <span className="font-semibold">Điện thoại:</span>
+              <span className="font-semibold">Số điện thoại:</span>
               <span className="col-span-2">{user?.phone || '-'}</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -157,7 +157,7 @@ export default function UserFormDialog({
             <div className="grid grid-cols-3 gap-2">
               <span className="font-semibold">Trạng thái:</span>
               <span className="col-span-2">
-                {(user?.isActive ?? user?.is_active) ? 'Hoạt động' : 'Vô hiệu'}
+                {(user?.isActive ?? user?.is_active) ? 'Hoạt động' : 'Đã vô hiệu hóa'}
               </span>
             </div>
 
@@ -227,7 +227,7 @@ export default function UserFormDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="phone">Điện thoại</Label>
+              <Label htmlFor="phone">Số điện thoại</Label>
               <Input id="phone" {...register('phone')} placeholder="Số điện thoại" />
               {errors.phone && <p className="text-destructive text-sm">{errors.phone.message}</p>}
             </div>

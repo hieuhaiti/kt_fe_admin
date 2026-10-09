@@ -10,8 +10,7 @@ const UnSupported: React.FC = () => {
         </div>
         <h2 className="text-foreground mb-4 text-2xl font-semibold">Thiết bị không được hỗ trợ</h2>
         <p className="text-foreground/70 mx-auto mb-6 max-w-md">
-          Vui lòng sử dụng thiết bị có màn hình lớn hơn (từ 1024px trở lên) để trải nghiệm tốt nhất
-          ứng dụng.
+          Hãy dùng màn hình rộng từ 1024 px để mở ứng dụng.
         </p>
       </div>
     </div>

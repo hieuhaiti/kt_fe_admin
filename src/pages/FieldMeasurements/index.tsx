@@ -97,7 +97,7 @@ export default function FieldMeasurementsPage() {
 
   // Đơn vị hành chính (district) để map `communeCode` → tên hiển thị. Kết quả
   // gần như tĩnh (~10 đơn vị) nên staleTime dài để tránh gọi lại. Endpoint
-  // dùng `optionalAuth` nên không bao giờ 401.
+  // Endpoint hỗ trợ truy cập không đăng nhập; yêu cầu vẫn có thể thất bại.
   const adminUnitsQuery = useApiQuery(
     ['stats-admin-units', 'district', 'vi'],
     () => statisticsService.getAdminUnits({ level: 'district' }),
@@ -280,7 +280,7 @@ export default function FieldMeasurementsPage() {
   return (
     <PageLayout
       title="Đo đạc thực địa"
-      description="Xác minh kết quả đo đạc gửi từ thiết bị ngoài hiện trường và xuất dữ liệu đã duyệt"
+      description="Xác minh phiên đo ngoài hiện trường và xuất dữ liệu đã duyệt."
     >
       <ToolTableCustom
         searchValue={search}
@@ -453,7 +453,7 @@ export default function FieldMeasurementsPage() {
               {/* Timeline vòng đời — server ghi lại 4 mốc (bắt đầu đo → kết thúc
                   → gửi duyệt → xác minh/từ chối). Hiển thị dạng grid gọn. */}
               <div className="rounded-md border p-3">
-                <p className="text-muted-foreground mb-2 text-xs">Vòng đời phiên đo</p>
+                <p className="text-muted-foreground mb-2 text-xs">Các bước xử lý phiên đo</p>
                 <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
                   <TimelineEntry label="Bắt đầu đo" at={detail.startedAt} />
                   <TimelineEntry label="Kết thúc đo" at={detail.finishedAt} />
@@ -475,7 +475,7 @@ export default function FieldMeasurementsPage() {
                 <div className="rounded-md border">
                   <div className="border-b p-3">
                     <p className="text-muted-foreground text-xs">
-                      Thửa/đối tượng giao cắt ({detail.affectedFeatures.length})
+                      Thửa/đối tượng chồng lấp ({detail.affectedFeatures.length})
                     </p>
                     <p className="text-muted-foreground mt-0.5 text-[10px]">
                       Sắp xếp theo diện tích chồng lấp giảm dần
@@ -485,7 +485,7 @@ export default function FieldMeasurementsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Feature ID</TableHead>
+                          <TableHead className="text-xs">Mã đối tượng</TableHead>
                           <TableHead className="text-xs">Loại đất</TableHead>
                           <TableHead className="text-right text-xs">Chồng lấp</TableHead>
                         </TableRow>
@@ -523,7 +523,7 @@ export default function FieldMeasurementsPage() {
                   <p className="text-muted-foreground text-xs">Hình học GeoJSON</p>
                   <GeoJsonMapPreview geojson={detail.geom} heightClassName="h-72" />
                   <details className="text-muted-foreground text-[10px]">
-                    <summary className="cursor-pointer">Xem raw JSON</summary>
+                    <summary className="cursor-pointer">Xem dữ liệu JSON</summary>
                     <code className="mt-1 block max-h-32 overflow-auto whitespace-pre-wrap">
                       {JSON.stringify(detail.geom)}
                     </code>
@@ -570,12 +570,12 @@ export default function FieldMeasurementsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {reviewAction === 'reject' ? 'Xác nhận từ chối phiên đo' : 'Xác nhận phiên đo'}
+              {reviewAction === 'reject' ? 'Xác nhận từ chối phiên đo' : 'Xác minh phiên đo?'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {reviewAction === 'reject'
                 ? `Phiên đo ${detail?.code ?? ''} sẽ được trả lại cho người thực hiện với lý do: “${reviewNote.trim()}”.`
-                : `Phiên đo ${detail?.code ?? ''} sẽ được xác thực và có thể được đưa vào dữ liệu xuất chính thức.`}
+                : `Phiên đo ${detail?.code ?? ''} sẽ được xác minh và có thể đưa vào dữ liệu xuất chính thức.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -592,7 +592,7 @@ export default function FieldMeasurementsPage() {
                   : undefined
               }
             >
-              {reviewPending ? 'Đang xử lý...' : reviewAction === 'reject' ? 'Từ chối' : 'Xác thực'}
+              {reviewPending ? 'Đang xử lý...' : reviewAction === 'reject' ? 'Từ chối' : 'Xác minh'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

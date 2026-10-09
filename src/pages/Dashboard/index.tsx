@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import { statisticsService, useApiQuery } from '@/service'
+import { QueryErrorNotice } from '@/components/common/QueryErrorNotice'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Trees, Flame, Layers3, MessageSquareWarning, RefreshCcw, ExternalLink } from 'lucide-react'
@@ -56,11 +58,16 @@ function formatPct(v?: number) {
 }
 
 export default function DashboardPage() {
-  const dashboardQuery = useApiQuery(['stats-dashboard'], () =>
-    statisticsService.getDashboard({ force: false })
-  )
-  const forceRefetch = () =>
-    statisticsService.getDashboard({ force: true }).then(() => dashboardQuery.refetch())
+  const forceNextRequest = useRef(false)
+  const dashboardQuery = useApiQuery(['stats-dashboard'], () => {
+    const force = forceNextRequest.current
+    forceNextRequest.current = false
+    return statisticsService.getDashboard({ force })
+  })
+  const forceRefetch = () => {
+    forceNextRequest.current = true
+    void dashboardQuery.refetch()
+  }
 
   const data = (dashboardQuery.data?.data ?? {}) as DashboardStats
   const forest = data.forest
@@ -68,13 +75,33 @@ export default function DashboardPage() {
   const fireAlerts = data.fireAlerts
   const forestClassification = data.forestClassification
 
+  if (dashboardQuery.isLoading || dashboardQuery.isError) {
+    return (
+      <div className="space-y-4 p-4 sm:p-6">
+        <h1 className="text-2xl font-bold">Bảng điều khiển</h1>
+        {dashboardQuery.isError ? (
+          <QueryErrorNotice
+            title="Số liệu tổng hợp"
+            error={dashboardQuery.error}
+            onRetry={forceRefetch}
+            isFetching={dashboardQuery.isFetching}
+          />
+        ) : (
+          <p role="status" className="text-muted-foreground">
+            Đang tải số liệu...
+          </p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Bảng điều khiển</h1>
           <p className="text-muted-foreground text-sm">
-            Tổng hợp phân loại rừng, phản ánh và cảnh báo cháy toàn tỉnh Kon Tum
+            Số liệu rừng, phản ánh và nguy cơ cháy tại Kon Tum.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -262,7 +289,7 @@ function FireRiskDashboardCard({ fireAlerts }: { fireAlerts?: DashboardFireRiskB
         {/* List link mở xem trước từng huyện trên máy chủ bản đồ. */}
         <PublishedDistrictLinks
           districts={fireAlerts.publishedDistricts}
-          emptyHint="Chưa có huyện nào được phân phát ảnh bản đồ."
+          emptyHint="Chưa có ảnh bản đồ theo huyện."
         />
 
         <div className="mt-3">
@@ -333,11 +360,11 @@ function ForestClassificationDashboardCard({
             <strong className="text-foreground">
               {data.year}-{String(data.month ?? '').padStart(2, '0')}
             </strong>
-            {' · '}Tổng vùng:{' '}
+            {' · '}Tổng diện tích:{' '}
             <strong className="text-foreground">{formatHa(data.totalAreaHa ?? undefined)}</strong>
           </p>
           <p className="text-muted-foreground">
-            Lớp chiếm ưu thế:{' '}
+            Lớp phủ chính:{' '}
             <strong className="text-foreground">{data.dominantClassName ?? '—'}</strong>
           </p>
           {comparison && (
@@ -356,7 +383,7 @@ function ForestClassificationDashboardCard({
         {/* List link mở xem trước từng huyện trên máy chủ bản đồ. */}
         <PublishedDistrictLinks
           districts={data.publishedDistricts}
-          emptyHint="Chưa có huyện nào được phân phát ảnh bản đồ."
+          emptyHint="Chưa có ảnh bản đồ theo huyện."
         />
 
         <div className="mt-3">

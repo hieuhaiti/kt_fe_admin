@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -14,8 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { mapLayerService, useApiQuery } from '@/service'
-import type { ApiResponse, CreateMapLayerApiBody, MapLayer, MapLayerApi } from '@/types/api'
+import SearchableLayerSelect from '@/components/common/SearchableLayerSelect'
+import type { CreateMapLayerApiBody, MapLayer, MapLayerApi } from '@/types/api'
 import {
   buildUpdatePayload,
   createMapLayerApiSchema,
@@ -26,6 +26,7 @@ import {
 interface MapLayerApiFormProps {
   mode: 'create' | 'edit'
   initialData?: MapLayerApi | null
+  initialLayer?: MapLayer | null
   submitting?: boolean
   onSubmitCreate: (payload: CreateMapLayerApiBody) => void
   onSubmitUpdate: (payload: Partial<CreateMapLayerApiBody>) => void
@@ -53,21 +54,6 @@ function toDatetimeLocal(value?: string | null) {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
 }
 
-function getLayerItems(data: unknown): MapLayer[] {
-  const response = data as
-    | ApiResponse<{ items?: MapLayer[]; mapLayers?: MapLayer[] } | MapLayer[]>
-    | undefined
-  const payload = response?.data
-  if (Array.isArray(payload)) return payload
-  if (Array.isArray(payload?.items)) return payload.items
-  if (Array.isArray(payload?.mapLayers)) return payload.mapLayers
-  return []
-}
-
-function layerLabel(layer: MapLayer) {
-  return layer.name_vi || layer.name || layer.code
-}
-
 function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
   return (
     <div className="flex items-center gap-2 pt-1">
@@ -89,31 +75,30 @@ function FieldError({ message }: { message?: string }) {
 export default function MapLayerApiForm({
   mode,
   initialData,
+  initialLayer,
   submitting = false,
   onSubmitCreate,
   onSubmitUpdate,
   onCancel,
 }: MapLayerApiFormProps) {
-  const layerQuery = useApiQuery(
-    ['map-layers-for-map-api-form'],
-    () => mapLayerService.getAll({ page: 1, limit: 100, is_active: true }),
-    {},
-    false,
-    false
-  )
-  const layers = useMemo(() => getLayerItems(layerQuery.data), [layerQuery.data])
+  const [selectedLayer, setSelectedLayer] = useState<MapLayer | null>(null)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(
       mode === 'edit' ? editMapLayerApiFormSchema : createMapLayerApiSchema
     ) as Resolver<FormValues>,
     mode: 'onChange',
-    defaultValues,
+    defaultValues: {
+      ...defaultValues,
+      layer_id: mode === 'create' ? initialLayer?.id ?? 0 : 0,
+    },
   })
+
+  const { reset } = form
 
   useEffect(() => {
     if (mode === 'edit' && initialData) {
-      form.reset({
+      reset({
         name: initialData.name,
         layer_id: Number(initialData.layer_id ?? 0),
         scope: {
@@ -130,10 +115,19 @@ export default function MapLayerApiForm({
       return
     }
 
-    form.reset(defaultValues)
-  }, [mode, initialData, form])
+    reset({
+      ...defaultValues,
+      layer_id: initialLayer?.id ?? 0,
+    })
+  }, [mode, initialData, initialLayer, reset])
 
   const watched = form.watch()
+  const currentLayer =
+    selectedLayer?.id === watched.layer_id
+      ? selectedLayer
+      : mode === 'create' && initialLayer?.id === watched.layer_id
+        ? initialLayer
+        : null
 
   const changedPayload = useMemo(() => {
     if (mode !== 'edit' || !initialData) return {}
@@ -156,7 +150,6 @@ export default function MapLayerApiForm({
 
   const changedCount = Object.keys(changedPayload).length
   const submitDisabled = submitting || (mode === 'edit' && changedCount === 0)
-  const selectedLayer = layers.find((layer) => layer.id === Number(form.watch('layer_id')))
 
   return (
     <form
@@ -180,42 +173,36 @@ export default function MapLayerApiForm({
         <Label>
           Lớp bản đồ <span className="text-destructive">*</span>
         </Label>
-        <Select
-          value={String(form.watch('layer_id') || '')}
-          disabled={mode === 'edit'}
-          onValueChange={(value) =>
-            form.setValue('layer_id', Number(value), {
+        <SearchableLayerSelect
+          value={form.watch('layer_id') || null}
+          onChange={(val, layer) => {
+            form.setValue('layer_id', Number(val), {
               shouldValidate: true,
               shouldDirty: true,
             })
+            if (layer) setSelectedLayer(layer)
+          }}
+          disabled={mode === 'edit'}
+          placeholder="Chọn lớp bản đồ"
+          initialLayerName={
+            (mode === 'edit' ? initialData?.layer_name_vi : currentLayer?.name_vi ?? currentLayer?.name) ?? undefined
           }
-        >
-          <SelectTrigger>
-            <SelectValue
-              placeholder={layerQuery.isFetching ? 'Đang tải lớp dữ liệu...' : 'Chọn lớp bản đồ'}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {layers.map((layer) => (
-              <SelectItem key={layer.id ?? layer.code} value={String(layer.id)}>
-                {layerLabel(layer)} ({layer.code})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          initialLayerCode={mode === 'edit' ? initialData?.layer_code : currentLayer?.code}
+          isActive={true}
+        />
         <FieldHint>
-          Khóa truy cập chỉ đọc được lớp dữ liệu đã chọn. Muốn đổi lớp, hãy tạo khóa mới.
+          Khóa chỉ đọc lớp đã chọn. Tạo khóa mới nếu cần đổi lớp.
         </FieldHint>
-        {selectedLayer && (
+        {currentLayer?.table_name && (
           <FieldHint>
-            Bảng: {selectedLayer.schema_name}.{selectedLayer.table_name} -{' '}
-            {selectedLayer.geometry_type}
+            Bảng: {[currentLayer.schema_name, currentLayer.table_name].filter(Boolean).join('.')}
+            {currentLayer.geometry_type && ` - ${currentLayer.geometry_type}`}
           </FieldHint>
         )}
         <FieldError message={form.formState.errors.layer_id?.message} />
       </div>
 
-      <SectionHeader icon={KeyRound} title="Thông tin API key" />
+      <SectionHeader icon={KeyRound} title="Thông tin khóa API" />
       <Separator />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -226,9 +213,9 @@ export default function MapLayerApiForm({
           <Input
             id="name"
             {...form.register('name')}
-            placeholder="VD: Key chia sẻ ranh giới rừng"
+            placeholder="Ví dụ: Chia sẻ ranh giới rừng"
           />
-          <FieldHint>Tên dùng để nhận diện đơn vị hoặc mục đích sử dụng key.</FieldHint>
+          <FieldHint>Đặt tên theo đơn vị hoặc mục đích sử dụng.</FieldHint>
           <FieldError message={form.formState.errors.name?.message} />
         </div>
 
@@ -251,7 +238,7 @@ export default function MapLayerApiForm({
               <SelectItem value="false">Tạm dừng</SelectItem>
             </SelectContent>
           </Select>
-          <FieldHint>Tạm dừng sẽ khiến đối tác không thể dùng key để đọc dữ liệu.</FieldHint>
+          <FieldHint>Khi tạm dừng, đối tác không thể dùng khóa để đọc dữ liệu.</FieldHint>
         </div>
       </div>
 
@@ -260,7 +247,7 @@ export default function MapLayerApiForm({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="space-y-2">
-          <Label htmlFor="rate-per-min">Request/phút</Label>
+          <Label htmlFor="rate-per-min">Yêu cầu/phút</Label>
           <Input
             id="rate-per-min"
             type="number"
@@ -268,12 +255,12 @@ export default function MapLayerApiForm({
             max={6000}
             {...form.register('scope.rate_per_min', { valueAsNumber: true })}
           />
-          <FieldHint>Mặc định hệ thống cho phép 60 yêu cầu/phút.</FieldHint>
+          <FieldHint>Mặc định: 60 yêu cầu/phút.</FieldHint>
           <FieldError message={form.formState.errors.scope?.rate_per_min?.message} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="bbox-limit">Giới hạn bbox</Label>
+          <Label htmlFor="bbox-limit">Giới hạn vùng truy vấn (bbox)</Label>
           <Input
             id="bbox-limit"
             type="number"
@@ -285,7 +272,7 @@ export default function MapLayerApiForm({
               setValueAs: (value) => (value === '' ? undefined : Number(value)),
             })}
           />
-          <FieldHint>Đơn vị độ vuông; bỏ trống nếu không cần giới hạn vùng truy vấn.</FieldHint>
+          <FieldHint>Đơn vị: độ vuông. Bỏ trống để không giới hạn vùng truy vấn.</FieldHint>
           <FieldError message={form.formState.errors.scope?.bbox_limit?.message} />
         </div>
 
@@ -303,7 +290,7 @@ export default function MapLayerApiForm({
               })
             }}
           />
-          <FieldHint>Bỏ trống nếu key không hết hạn.</FieldHint>
+          <FieldHint>Bỏ trống nếu khóa không hết hạn.</FieldHint>
           <FieldError message={form.formState.errors.expires_at?.message} />
         </div>
       </div>
@@ -312,8 +299,7 @@ export default function MapLayerApiForm({
         <div className="flex items-start gap-2">
           <ShieldCheck className="text-primary mt-0.5 size-4 shrink-0" />
           <p className="text-muted-foreground">
-            Mã khóa đầy đủ chỉ hiển thị một lần khi tạo hoặc cấp lại. Hệ thống chỉ lưu bản đã bảo vệ
-            và các ký tự nhận diện.
+            Lưu mã khóa ngay khi tạo hoặc cấp lại. Mã đầy đủ chỉ hiển thị một lần; hệ thống chỉ lưu bản bảo mật và ký tự nhận diện.
           </p>
         </div>
       </div>
@@ -336,7 +322,7 @@ export default function MapLayerApiForm({
             ) : (
               <span className="flex items-center gap-2">
                 <Save className="h-4 w-4" />
-                {mode === 'create' ? 'Tạo API key' : 'Cập nhật'}
+                {mode === 'create' ? 'Tạo khóa API' : 'Cập nhật'}
               </span>
             )}
           </Button>

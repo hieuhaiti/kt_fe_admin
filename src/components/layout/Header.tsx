@@ -21,7 +21,7 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="sm"
-                aria-label="Toggle sidebar"
+                aria-label="Mở hoặc thu gọn danh mục"
                 onClick={() => toggleSidebar()}
                 className="hover:bg-muted relative h-8 w-8 p-0 shadow-sm"
               >
@@ -29,7 +29,7 @@ export function Header() {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom">
-              <p>{isExpanded ? 'Thu gọn sidebar' : 'Mở rộng sidebar'}</p>
+              <p>{isExpanded ? 'Thu gọn danh mục' : 'Mở rộng danh mục'}</p>
             </TooltipContent>
           </Tooltip>
         </div>

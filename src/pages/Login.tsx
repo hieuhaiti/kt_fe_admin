@@ -73,7 +73,7 @@ export default function Login() {
 
   useEffect(() => {
     if (loggedOut) {
-      toast.success('Đăng xuất thành công!', { autoClose: 3000 })
+      toast.success('Đã đăng xuất.', { autoClose: 3000 })
       useAuthStore.setState({ loggedOut: false })
     }
   }, [loggedOut])
@@ -151,13 +151,13 @@ export default function Login() {
               <div className="mb-6 text-center sm:text-left">
                 <span className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase">
                   <ShieldCheck className="h-4 w-4" weight="bold" />
-                  Cổng Không Gian
+                  Quản trị WebGIS Kon Tum
                 </span>
                 <h2 className="text-foreground mt-4 text-3xl font-bold tracking-tight">
                   Hệ thống GIS Kon Tum
                 </h2>
                 <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                  Đăng nhập để truy cập nền tảng quản lý dữ liệu không gian, bản đồ số và quy hoạch.
+                  Đăng nhập để quản lý bản đồ, dữ liệu và phản ánh.
                 </p>
               </div>
 
@@ -187,7 +187,7 @@ export default function Login() {
                     htmlFor="password"
                     className="text-muted-foreground mb-1.5 block text-sm font-medium"
                   >
-                    Mật khẩu truy cập
+                    Mật khẩu
                   </label>
                   <div className="focus-within:text-primary relative flex items-center transition-all">
                     <Lock className="text-muted-foreground absolute left-3.5 h-5 w-5" />
@@ -219,7 +219,9 @@ export default function Login() {
                 {error && (
                   <div className="bg-destructive/10 text-destructive border-destructive/20 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm">
                     <ShieldCheck className="h-5 w-5 shrink-0" />
-                    {error}
+                    {error === 'Failed to fetch'
+                      ? 'Không thể kết nối để đăng nhập. Vui lòng thử lại.'
+                      : error}
                   </div>
                 )}
 
@@ -229,14 +231,14 @@ export default function Login() {
                   disabled={isLoading}
                   className="shadow-primary/20 hover:shadow-primary/40 mt-2 h-12 w-full rounded-xl text-base font-bold shadow-lg transition-all"
                 >
-                  {isLoading ? 'Đang xác thực...' : 'Truy cập hệ thống'}
+                  {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 </Button>
               </form>
 
               <div className="mt-6 border-t pt-5">
                 <p className="text-muted-foreground mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
                   <Lightning className="h-3.5 w-3.5" weight="fill" />
-                  Tài khoản demo (mật khẩu: {DEMO_PASSWORD})
+                  Tài khoản mẫu (mật khẩu: {DEMO_PASSWORD})
                 </p>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {DEMO_ACCOUNTS.map((acc) => (
@@ -249,7 +251,7 @@ export default function Login() {
                         e.preventDefault()
                         fillDemo(acc.email)
                       }}
-                      title="Nhấn để đăng nhập nhanh (chuột phải: chỉ điền form)"
+                      title="Nhấn để đăng nhập; nhấn chuột phải để điền thông tin."
                       disabled={isLoading}
                       className={`group h-auto flex-col items-start gap-0.5 px-3 py-2 text-left text-xs transition hover:shadow-md disabled:opacity-50 ${acc.color}`}
                     >
@@ -292,10 +294,10 @@ export default function Login() {
           <div className="mt-8 space-y-2 text-center">
             <h3 className="text-foreground flex items-center justify-center gap-2 text-2xl font-bold tracking-tight">
               <MapTrifold className="text-primary h-6 w-6" />
-              Nền Tảng Quản Trị Không Gian
+              Quản lý bản đồ, dữ liệu và phản ánh
             </h3>
             <p className="text-muted-foreground mx-auto max-w-sm">
-              Theo dõi, phân tích và trực quan hóa dữ liệu bản đồ thời gian thực.
+              Xem dữ liệu bản đồ và theo dõi công việc cần xử lý.
             </p>
           </div>
         </div>

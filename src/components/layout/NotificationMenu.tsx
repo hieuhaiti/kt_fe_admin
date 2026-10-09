@@ -173,7 +173,7 @@ export function NotificationMenu() {
               disabled={markAllAsReadMutation.isPending}
               onClick={() => markAllAsReadMutation.mutate(undefined)}
             >
-              Đánh dấu đã đọc tất cả
+              Đánh dấu tất cả đã đọc
             </Button>
           )}
         </div>
@@ -187,7 +187,7 @@ export function NotificationMenu() {
 
         {!query.isFetching && notifications.length === 0 && (
           <div className="text-muted-foreground px-3 py-6 text-center text-xs">
-            Không có thông báo
+            Chưa có thông báo
           </div>
         )}
 

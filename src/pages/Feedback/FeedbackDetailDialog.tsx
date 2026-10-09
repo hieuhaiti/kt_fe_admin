@@ -106,7 +106,7 @@ export default function FeedbackDetailDialog({
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogTitle>Chi tiết phản ánh</DialogTitle>
         <DialogDescription>
-          Thông tin phản ánh hiện trường gửi từ thiết bị di động
+          Nội dung, vị trí và lịch sử xử lý phản ánh.
         </DialogDescription>
 
         {dbQuery.isLoading ? (
@@ -194,8 +194,8 @@ export default function FeedbackDetailDialog({
             {(feedback.anonymousId || feedback.clientUuid) && (
               <DetailRow label="Định danh thiết bị">
                 <div className="space-y-1 text-sm">
-                  {feedback.anonymousId && <p>Anonymous ID: {feedback.anonymousId}</p>}
-                  {feedback.clientUuid && <p>Client UUID: {feedback.clientUuid}</p>}
+                  {feedback.anonymousId && <p>Mã người gửi ẩn danh: {feedback.anonymousId}</p>}
+                  {feedback.clientUuid && <p>Mã trình duyệt/thiết bị: {feedback.clientUuid}</p>}
                 </div>
               </DetailRow>
             )}
@@ -230,7 +230,7 @@ export default function FeedbackDetailDialog({
             )}
 
             {feedback.admin_response && (
-              <DetailRow label="Phản hồi admin">
+              <DetailRow label="Phản hồi của cơ quan xử lý">
                 <p className="bg-muted rounded-md p-2 text-sm">{feedback.admin_response}</p>
               </DetailRow>
             )}

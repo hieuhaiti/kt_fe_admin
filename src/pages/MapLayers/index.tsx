@@ -279,10 +279,10 @@ export default function MapLayerPage(): JSX.Element {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Mọi hình học</SelectItem>
-                <SelectItem value="point">Point</SelectItem>
-                <SelectItem value="line">Line</SelectItem>
-                <SelectItem value="polygon">Polygon</SelectItem>
+                <SelectItem value="all">Tất cả kiểu dữ liệu</SelectItem>
+                <SelectItem value="point">Điểm</SelectItem>
+                <SelectItem value="line">Đường</SelectItem>
+                <SelectItem value="polygon">Vùng</SelectItem>
               </SelectContent>
             </Select>
 
@@ -325,7 +325,7 @@ export default function MapLayerPage(): JSX.Element {
               <TableHead>Kiểu</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead>Ngày tạo</TableHead>
-              {showActions && <TableHead className="text-right">Hành động</TableHead>}
+              {showActions && <TableHead className="text-right">Thao tác</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -502,7 +502,7 @@ export default function MapLayerPage(): JSX.Element {
             <AlertDialogDescription>
               {layerToPublish?.geoserver_layer
                 ? `Lớp "${layerToPublish.name_vi || layerToPublish.name || layerToPublish.code}" sẽ bị gỡ khỏi dịch vụ bản đồ và không còn hiển thị trên WebGIS.`
-                : `Lớp "${layerToPublish?.name_vi || layerToPublish?.name || layerToPublish?.code}" sẽ được publish lên dịch vụ bản đồ. Chỉ lớp có phạm vi "Công khai" mới xuất hiện với người dân.`}
+                : `Lớp "${layerToPublish?.name_vi || layerToPublish?.name || layerToPublish?.code}" sẽ được công bố lên dịch vụ bản đồ. Chỉ lớp “Công khai” mới hiển thị cho người dân.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

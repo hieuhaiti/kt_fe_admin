@@ -257,7 +257,7 @@ export default function User(): JSX.Element {
 
   function openDeleteDialog(u: User) {
     if (profileUser && String(u.id) === String(profileUser.id)) {
-      toast.warning('Bạn không thể xóa tài khoản của bạn')
+      toast.warning('Bạn không thể xóa tài khoản của mình')
       return
     }
     setUserToDelete(u)
@@ -267,7 +267,7 @@ export default function User(): JSX.Element {
   function handleFormSubmit(formData: Parameters<typeof userService.create>[0]) {
     if (selectedUserId) {
       // In new API: no unified update endpoint. Nothing to submit from the form.
-      toast.info('Vui lòng dùng các thao tác Vai trò / Kích hoạt / Đặt lại mật khẩu để cập nhật')
+      toast.info('Dùng các nút Đổi vai trò, Kích hoạt hoặc Đặt lại mật khẩu trong danh sách.')
       return
     }
     createMutation.mutate(formData)
@@ -337,7 +337,7 @@ export default function User(): JSX.Element {
               <SelectContent>
                 <SelectItem value="all">Tất cả trạng thái</SelectItem>
                 <SelectItem value="active">Đang hoạt động</SelectItem>
-                <SelectItem value="inactive">Đã vô hiệu</SelectItem>
+                <SelectItem value="inactive">Đã vô hiệu hóa</SelectItem>
               </SelectContent>
             </Select>
 
@@ -381,7 +381,7 @@ export default function User(): JSX.Element {
               <TableHead>Điện thoại</TableHead>
               <TableHead>Vai trò</TableHead>
               <TableHead>Trạng thái</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
+              <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -411,7 +411,7 @@ export default function User(): JSX.Element {
                       {isActive ? (
                         <Badge variant="default">Hoạt động</Badge>
                       ) : (
-                        <Badge variant="secondary">Vô hiệu</Badge>
+                        <Badge variant="secondary">Đã vô hiệu hóa</Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right">

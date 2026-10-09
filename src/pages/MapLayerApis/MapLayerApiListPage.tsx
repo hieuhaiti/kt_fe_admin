@@ -34,9 +34,10 @@ import {
 import { hasMapLayerApiPermission } from '@/components/map-layer-apis/permissionUtils'
 import { ACTIVE_CLASS, ACTIVE_DOT, ACTIVE_LABEL } from '@/constant/mapLayerConstant'
 import { useAuthStore } from '@/stores/common/useAuthStore'
-import { mapLayerApiService, mapLayerService, useApiMutation, useApiQuery } from '@/service'
+import { mapLayerApiService, useApiMutation, useApiQuery } from '@/service'
 import { getMappedErrorMessage } from '@/validators/mapLayerApiValidators'
 import { StatusDotBadge } from '@/components/common/StatusDotBadge'
+import SearchableLayerSelect from '@/components/common/SearchableLayerSelect'
 import { formatDateTime } from '@/lib/date'
 import MapLayerApiDetailDialog from './MapLayerApiDetailDialog'
 import MapLayerApiFormDialog from './MapLayerApiFormDialog'
@@ -59,19 +60,6 @@ function getPagination(data: unknown): Partial<Pagination> {
   return (response?.metadata ?? response?.data?.pagination ?? {}) as Partial<Pagination>
 }
 
-function getLayerItems(data: unknown): MapLayer[] {
-  const response = data as ApiResponse<{ items?: MapLayer[]; mapLayers?: MapLayer[] } | MapLayer[]> | undefined
-  const payload = response?.data
-  if (Array.isArray(payload)) return payload
-  if (Array.isArray(payload?.items)) return payload.items
-  if (Array.isArray(payload?.mapLayers)) return payload.mapLayers
-  return []
-}
-
-function layerLabel(layer: MapLayer) {
-  return layer.name_vi || layer.name || layer.code
-}
-
 function formatScope(api: MapLayerApi) {
   const rate = api.scope?.rate_per_min ?? 60
   const bbox = api.scope?.bbox_limit
@@ -91,6 +79,8 @@ export default function MapLayerApiListPage(): JSX.Element {
   const [searchValue, setSearchValue] = useState<string>('')
   const [activeFilter, setActiveFilter] = useState<'all' | 'true' | 'false'>('all')
   const [layerFilter, setLayerFilter] = useState<string>('all')
+  const [filterLayer, setFilterLayer] = useState<MapLayer | null>(null)
+  const [createLayer, setCreateLayer] = useState<MapLayer | null>(null)
 
   const queryParams = {
     page: currentPage,
@@ -108,16 +98,7 @@ export default function MapLayerApiListPage(): JSX.Element {
     false
   )
 
-  const layerOptionsQuery = useApiQuery(
-    ['map-layers-for-map-api-filter'],
-    () => mapLayerService.getAll({ page: 1, limit: 100, is_active: true }),
-    {},
-    false,
-    false
-  )
-
   const apis = getMapApis(listQuery.data)
-  const layerOptions = useMemo(() => getLayerItems(layerOptionsQuery.data), [layerOptionsQuery.data])
   const filteredApis = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase()
     if (!keyword) return apis
@@ -147,13 +128,13 @@ export default function MapLayerApiListPage(): JSX.Element {
     (id: number) => mapLayerApiService.delete(id),
     {
       onSuccess: () => {
-        toast.success('Xóa API key thành công')
+        toast.success('Đã xóa khóa API')
         listQuery.refetch()
         setDeleteDialogOpen(false)
         setApiToDelete(null)
       },
       onError: (error) => {
-        toast.error(getMappedErrorMessage(error, 'Không thể xóa API key.'))
+        toast.error(getMappedErrorMessage(error, 'Không thể xóa khóa API.'))
       },
     },
     false
@@ -168,13 +149,13 @@ export default function MapLayerApiListPage(): JSX.Element {
           (payload && 'apiKey' in payload && payload.apiKey) ||
           (payload && 'raw_key' in payload && payload.raw_key) ||
           null
-        toast.success(key ? `Đã xoay key. Key mới: ${key}` : 'Đã xoay key thành công')
+        toast.success(key ? `Đã cấp lại khóa. Khóa mới: ${key}` : 'Đã cấp lại khóa')
         listQuery.refetch()
         setRegenerateDialogOpen(false)
         setApiToRegenerate(null)
       },
       onError: (error) => {
-        toast.error(getMappedErrorMessage(error, 'Không thể xoay key.'))
+        toast.error(getMappedErrorMessage(error, 'Không thể cấp lại khóa.'))
       },
     },
     false
@@ -189,6 +170,7 @@ export default function MapLayerApiListPage(): JSX.Element {
 
   function openAddDialog() {
     setSelectedApiId(null)
+    setCreateLayer(layerFilter === 'all' ? null : filterLayer)
     setFormDialogOpen(true)
   }
 
@@ -216,31 +198,26 @@ export default function MapLayerApiListPage(): JSX.Element {
   }
 
   return (
-    <PageLayout title="Quản lý Map API" description="Cấp và quản lý API key đọc dữ liệu lớp bản đồ">
+    <PageLayout title="Khóa API bản đồ" description="Cấp và quản lý khóa đọc dữ liệu bản đồ.">
       <ToolTableCustom
             searchValue={searchValue}
             setSearchValue={setSearchValue}
             filter={
               <div className="flex flex-wrap items-center gap-2">
-                <Select
+                <SearchableLayerSelect
                   value={layerFilter}
-                  onValueChange={(value) => {
-                    setLayerFilter(value)
+                  onChange={(value, layer) => {
+                    setLayerFilter(String(value))
+                    setFilterLayer(layer ?? null)
                     setCurrentPage(1)
                   }}
-                >
-                  <SelectTrigger className="w-60">
-                    <SelectValue placeholder="Lớp bản đồ" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả lớp bản đồ</SelectItem>
-                    {layerOptions.map((layer) => (
-                      <SelectItem key={layer.id ?? layer.code} value={String(layer.id)}>
-                        {layerLabel(layer)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  includeAllOption={true}
+                  allOptionLabel="Tất cả lớp bản đồ"
+                  allOptionValue="all"
+                  placeholder="Lớp bản đồ"
+                  triggerClassName="w-60"
+                  isActive={true}
+                />
 
                 <Select
                   value={activeFilter}
@@ -279,11 +256,11 @@ export default function MapLayerApiListPage(): JSX.Element {
                 {canCreate && (
                   <Button onClick={openAddDialog}>
                     <KeyRound className="size-4" />
-                    Tạo key
+                    Tạo khóa
                   </Button>
                 )}
                 <Button variant="outline" onClick={() => navigate('/public/map-apis')}>
-                  Public Test
+                  Kiểm tra API
                 </Button>
               </div>
             }
@@ -298,13 +275,13 @@ export default function MapLayerApiListPage(): JSX.Element {
               <TableHeader className="sticky top-0 z-20">
                 <TableRow>
                   <TableHead>ID</TableHead>
-                  <TableHead>Tên key</TableHead>
+                  <TableHead>Tên khóa</TableHead>
                   <TableHead>Lớp dữ liệu</TableHead>
-                  <TableHead>Key</TableHead>
+                  <TableHead>Khóa</TableHead>
                   <TableHead>Giới hạn</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Sử dụng</TableHead>
-                  <TableHead className="text-right">Hành động</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -360,7 +337,7 @@ export default function MapLayerApiListPage(): JSX.Element {
                                 event.stopPropagation()
                                 openRegenerateDialog(api)
                               }}
-                              title="Xoay key"
+                              title="Cấp lại khóa"
                             >
                               <RotateCcw className="size-4" />
                             </Button>
@@ -410,6 +387,7 @@ export default function MapLayerApiListPage(): JSX.Element {
         open={formDialogOpen}
         onOpenChange={setFormDialogOpen}
         apiId={selectedApiId}
+        initialLayer={createLayer}
         onSaved={() => {
           listQuery.refetch()
         }}
@@ -418,15 +396,15 @@ export default function MapLayerApiListPage(): JSX.Element {
       <AlertDialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xoay API key</AlertDialogTitle>
+            <AlertDialogTitle>Cấp lại khóa API</AlertDialogTitle>
             <AlertDialogDescription>
-              Tạo key mới cho "{apiToRegenerate?.name}" và vô hiệu key cũ ngay lập tức. Key mới chỉ hiển thị một lần.
+              Tạo khóa mới cho "{apiToRegenerate?.name}" và vô hiệu khóa cũ ngay lập tức. Khóa mới chỉ hiển thị một lần.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy</AlertDialogCancel>
             <AlertDialogAction onClick={handleRegenerate} disabled={regenerateMutation.isPending}>
-              {regenerateMutation.isPending ? 'Đang xoay...' : 'Xoay key'}
+              {regenerateMutation.isPending ? 'Đang cấp lại...' : 'Cấp lại khóa'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -437,7 +415,7 @@ export default function MapLayerApiListPage(): JSX.Element {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa API key "{apiToDelete?.name}"? Đối tác sẽ không thể dùng key này để đọc dữ liệu.
+              Xóa khóa API "{apiToDelete?.name}"? Đối tác sẽ không thể dùng khóa này để đọc dữ liệu.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -41,8 +41,8 @@ export const PUBLIC_DOT: Record<string, string> = {
 }
 
 // ── Category (nhóm lớp) ───────────────────────────────────────────
-// Mapping toàn diện: gồm cả slug mới (English, khớp GEE modules) và slug cũ
-// (tiếng Việt không dấu) để hiển thị nhất quán ở mọi nơi.
+// Ánh xạ các slug mới (English, khớp GEE modules) và slug cũ
+// (tiếng Việt không dấu) được liệt kê dưới đây.
 export const MAP_LAYER_CATEGORY_LABEL_VI: Record<string, string> = {
   // Modules chuyên đề (English slug)
   land_cover: 'Lớp phủ mặt đất',

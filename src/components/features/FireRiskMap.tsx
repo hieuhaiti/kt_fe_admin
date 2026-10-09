@@ -242,7 +242,7 @@ export default function FireRiskMap({
     onRasterStatusChangeRef.current = onRasterStatusChange
   }, [onRasterStatusChange])
 
-  // NOTE — 3 việc ở đây, đồng bộ với client MonitoringAndAlerting:
+  // NOTE — 4 việc ở đây, đồng bộ với client MonitoringAndAlerting:
   //   1. Bỏ feature không có geometry (maplibre crash nếu geometry undefined).
   //   2. Reproject geometry UTM 48N → WGS84 nếu server trả EPSG:32648
   //      (thấy qua crs.properties.name). Nếu bỏ bước này, polygon bay ra
@@ -314,6 +314,13 @@ export default function FireRiskMap({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
+      locale: {
+        'Map.Title': 'Bản đồ',
+        'NavigationControl.ZoomIn': 'Phóng to',
+        'NavigationControl.ZoomOut': 'Thu nhỏ',
+        'NavigationControl.ResetBearing': 'Kéo để xoay bản đồ; nhấn để hướng về phía bắc',
+        'Popup.Close': 'Đóng thông tin',
+      },
       style: {
         version: 8,
         sources: {
@@ -330,6 +337,10 @@ export default function FireRiskMap({
       zoom: 7.5,
       attributionControl: false,
     })
+    mapRef.current = map
+    if (containerRef.current) {
+      ;(containerRef.current as unknown as { _mapInstance: maplibregl.Map })._mapInstance = map
+    }
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right')
 
     map.on('load', () => {
@@ -613,7 +624,7 @@ export default function FireRiskMap({
       )}
       {rasterStatus === 'error' && (
         <div className="pointer-events-none absolute inset-x-0 top-2 mx-auto w-fit rounded-md bg-red-50/95 px-3 py-1 text-xs text-red-700 shadow">
-          Không tải được ảnh chi tiết; bản đồ ranh giới huyện vẫn khả dụng.
+          Không thể tải ảnh chi tiết. Bạn vẫn có thể xem ranh giới huyện.
         </div>
       )}
       {/* Legend */}

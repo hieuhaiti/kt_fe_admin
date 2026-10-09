@@ -175,7 +175,7 @@ export default function NewsPage(): JSX.Element {
   }
 
   return (
-    <PageLayout title="Tin tức" description="Quản lý bài viết tin tức">
+    <PageLayout title="Tin tức" description="Soạn, chỉnh sửa và xuất bản bài viết.">
       <ToolTableCustom
         searchValue={searchValue}
         setSearchValue={(v) => {
@@ -240,7 +240,7 @@ export default function NewsPage(): JSX.Element {
               <TableHead>Trạng thái</TableHead>
               <TableHead>Lượt xem</TableHead>
               <TableHead>Ngày tạo</TableHead>
-              <TableHead className="text-right">Hành động</TableHead>
+              <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -336,8 +336,7 @@ export default function NewsPage(): JSX.Element {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa bài viết &quot;{newsToDelete?.title}&quot;? Hành động này
-              không thể hoàn tác.
+              Xóa bài viết &quot;{newsToDelete?.title}&quot;? Không thể khôi phục sau khi xóa.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

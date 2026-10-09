@@ -151,7 +151,7 @@ export default function DocumentPage(): JSX.Element {
   }
 
   return (
-    <PageLayout title="Văn bản báo cáo" description="Quản lý tài liệu và văn bản trong hệ thống">
+    <PageLayout title="Báo cáo và văn bản" description="Quản lý báo cáo, văn bản và tệp đính kèm.">
       <ToolTableCustom
         searchValue={searchValue}
         setSearchValue={setSearchValue}
@@ -231,9 +231,9 @@ export default function DocumentPage(): JSX.Element {
               <TableHead className="w-40">Loại</TableHead>
               <TableHead className="w-24">Phạm vi</TableHead>
               <TableHead className="w-40">Người tải lên</TableHead>
-              <TableHead className="w-24">Kích thước</TableHead>
+              <TableHead className="w-24">Dung lượng</TableHead>
               <TableHead className="w-28">Ngày tạo</TableHead>
-              <TableHead className="w-28 text-right">Hành động</TableHead>
+              <TableHead className="w-28 text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -306,7 +306,7 @@ export default function DocumentPage(): JSX.Element {
                             variant="ghost"
                             size="sm"
                             asChild
-                            title="Tải file"
+                            title="Tải tệp"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <a href={parseLink(fileUrl)} target="_blank" rel="noopener noreferrer">
@@ -369,8 +369,7 @@ export default function DocumentPage(): JSX.Element {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn xóa tài liệu &quot;{getDocumentTitle(itemToDelete)}&quot;? Hành
-              động này không thể hoàn tác.
+              Xóa tài liệu &quot;{getDocumentTitle(itemToDelete)}&quot;? Không thể khôi phục sau khi xóa.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

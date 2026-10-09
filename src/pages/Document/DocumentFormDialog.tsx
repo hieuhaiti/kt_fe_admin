@@ -39,11 +39,11 @@ const ACCEPTED_MIME = [
 ]
 
 const documentFormSchema = z.object({
-  document_number: z.string().min(1, 'Số tài liệu là bắt buộc').max(100),
-  title: z.string().min(5, 'Tiêu đề phải có ít nhất 5 ký tự').max(500),
+  document_number: z.string().min(1, 'Vui lòng nhập số tài liệu').max(100, 'Số tài liệu không được quá 100 ký tự'),
+  title: z.string().min(5, 'Tiêu đề phải có ít nhất 5 ký tự').max(500, 'Tiêu đề không được quá 500 ký tự'),
   description: z.string().optional().or(z.literal('')),
-  document_type: z.enum(['excel', 'word', 'pdf'] as const),
-  status: z.enum(['active', 'archived', 'revoked', 'replaced'] as const),
+  document_type: z.enum(['excel', 'word', 'pdf'] as const, { error: 'Vui lòng chọn loại tài liệu' }),
+  status: z.enum(['active', 'archived', 'revoked', 'replaced'] as const, { error: 'Vui lòng chọn trạng thái tài liệu' }),
   is_public: z.boolean(),
   // Đồng bộ server: max(255)
   issuer: z
@@ -164,7 +164,7 @@ export default function DocumentFormDialog({
 
   const onFileValidate = useCallback((file: File): string | null => {
     if (!ACCEPTED_MIME.includes(file.type)) return 'Chỉ chấp nhận PDF, Word, Excel'
-    if (file.size > 50 * 1024 * 1024) return 'File không được vượt quá 50MB'
+    if (file.size > 50 * 1024 * 1024) return 'Tệp không được quá 50 MB'
     return null
   }, [])
 
@@ -176,7 +176,7 @@ export default function DocumentFormDialog({
 
   const handleFormSubmit = (data: DocumentFormValues) => {
     if (!isEdit && fileList.length === 0) {
-      toast.error('Vui lòng chọn file tài liệu')
+      toast.error('Vui lòng chọn tệp tài liệu')
       return
     }
     const fd = new FormData()
@@ -200,7 +200,7 @@ export default function DocumentFormDialog({
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogTitle>{isEdit ? 'Chỉnh sửa tài liệu' : 'Thêm tài liệu mới'}</DialogTitle>
         <DialogDescription>
-          {isEdit ? 'Cập nhật thông tin tài liệu' : 'Điền thông tin để tạo tài liệu mới'}
+          {isEdit ? 'Cập nhật thông tin tài liệu' : 'Nhập thông tin và đính kèm tài liệu.'}
         </DialogDescription>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="mt-4 space-y-4">
@@ -336,9 +336,9 @@ export default function DocumentFormDialog({
           {/* File upload */}
           <div className="space-y-2">
             <Label>
-              File tài liệu {!isEdit && <span className="text-destructive">*</span>}
+              Tệp tài liệu {!isEdit && <span className="text-destructive">*</span>}
               {isEdit && (
-                <span className="text-muted-foreground ml-1 text-xs">(Để trống nếu không đổi)</span>
+                <span className="text-muted-foreground ml-1 text-xs">(Không cần chọn nếu giữ tệp hiện tại)</span>
               )}
             </Label>
             {isEdit && (doc?.file_url ?? doc?.fileUrl) && fileList.length === 0 && (
@@ -350,7 +350,7 @@ export default function DocumentFormDialog({
                   rel="noopener noreferrer"
                   className="text-primary truncate text-sm underline"
                 >
-                  {doc.file_name ?? doc.fileName ?? 'Xem file hiện tại'}
+                  {doc.file_name ?? doc.fileName ?? 'Xem tệp hiện tại'}
                 </a>
               </div>
             )}
@@ -365,14 +365,14 @@ export default function DocumentFormDialog({
             >
               <FileUploadDropzone className="border-dashed">
                 <div className="flex flex-col items-center gap-1 text-center">
-                  <p className="text-sm font-medium">Kéo thả file vào đây</p>
+                  <p className="text-sm font-medium">Kéo tệp vào đây</p>
                   <p className="text-muted-foreground text-xs">hoặc</p>
                   <FileUploadTrigger asChild>
                     <Button type="button" variant="outline" size="sm">
-                      Chọn file
+                      Chọn tệp
                     </Button>
                   </FileUploadTrigger>
-                  <p className="text-muted-foreground text-xs">PDF, Word, Excel · Tối đa 50MB</p>
+                  <p className="text-muted-foreground text-xs">PDF, Word, Excel · tối đa 50 MB</p>
                 </div>
               </FileUploadDropzone>
               <FileUploadList>

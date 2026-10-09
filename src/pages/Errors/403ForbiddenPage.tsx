@@ -8,9 +8,9 @@ export default function ForbiddenPage(): JSX.Element {
     <main className="bg-background grid min-h-screen place-items-center px-6 py-24 transition-colors duration-400 sm:py-32 lg:px-8">
       <div className="text-center">
         <p className="text-4xl text-(--error-403-bg-color)">403</p>
-        <h1 className="text-foreground mt-4 text-5xl tracking-tight sm:text-7xl">{'Bị cấm'}</h1>
+        <h1 className="text-foreground mt-4 text-5xl tracking-tight sm:text-7xl">{'Không có quyền truy cập'}</h1>
         <p className="text-foreground mt-6 text-lg font-medium sm:text-xl">
-          {'Bạn không có quyền truy cập tài nguyên này.'}
+          {'Bạn không có quyền truy cập trang này.'}
         </p>
         <div className="mt-10 flex items-center justify-center">
           <button

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/c
 import { Button } from '@/components/ui/button'
 import { navConfig } from '@/constant/common'
 import { useAuthStore } from '@/stores/common/useAuthStore'
-import { checkPermission, ROLE_LABELS, getUserRole, hasPerm } from '@/lib/permissions'
+import { checkPermission, ROLE_LABELS, getUserRole, hasPerm, hasRole } from '@/lib/permissions'
 import type { NavItem } from '@/types/common'
 import {
   ArrowRight,
@@ -49,8 +49,14 @@ export default function LandingPage() {
 
   const quickLinks = useMemo(() => {
     return navConfig
-      .filter((item): item is NavItem => !isExternalPath(item.path))
-      .filter((item) => checkPermission(user, item.permission))
+      .filter((item) => (!item.roles || hasRole(user, item.roles)) && checkPermission(user, item.permission))
+      .flatMap((item): NavItem[] => [
+        item,
+        ...(item.subItems ?? []).map((child) => ({ ...child, icon: item.icon })),
+      ])
+      .filter((item) => !isExternalPath(item.path))
+      .filter((item) => (!item.roles || hasRole(user, item.roles)) && checkPermission(user, item.permission))
+      .filter((item, index, items) => items.findIndex((candidate) => candidate.path === item.path) === index)
   }, [user])
 
   const fireRisk = stats?.fireAlerts
@@ -67,18 +73,17 @@ export default function LandingPage() {
             {roleLabel ? `Chào ${userName} · ${roleLabel}` : `Chào ${userName}`}
           </div>
           <h1 className="text-foreground text-3xl leading-tight font-bold md:text-4xl">
-            Kon Tum GIS — Nền tảng WebGIS &amp; Cảnh báo cháy rừng
+            Quản trị WebGIS Kon Tum
           </h1>
           <p className="text-muted-foreground mt-3 text-base md:text-lg">
-            Giám sát tài nguyên rừng, ảnh vệ tinh, thời tiết và phản ánh hiện trường của tỉnh Kon
-            Tum trên một nền tảng thống nhất.
+            Theo dõi rừng, nguy cơ cháy, thời tiết và phản ánh tại Kon Tum.
           </p>
           {canReadDashboard && (
             <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild>
                 <Link to="/dashboard">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Tới bảng điều hành
+                  Mở tổng quan
                 </Link>
               </Button>
             </div>
@@ -103,9 +108,9 @@ export default function LandingPage() {
           />
           <KpiCard
             icon={<Flame className="h-5 w-5 text-orange-500" />}
-            label="Cấp cháy cao nhất"
+            label="Cấp nguy cơ dự báo cao nhất"
             value={fireRisk?.maxLevel != null ? `Cấp ${fireRisk.maxLevel}` : '—'}
-            hint={fireRisk?.analysisDate ? `Cập nhật ${fireRisk.analysisDate}` : 'Chưa có snapshot'}
+            hint={fireRisk?.analysisDate ? `Cập nhật ${fireRisk.analysisDate}` : 'Chưa có kết quả phân tích'}
           />
           <KpiCard
             icon={<MessageSquareWarning className="h-5 w-5 text-blue-500" />}
@@ -137,13 +142,13 @@ export default function LandingPage() {
         <div className="mb-3 flex items-end justify-between">
           <div>
             <h2 className="text-xl font-semibold">Truy cập nhanh</h2>
-            <p className="text-muted-foreground text-sm">Các module bạn có quyền sử dụng.</p>
+            <p className="text-muted-foreground text-sm">Các chức năng bạn có quyền sử dụng.</p>
           </div>
         </div>
         {quickLinks.length === 0 ? (
           <Card>
             <CardContent className="text-muted-foreground p-6 text-sm">
-              Bạn chưa được cấp quyền vào module nào. Liên hệ quản trị viên để được hỗ trợ.
+              Bạn chưa được cấp quyền sử dụng chức năng nào. Liên hệ quản trị viên để được hỗ trợ.
             </CardContent>
           </Card>
         ) : (
@@ -183,10 +188,10 @@ export default function LandingPage() {
           <CardContent className="space-y-2 p-6">
             <div className="text-primary mb-2 flex items-center gap-2">
               <BookOpenText className="h-4 w-4" />
-              <CardTitle className="text-base">Tài liệu &amp; hướng dẫn</CardTitle>
+              <CardTitle className="text-base">Tài liệu và hướng dẫn</CardTitle>
             </div>
             <CardDescription>
-              Hướng dẫn sử dụng chi tiết cho từng module trong hệ thống.
+              Hướng dẫn sử dụng các chức năng quản trị.
             </CardDescription>
             <a
               href={HDSD_URL}
@@ -194,7 +199,7 @@ export default function LandingPage() {
               rel="noopener noreferrer"
               className="text-primary inline-flex items-center gap-1 text-sm font-medium hover:underline"
             >
-              Tải HDSD Admin (.docx)
+              Tải hướng dẫn quản trị (PDF)
               <ArrowRight className="h-3.5 w-3.5" />
             </a>
           </CardContent>

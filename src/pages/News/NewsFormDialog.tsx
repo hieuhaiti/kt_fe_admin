@@ -35,11 +35,11 @@ const newsSchema = z.object({
     .string()
     .min(5, 'Tiêu đề phải có ít nhất 5 ký tự')
     .max(500, 'Tiêu đề không được vượt quá 500 ký tự'),
-  content: z.string().min(1, 'Nội dung là bắt buộc'),
+  content: z.string().min(1, 'Vui lòng nhập nội dung'),
   slug: z
     .string()
-    .max(500, 'Slug không được vượt quá 500 ký tự')
-    .regex(/^[a-z0-9-]*$/, 'Slug chỉ được chứa chữ thường, số và dấu gạch ngang')
+    .max(500, 'Đường dẫn không được quá 500 ký tự')
+    .regex(/^[a-z0-9-]*$/, 'Đường dẫn chỉ gồm chữ thường, số và dấu gạch ngang')
     .optional()
     .or(z.literal('')),
   summary: z
@@ -136,8 +136,8 @@ export default function NewsFormDialog({
   }, [news, reset, open])
 
   const onThumbnailValidate = useCallback((file: File): string | null => {
-    if (!file.type.startsWith('image/')) return 'Chỉ chấp nhận file ảnh'
-    if (file.size > 10 * 1024 * 1024) return 'Kích thước file không được quá 10MB'
+    if (!file.type.startsWith('image/')) return 'Chỉ chấp nhận tệp ảnh'
+    if (file.size > 10 * 1024 * 1024) return 'Ảnh không được quá 10 MB'
     return null
   }, [])
 
@@ -187,7 +187,7 @@ export default function NewsFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="slug">Slug</Label>
+            <Label htmlFor="slug">Đường dẫn bài viết (slug)</Label>
             <Input id="slug" {...register('slug')} placeholder="tieu-de-bai-viet" />
             {errors.slug && <p className="text-destructive text-sm">{errors.slug.message}</p>}
           </div>
@@ -216,8 +216,8 @@ export default function NewsFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="tags">Tags (phân cách bằng dấu phẩy)</Label>
-            <Input id="tags" {...register('tags')} placeholder="du-lich, bien-gioi, dak-lak" />
+            <Label htmlFor="tags">Thẻ (ngăn cách bằng dấu phẩy)</Label>
+            <Input id="tags" {...register('tags')} placeholder="bao-ve-rung, kon-tum" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -264,7 +264,7 @@ export default function NewsFormDialog({
               <div className="mb-2">
                 <img
                   src={parseLink(news.thumbnail_url)}
-                  alt="Thumbnail hiện tại"
+                  alt="Ảnh đại diện hiện tại"
                   className="h-20 w-32 rounded border object-cover"
                 />
                 <p className="text-muted-foreground mt-1 text-xs">Ảnh hiện tại</p>
@@ -288,7 +288,7 @@ export default function NewsFormDialog({
                       Chọn ảnh
                     </Button>
                   </FileUploadTrigger>
-                  <p className="text-muted-foreground text-xs">PNG, JPG, WEBP · Tối đa 10MB</p>
+                  <p className="text-muted-foreground text-xs">PNG, JPG, WebP · tối đa 10 MB</p>
                 </div>
               </FileUploadDropzone>
               <FileUploadList>

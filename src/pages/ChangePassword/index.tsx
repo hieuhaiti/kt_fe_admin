@@ -14,7 +14,7 @@ const passwordSchema = z
   .object({
     currentPassword: z
       .string()
-      .min(1, 'Mật khẩu hiện tại không được để trống'),
+      .min(1, 'Vui lòng nhập mật khẩu hiện tại'),
     newPassword: z
       .string()
       .min(8, 'Mật khẩu mới phải có ít nhất 8 ký tự')
@@ -25,14 +25,14 @@ const passwordSchema = z
       ),
     confirmPassword: z
       .string()
-      .min(1, 'Xác nhận mật khẩu mới không được để trống'),
+      .min(1, 'Vui lòng nhập lại mật khẩu mới'),
   })
   .refine((data) => data.newPassword !== data.currentPassword, {
     message: 'Mật khẩu mới phải khác mật khẩu hiện tại',
     path: ['newPassword'],
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
-    message: 'Xác nhận mật khẩu mới không khớp',
+    message: 'Mật khẩu nhập lại không khớp',
     path: ['confirmPassword'],
   })
 
@@ -72,7 +72,7 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <PageLayout title="Đổi mật khẩu" description="Cập nhật mật khẩu đăng nhập của bạn">
+    <PageLayout title="Đổi mật khẩu" description="Nhập mật khẩu hiện tại và mật khẩu mới.">
       <Card className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-xl">
           <div className="space-y-2">

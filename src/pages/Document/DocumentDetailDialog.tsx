@@ -76,7 +76,7 @@ export default function DocumentDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogTitle>Chi tiết tài liệu</DialogTitle>
-        <DialogDescription>Thông tin chi tiết tài liệu đã chọn</DialogDescription>
+        <DialogDescription>Thông tin và tệp đính kèm.</DialogDescription>
 
         {dbQuery.isLoading ? (
           <div className="text-muted-foreground py-8 text-center">Đang tải dữ liệu...</div>
@@ -112,7 +112,7 @@ export default function DocumentDetailDialog({
               <DetailRow label="Ngày hiệu lực">{formatDate(doc.effective_date)}</DetailRow>
             )}
             {doc.expiry_date && <DetailRow label="Ngày hết hạn">{formatDate(doc.expiry_date)}</DetailRow>}
-            {fileName && <DetailRow label="Tên file">{fileName}</DetailRow>}
+            {fileName && <DetailRow label="Tên tệp">{fileName}</DetailRow>}
             {mimeType && <DetailRow label="Định dạng">{mimeType}</DetailRow>}
             <DetailRow label="Dung lượng">{formatBytes(fileSize)}</DetailRow>
             {uploadedBy && <DetailRow label="Người tải lên">{uploadedBy}</DetailRow>}
@@ -131,7 +131,7 @@ export default function DocumentDetailDialog({
               </DetailRow>
             )}
             {doc.tags && doc.tags.length > 0 && (
-              <DetailRow label="Tags">
+              <DetailRow label="Thẻ">
                 <div className="flex flex-wrap gap-1">
                   {doc.tags.map((tag) => (
                     <Badge key={tag} variant="outline" className="text-xs">
@@ -142,14 +142,14 @@ export default function DocumentDetailDialog({
               </DetailRow>
             )}
             {fileUrl && (
-              <DetailRow label="File">
+              <DetailRow label="Tệp">
                 <a
                   href={parseLink(fileUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary flex items-center gap-1 underline"
                 >
-                  <FileText className="size-4" /> Xem / Tải tài liệu
+                  <FileText className="size-4" /> Mở hoặc tải tài liệu
                 </a>
               </DetailRow>
             )}

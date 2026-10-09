@@ -33,14 +33,10 @@ export default function AnalysisAccuracyNotice({ resultLabel }: { resultLabel: s
       {open && (
         <div className="border-warning/20 space-y-1.5 border-t px-3 py-3 sm:px-4">
           <p className="text-foreground/85 text-sm leading-relaxed">
-            Số liệu được ước tính từ ảnh vệ tinh. Bản đồ tải xuống có độ phân giải khoảng 150 m,
-            nghĩa là mỗi điểm ảnh đại diện cho một khu vực khoảng 150 × 150 m; ranh giới và diện
-            tích có thể có sai số.
+            Số liệu ước tính từ ảnh vệ tinh. Mỗi điểm ảnh của bản đồ tải xuống tương ứng khoảng 150 × 150 m. Ranh giới và diện tích có thể có sai số.
           </p>
           <p className="text-foreground/85 text-sm leading-relaxed">
-            Mây, bóng mây, khói hoặc khu vực thiếu ảnh có thể làm {resultLabel} thay đổi đáng kể
-            giữa các lần cập nhật. Nên đối chiếu với kiểm tra thực địa và các nguồn dữ liệu khác
-            trước khi đưa ra quyết định.
+            Mây, bóng mây, khói và thiếu ảnh có thể làm {resultLabel} thay đổi giữa các lần cập nhật. Hãy đối chiếu với thực địa và nguồn dữ liệu khác trước khi quyết định.
           </p>
         </div>
       )}

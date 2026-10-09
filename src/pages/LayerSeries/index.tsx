@@ -1,7 +1,8 @@
 import type { JSX } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import { useQueryClient } from '@tanstack/react-query'
+import { useDebounce } from '@/hooks/useDebounce'
 import { DndContext, type DragEndEvent, closestCenter } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -149,7 +150,7 @@ export default function LayerSeriesPage(): JSX.Element {
   return (
     <PageLayout
       title="Lớp ảnh theo thời gian"
-      description="Quản lý các nhóm bản đồ và dữ liệu theo từng mốc thời gian"
+      description="Quản lý nhóm lớp ảnh theo thời gian."
     >
       <Card>
         <CardContent className="p-4 sm:p-6">
@@ -489,7 +490,7 @@ function TimelineDialog({
               <LoadingInline />
             </div>
           ) : localSteps.length === 0 ? (
-            <p className="text-muted-foreground py-10 text-center text-sm">Chưa có bước ảnh nào.</p>
+            <p className="text-muted-foreground py-10 text-center text-sm">Chưa có ảnh nào.</p>
           ) : (
             <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <Table>
@@ -637,7 +638,7 @@ function GroupFormDialog({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs leading-relaxed">
-                    Mã nhóm sẽ tự động được hệ thống nhóm theo nhóm phụ của lớp bản đồ.
+                    Dùng mã nhóm để liên kết các lớp có cùng nhóm phụ.
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -674,7 +675,7 @@ function GroupFormDialog({
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
               />
-              Công khai trên webGIS
+              Công khai trên WebGIS
             </label>
           </div>
 
@@ -694,7 +695,7 @@ function GroupFormDialog({
               {mutation.isPending ? (
                 <>
                   <Loader2 className="mr-1 size-4 animate-spin" />
-                  Đang nhập...
+                  Đang lưu...
                 </>
               ) : (
                 <>
@@ -780,7 +781,7 @@ function SelectedLayerPreview({
           <ImagePlus className="text-muted-foreground mx-auto mb-2 size-7" />
           <p className="text-sm font-medium">Chưa chọn lớp nào</p>
           <p className="text-muted-foreground text-xs">
-            Tick vào một lớp raster ở danh sách bên trái để chọn.
+            Chọn một lớp ảnh trong danh sách bên trái.
           </p>
         </div>
       )}
@@ -797,13 +798,24 @@ function AddImageDialog({
 }) {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
   const [selectedLayer, setSelectedLayer] = useState<MapLayer | null>(null)
   const [dataYear, setDataYear] = useState(String(currentYear))
   const [isPublic, setIsPublic] = useState(group?.is_public ?? true)
 
+  const rasterQueryParams = useMemo(
+    () => ({
+      page: 1,
+      limit: 100,
+      geometry_type: 'RASTER',
+      ...(debouncedSearch.trim() ? { q: debouncedSearch.trim() } : {}),
+    }),
+    [debouncedSearch]
+  )
+
   const layersQuery = useApiQuery(
-    ['layer-series-raster-options'],
-    () => mapLayerService.getAll({ page: 1, limit: 200 }),
+    ['layer-series-raster-options', rasterQueryParams],
+    () => mapLayerService.getAll(rasterQueryParams),
     { enabled: Boolean(group) },
     false
   )
@@ -829,7 +841,7 @@ function AddImageDialog({
 
   const mutation = useApiMutation(
     async () => {
-      if (!group || !selectedLayer) throw new Error('Lớp raster không hợp lệ')
+      if (!group || !selectedLayer) throw new Error('Lớp ảnh không hợp lệ')
       await mapLayerService.patch(selectedLayer.code, {
         layer_group: group.code,
         data_year: Number(dataYear),
@@ -841,7 +853,7 @@ function AddImageDialog({
     },
     {
       onSuccess: () => {
-        toast.success('Đã thêm lớp raster có sẵn vào nhóm thời gian')
+        toast.success('Đã thêm lớp ảnh vào nhóm thời gian')
         queryClient.invalidateQueries({ queryKey: ['layer-series-groups'] })
         if (group) {
           queryClient.invalidateQueries({
@@ -859,7 +871,7 @@ function AddImageDialog({
     event.preventDefault()
     const parsedYear = Number(dataYear)
     if (!group || !selectedLayer) {
-      toast.error('Vui lòng chọn một lớp raster có sẵn')
+      toast.error('Vui lòng chọn một lớp ảnh có sẵn')
       return
     }
     if (!Number.isInteger(parsedYear) || parsedYear < 1900 || parsedYear > 2100) {
@@ -877,7 +889,7 @@ function AddImageDialog({
         <DialogHeader>
           <DialogTitle>Thêm lớp ảnh · {group?.name_vi}</DialogTitle>
           <DialogDescription>
-            Chọn hoặc kéo một lớp raster đã có trong Lớp dữ liệu vào nhóm{' '}
+            Chọn hoặc kéo lớp ảnh từ danh sách vào nhóm{' '}
             <span className="font-mono">{group?.code}</span>.
           </DialogDescription>
         </DialogHeader>
@@ -898,7 +910,7 @@ function AddImageDialog({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label htmlFor="raster-layer-search">Lớp raster có sẵn</Label>
+                  <Label htmlFor="raster-layer-search">Lớp ảnh có sẵn</Label>
                   <Input
                     id="raster-layer-search"
                     value={search}
@@ -908,7 +920,7 @@ function AddImageDialog({
                 </div>
                 <div
                   role="radiogroup"
-                  aria-label="Chọn lớp raster"
+                  aria-label="Chọn lớp ảnh"
                   className="max-h-72 space-y-2 overflow-y-auto rounded-md border p-2"
                 >
                   {rasterLayers.map((layer) => (
@@ -921,7 +933,7 @@ function AddImageDialog({
                   ))}
                   {rasterLayers.length === 0 && (
                     <p className="text-muted-foreground py-8 text-center text-sm">
-                      Không có lớp raster đã publish phù hợp.
+                      Không có lớp ảnh đã công bố phù hợp.
                     </p>
                   )}
                 </div>
@@ -956,7 +968,7 @@ function AddImageDialog({
                     </div>
                     {selectedPeriod.locked && (
                       <p className="text-muted-foreground text-xs">
-                        Thời gian được đọc từ mã lớp hiện có nên không thể đổi tại đây.
+                        Thời gian lấy từ mã lớp, không thể đổi tại đây.
                       </p>
                     )}
                     <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -967,7 +979,7 @@ function AddImageDialog({
                       Công khai lớp ảnh trên bản đồ
                     </label>
                     <p className="text-muted-foreground text-xs">
-                      Lớp sẽ được bật hoạt động khi thêm vào timeline.
+                      Lớp ảnh sẽ được kích hoạt khi thêm vào nhóm thời gian.
                     </p>
                   </>
                 )}
@@ -1026,7 +1038,7 @@ function StepEditDialog({
         <DialogHeader>
           <DialogTitle>Sửa mốc dữ liệu · {target?.step.label}</DialogTitle>
           <DialogDescription>
-            Cập nhật tên, nhóm thời gian và trạng thái của lớp raster hiện có.
+            Sửa tên, nhóm thời gian và trạng thái lớp ảnh.
           </DialogDescription>
         </DialogHeader>
 
@@ -1179,7 +1191,7 @@ function StepEditForm({
           />
           {yearIsLocked && (
             <p className="text-muted-foreground text-xs">
-              Nhãn thời gian đang lấy từ mã lớp nên không thể đổi năm nếu không đổi mã.
+              Năm lấy từ mã lớp. Muốn đổi năm, cần đổi mã lớp.
             </p>
           )}
         </div>

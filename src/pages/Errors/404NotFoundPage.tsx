@@ -12,7 +12,7 @@ export default function NotFoundPage(): JSX.Element {
           {'Không tìm thấy trang'}
         </h1>
         <p className="text-foreground mt-6 text-lg font-medium sm:text-xl">
-          {'Không tìm thấy trang yêu cầu.'}
+          {'Trang bạn đang tìm không tồn tại.'}
         </p>
         <div className="mt-10 flex items-center justify-center">
           <button

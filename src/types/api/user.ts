@@ -5,7 +5,7 @@ export interface UserRole {
   code?: UserRoleCode | string
   name?: string
   description?: string
-  permissions?: Record<string, string[]> | string[]
+  permissions?: Record<string, Record<string, boolean> | string[]> | string[]
 }
 
 export interface User {
@@ -24,6 +24,7 @@ export interface User {
   email_verified?: boolean
   email_verified_at?: string | null
   hasPassword?: boolean
+  has_password?: boolean
   must_change_password?: boolean
   password_changed_at?: string | null
   provider?: string

@@ -1,9 +1,9 @@
 // ── Priority ─────────────────────────────────────────────────────
 export const PRIORITY_LABEL: Record<string, string> = {
   low: 'Thấp',
-  normal: 'Thường',
+  normal: 'Bình thường',
   high: 'Cao',
-  urgent: 'Khẩn',
+  urgent: 'Khẩn cấp',
 }
 export const PRIORITY_CLASS: Record<string, string> = {
   low: 'bg-slate-100 text-slate-600 border-slate-200',
@@ -20,7 +20,7 @@ export const PRIORITY_DOT: Record<string, string> = {
 
 // ── Processing status ─────────────────────────────────────────────
 export const STATUS_LABEL: Record<string, string> = {
-  new: 'Mới',
+  new: 'Mới tiếp nhận',
   in_progress: 'Đang xử lý',
   resolved: 'Đã xử lý',
   rejected: 'Từ chối',

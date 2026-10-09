@@ -172,7 +172,7 @@ export default function ProfilePage() {
   return (
     <PageLayout
       title="Hồ sơ cá nhân"
-      description="Quản lý thông tin hiển thị và thông tin liên hệ của tài khoản"
+      description="Cập nhật thông tin cá nhân và liên hệ."
     >
       <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
         <div className="space-y-6">
@@ -251,7 +251,7 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="text-muted-foreground space-y-2 text-sm leading-6">
               <p>Không chia sẻ tài khoản quản trị hoặc mã xác thực cho người khác.</p>
-              <p>Cập nhật thông tin liên hệ để nhận đúng cảnh báo nghiệp vụ.</p>
+              <p>Giữ thông tin liên hệ chính xác để nhận cảnh báo.</p>
             </CardContent>
           </Card>
         </div>
@@ -265,7 +265,7 @@ export default function ProfilePage() {
                   Thông tin tài khoản
                 </CardTitle>
                 <CardDescription className="mt-2">
-                  Email được quản lý bởi hệ thống và không thể tự thay đổi.
+                  Bạn không thể tự đổi email.
                 </CardDescription>
               </div>
               {isDirty && (
@@ -280,9 +280,9 @@ export default function ProfilePage() {
             <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-7">
               <section>
                 <div className="mb-4">
-                  <h3 className="text-foreground text-sm font-semibold">Thông tin định danh</h3>
+                  <h3 className="text-foreground text-sm font-semibold">Email đăng nhập</h3>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Email được dùng để xác thực tài khoản.
+                    Dùng email này để đăng nhập.
                   </p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -305,7 +305,7 @@ export default function ProfilePage() {
                 <div className="mb-4">
                   <h3 className="text-foreground text-sm font-semibold">Thông tin liên hệ</h3>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Thông tin này được dùng khi phối hợp xử lý nghiệp vụ và cảnh báo.
+                    Dùng khi liên hệ xử lý công việc và cảnh báo.
                   </p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -374,7 +374,7 @@ export default function ProfilePage() {
                     Ảnh đại diện
                   </h3>
                   <p className="text-muted-foreground mt-1 text-xs">
-                    Nhập đường dẫn của ảnh đại diện đã được lưu trực tuyến.
+                    Dán đường dẫn ảnh đã tải lên mạng.
                   </p>
                 </div>
                 <div className="space-y-2">

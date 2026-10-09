@@ -2,17 +2,17 @@ import { z } from 'zod'
 import type { CreateMapLayerApiBody, UpdateMapLayerApiBody } from '@/types/api'
 
 export const createMapLayerApiSchema = z.object({
-  name: z.string().trim().min(3).max(150),
-  layer_id: z.number().int().min(1),
+  name: z.string().trim().min(3, 'Tên khóa cần ít nhất 3 ký tự').max(150, 'Tên khóa không được quá 150 ký tự'),
+  layer_id: z.number({ error: 'Vui lòng chọn lớp bản đồ' }).int('Mã lớp phải là số nguyên').min(1, 'Vui lòng chọn lớp bản đồ'),
   scope: z
     .object({
       read: z.boolean().default(true),
-      rate_per_min: z.number().int().min(1).max(6000).default(60),
-      bbox_limit: z.number().positive().max(360).optional(),
+      rate_per_min: z.number({ error: 'Nhập số yêu cầu mỗi phút' }).int('Số yêu cầu phải là số nguyên').min(1, 'Cần ít nhất 1 yêu cầu/phút').max(6000, 'Tối đa 6000 yêu cầu/phút').default(60),
+      bbox_limit: z.number({ error: 'Nhập giới hạn vùng truy vấn bằng số' }).positive('Giới hạn phải lớn hơn 0').max(360, 'Giới hạn không được quá 360 độ vuông').optional(),
     })
     .default({ read: true, rate_per_min: 60 }),
   is_active: z.boolean().default(true),
-  expires_at: z.string().datetime({ offset: true }).nullable().optional(),
+  expires_at: z.string().datetime({ offset: true, message: 'Ngày hết hạn không hợp lệ' }).nullable().optional(),
 })
 
 /** Schema dùng cho form edit: `layer_id` không sửa được nên bỏ ràng buộc min(1) để tránh block submit khi API detail không trả layer_id. */
@@ -22,7 +22,7 @@ export const editMapLayerApiFormSchema = createMapLayerApiSchema.extend({
 
 export const updateMapLayerApiSchema = createMapLayerApiSchema.partial().refine(
   (value) => Object.values(value).some((field) => field !== undefined),
-  { message: 'Cần ít nhất 1 trường thay đổi' }
+  { message: 'Chưa có thay đổi để lưu' }
 )
 
 export const listQuerySchema = z.object({
@@ -113,10 +113,10 @@ export function getMappedErrorMessage(error: unknown, fallback: string) {
 
   if (serverMessage) return serverMessage
 
-  if (code === 401) return 'Token/apikey không hợp lệ hoặc đã hết hạn.'
+  if (code === 401) return 'Thông tin xác thực hoặc khóa API không hợp lệ, hoặc đã hết hạn.'
   if (code === 403) return 'Bạn không có quyền thực hiện thao tác này.'
   if (code === 404) return 'Dữ liệu không tồn tại hoặc đã bị xóa.'
-  if (code === 409) return 'API key hoặc cấu hình chia sẻ đã tồn tại. Vui lòng kiểm tra lại.'
+  if (code === 409) return 'Khóa API hoặc thiết lập chia sẻ đã tồn tại. Hãy kiểm tra lại.'
   if (code === 400) return 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.'
 
   return fallback
