@@ -77,7 +77,7 @@ export function SideBar() {
             <KonTumLogo variant="icon" size={32} className="shrink-0" />
             <div className="flex flex-col leading-none min-w-0">
               <span className="text-foreground font-bold text-sm tracking-tight truncate">
-                WebGIS <span className="text-[#0F5132]">Kon Tum</span>
+                WebGIS <span className="text-(--brand-logo-forest)">Kon Tum</span>
               </span>
               <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase mt-0.5 truncate">
                 Cổng quản trị
@@ -135,7 +135,7 @@ export function SideBar() {
                       >
                         <span
                           className={cn(
-                            'flex items-center justify-center',
+                            'flex items-center justify-center shrink-0 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:stroke-[1.75] transition-transform',
                             isActive ? 'text-primary' : 'text-muted-foreground'
                           )}
                         >
@@ -145,7 +145,7 @@ export function SideBar() {
                           <span className="flex w-full items-center justify-between truncate text-sm font-medium">
                             {item.name}
                             {hasSubItems && (
-                              <span className="ml-auto flex h-6 w-6 items-center justify-center">
+                              <span className="ml-auto flex h-6 w-6 items-center justify-center text-muted-foreground">
                                 {isSubOpen ? (
                                   <ChevronDown className="h-4 w-4" />
                                 ) : (
@@ -159,7 +159,7 @@ export function SideBar() {
                     </div>
 
                     {hasSubItems && isSubOpen && isExpanded && (
-                      <div className="mt-1 ml-4 space-y-1 border-l pl-2">
+                      <div className="mt-1 ml-4 space-y-1 border-l border-border/70 pl-2">
                         {item.subItems?.map((sub) => {
                           const subActive = isPathActive(location.pathname, sub)
                           return (
@@ -167,7 +167,7 @@ export function SideBar() {
                               key={sub.path}
                               variant={subActive ? 'secondary' : 'ghost'}
                               className={cn(
-                                'h-auto w-full justify-start gap-3 px-3 py-1.5 text-sm',
+                                'h-auto w-full justify-start gap-3 px-3 py-1.5 text-sm transition-colors',
                                 subActive &&
                                   'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary font-semibold'
                               )}
@@ -178,8 +178,8 @@ export function SideBar() {
                             >
                               <span
                                 className={cn(
-                                  'inline-block h-1.5 w-1.5 rounded-full',
-                                  subActive ? 'bg-primary' : 'bg-muted-foreground/40'
+                                  'inline-block h-1.5 w-1.5 rounded-full transition-all',
+                                  subActive ? 'bg-primary ring-2 ring-primary/25 scale-110' : 'bg-muted-foreground/40'
                                 )}
                               />
                               <span className="truncate">{sub.name}</span>
