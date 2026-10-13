@@ -3,6 +3,14 @@
 /* Primary: #2563EB (blue-600) | Accent: #06B6D4 (cyan-500) */
 
 :root {
+  /* ===== Kon Tum Brand Palette (Nature Connects People) ===== */
+  --brand-forest: #0f5132;
+  --brand-highland: #2e7d4b;
+  --brand-river: #2d9cdb;
+  --brand-deep-blue: #0b5ea7;
+  --brand-earth: #d4943f;
+  --brand-mist: #f4f7fa;
+
   /* ===== Primary Extended ===== */
   --primary-hover: #1d4ed8; /* blue-700 */
   --primary-active: #1e40af; /* blue-800 */

@@ -19,6 +19,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { z } from 'zod'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import { toast } from 'react-toastify'
+import { KonTumLogo } from '@/components/common/KonTumLogo'
 
 type FormValues = {
   email: string
@@ -149,15 +150,15 @@ export default function Login() {
           <Card className="border-border/80 bg-card/90 w-full max-w-lg rounded-3xl border shadow-2xl backdrop-blur-sm lg:ml-auto">
             <CardContent className="p-6 sm:p-10">
               <div className="mb-6 text-center sm:text-left">
+                <div className="mb-4 flex items-center justify-center sm:justify-start">
+                  <KonTumLogo variant="horizontal" size={44} />
+                </div>
                 <span className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold tracking-wide uppercase">
                   <ShieldCheck className="h-4 w-4" weight="bold" />
-                  Quản trị WebGIS Kon Tum
+                  Cổng Quản Trị Hệ Thống
                 </span>
-                <h2 className="text-foreground mt-4 text-3xl font-bold tracking-tight">
-                  Hệ thống GIS Kon Tum
-                </h2>
                 <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                  Đăng nhập để quản lý bản đồ, dữ liệu và phản ánh.
+                  Đăng nhập để quản lý bản đồ, dữ liệu rừng và giám sát hiện trường.
                 </p>
               </div>
 

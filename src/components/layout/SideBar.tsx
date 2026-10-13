@@ -8,6 +8,7 @@ import { navConfig } from '@/constant/common'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import { checkPermission, hasRole } from '@/lib/permissions'
+import { KonTumLogo } from '@/components/common/KonTumLogo'
 import type { NavItem } from '@/types/common'
 import type { User } from '@/types/api'
 
@@ -70,19 +71,22 @@ export function SideBar() {
 
   return (
     <div className="bg-card flex h-full flex-col">
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between px-3.5 py-3 border-b border-border/60">
         {isExpanded ? (
-          <div className="flex items-center gap-2">
-            <div className="bg-primary flex h-8 w-8 items-center justify-center rounded-lg">
-              <span className="text-primary-foreground text-sm font-bold">KT</span>
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <KonTumLogo variant="icon" size={32} className="shrink-0" />
+            <div className="flex flex-col leading-none min-w-0">
+              <span className="text-foreground font-bold text-sm tracking-tight truncate">
+                WebGIS <span className="text-[#0F5132]">Kon Tum</span>
+              </span>
+              <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase mt-0.5 truncate">
+                Cổng quản trị
+              </span>
             </div>
-            <span className="text-foreground font-semibold">Kon Tum GIS</span>
           </div>
         ) : (
           <div className="flex w-full justify-center">
-            <div className="bg-primary flex h-8 w-8 items-center justify-center rounded-lg">
-              <span className="text-primary-foreground text-sm font-bold">KT</span>
-            </div>
+            <KonTumLogo variant="icon" size={28} className="shrink-0" />
           </div>
         )}
       </div>
