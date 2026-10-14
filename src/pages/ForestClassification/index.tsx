@@ -88,7 +88,7 @@ import { QueryErrorNotice } from '@/components/common/QueryErrorNotice'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
 /**
- * Phân loại rừng — admin (mirror pattern FireRisk).
+ * Phân loại lớp phủ — admin (mirror pattern FireRisk).
  *
  * Cấu trúc UI:
  *   - Header: title + KPI mini (period, status) + nút "Chạy lại phân tích"
@@ -813,9 +813,9 @@ export default function ForestClassificationPage() {
   if (latestQuery.isError) {
     return (
       <div className="space-y-4 p-4 sm:p-6">
-        <h1 className="text-2xl font-bold">Phân loại lớp phủ rừng</h1>
+        <h1 className="text-2xl font-bold">Phân loại lớp phủ</h1>
         <QueryErrorNotice
-          title="Kết quả phân loại rừng"
+          title="Kết quả phân loại lớp phủ"
           error={latestQuery.error}
           onRetry={() => { void latestQuery.refetch() }}
           isFetching={latestQuery.isFetching}
@@ -834,7 +834,7 @@ export default function ForestClassificationPage() {
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-2xl font-bold">
             <TreePine className="h-6 w-6 text-emerald-600" />
-            Phân loại lớp phủ rừng
+            Phân loại lớp phủ
           </h1>
           <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
             Theo dõi 11 lớp phủ và diện tích rừng. Cập nhật hằng tháng.
@@ -911,7 +911,7 @@ export default function ForestClassificationPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isRefreshing ? 'Đang cập nhật dữ liệu...' : 'Cập nhật dữ liệu lớp phủ rừng?'}
+              {isRefreshing ? 'Đang cập nhật dữ liệu...' : 'Cập nhật dữ liệu phân loại lớp phủ?'}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
@@ -1196,7 +1196,7 @@ export default function ForestClassificationPage() {
             <p className="text-muted-foreground text-sm">Đang tải dữ liệu phân loại...</p>
           ) : latestQuery.isError ? (
             <p className="text-sm text-red-700">
-              Không tải được dữ liệu phân loại lớp phủ rừng. Vui lòng thử lại sau.
+              Không tải được dữ liệu phân loại lớp phủ. Vui lòng thử lại sau.
             </p>
           ) : !snapshot ? (
             <p className="text-warning text-sm">
@@ -2014,7 +2014,7 @@ function LayerManager({
                 }`}
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium">Bản đồ lớp phủ rừng</p>
+                <p className="truncate text-xs font-medium">Bản đồ phân loại lớp phủ</p>
                 <p className="text-muted-foreground mt-0.5 text-[10px] leading-4">
                   {rasterStatusLabel}
                 </p>
@@ -2039,7 +2039,7 @@ function LayerManager({
             {rasterAvailable && (
               <input
                 type="range"
-                aria-label="Mức hiển thị lớp phân loại rừng"
+                aria-label="Mức hiển thị lớp phân loại lớp phủ"
                 aria-valuemin={0}
                 aria-valuemax={1}
                 aria-valuenow={heatOpacity}

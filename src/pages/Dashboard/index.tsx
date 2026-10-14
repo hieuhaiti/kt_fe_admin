@@ -313,9 +313,9 @@ function ForestClassificationDashboardCard({
         <CardContent className="p-6">
           <div className="mb-3 flex items-center gap-2">
             <Layers3 className="size-5 text-emerald-600" />
-            <h2 className="text-lg font-semibold">Phân loại rừng</h2>
+            <h2 className="text-lg font-semibold">Phân loại lớp phủ</h2>
           </div>
-          <p className="text-muted-foreground text-sm">Chưa có dữ liệu phân loại rừng.</p>
+          <p className="text-muted-foreground text-sm">Chưa có dữ liệu phân loại lớp phủ.</p>
         </CardContent>
       </Card>
     )
@@ -337,7 +337,7 @@ function ForestClassificationDashboardCard({
       <CardContent className="p-6">
         <div className="mb-3 flex items-center gap-2">
           <Layers3 className="size-5 text-emerald-600" />
-          <h2 className="text-lg font-semibold">Phân loại rừng</h2>
+          <h2 className="text-lg font-semibold">Phân loại lớp phủ</h2>
           {mapReady ? (
             <span className="bg-success/10 text-success ml-auto rounded px-2 py-0.5 text-[10px] font-medium">
               {drTotal > 0 ? `Bản đồ sẵn sàng · ${drReady}/${drTotal} huyện` : 'Bản đồ sẵn sàng'}

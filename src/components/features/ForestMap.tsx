@@ -25,7 +25,7 @@ const RASTER_LAYER_ID = 'forest-class-raster-layer'
 const KON_TUM_CENTER: [number, number] = [107.98, 14.55]
 
 /**
- * Bản đồ preview raster phân loại rừng 11 lớp. Skeleton tối giản so với
+ * Bản đồ preview raster phân loại lớp phủ 11 lớp. Skeleton tối giản so với
  * FireRiskMap: không vector layer huyện (forest chỉ có raster), không popup
  * click, không reproject UTM (server serve WMS 3857 sẵn).
  *
@@ -123,7 +123,7 @@ export default function ForestMap({
           type: 'raster',
           tiles: [rasterTileUrl],
           tileSize: 256,
-          attribution: 'Bản đồ phân loại lớp phủ rừng',
+          attribution: 'Bản đồ phân loại lớp phủ',
         })
         map.addLayer({
           id: RASTER_LAYER_ID,

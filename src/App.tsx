@@ -132,7 +132,7 @@ function App() {
                 <Route path="/map-images" element={<MapImagePage />} />
               </Route>
 
-              {/* Phân loại rừng / cháy rừng / thời tiết */}
+              {/* Phân loại lớp phủ / cháy rừng / thời tiết */}
               <Route element={<ProtectedRoute permission={{ resource: 'forest_classification', action: 'read' }} />}>
                 <Route path="/forest-classification" element={<ForestClassificationPage />} />
               </Route>

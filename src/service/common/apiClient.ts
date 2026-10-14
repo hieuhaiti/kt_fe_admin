@@ -61,7 +61,7 @@ function toNeutralUiMessage(value: unknown): unknown {
   if (typeof value !== 'string') return value
   return value
     .replace(/^Bạn không có quyền dashboard trên statistics$/, 'Bạn không có quyền xem số liệu tổng hợp.')
-    .replace(/^Bạn không có quyền manage trên forest_classification$/, 'Bạn không có quyền quản lý phân loại rừng.')
+    .replace(/^Bạn không có quyền manage trên forest_classification$/, 'Bạn không có quyền quản lý phân loại lớp phủ.')
     .replace(/Google\s+Earth\s+Engine/gi, 'hệ thống xử lý')
     .replace(/\bGeoServer\b/gi, 'dịch vụ bản đồ')
     .replace(/\bMinIO\b/gi, 'kho dữ liệu')
