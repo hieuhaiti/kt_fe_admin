@@ -642,7 +642,7 @@ export default function MapLayerFormDialog({
     onSubmit({
       code,
       name_vi: name.trim(),
-      table_name: isEdit && layer?.table_name ? layer.table_name : code,
+      table_name: isEdit && layer?.table_name ? layer.table_name : code.replace(/-/g, '_'),
       schema_name: isEdit ? layer?.schema_name || 'gis' : 'gis',
       category,
       layer_kind: layerKind,

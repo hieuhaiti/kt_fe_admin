@@ -148,7 +148,7 @@ export default function ImportGeoJsonPage(): JSX.Element {
     fd.append('file', geoJsonFile)
     fd.append('code', code)
     fd.append('name_vi', trimmedName)
-    fd.append('table_name', code)
+    fd.append('table_name', code.replace(/-/g, '_'))
     fd.append('source_format', 'geojson')
     fd.append('import_mode', 'overwrite')
     fd.append('srid_input', '4326')
