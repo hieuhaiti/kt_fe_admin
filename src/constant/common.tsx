@@ -36,11 +36,6 @@ export const navConfig: NavItem[] = [
         path: '/map-layers',
         permission: { resource: 'map_layers', action: 'read' },
       },
-      {
-        name: 'Nhập tệp GIS',
-        path: '/map-layers/import-geojson',
-        permission: { resource: 'map_layers', action: 'import' },
-      },
     ],
   },
   {

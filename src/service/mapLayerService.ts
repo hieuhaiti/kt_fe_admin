@@ -7,6 +7,7 @@ import type {
   PatchMapLayerBody,
   PatchMapLayerActiveBody,
   ImportJob,
+  ImportAccepted,
   HarvestRasterBody,
 } from '@/types/api'
 import {
@@ -69,9 +70,11 @@ export default {
    * POST /map/layers/import-file  (multipart, async — returns 202 + job_id)
    * body: file, code, name_vi, source_format, import_mode, srid_input,
    *       source_layer_name, category, layer_kind, is_public, auto_publish
+   * Optional: new_layer (insert-only; defaults false for legacy imports), is_active,
+   * default_style and legend_config (JSON strings in multipart form).
    */
   importFile: (data: FormData) =>
-    apiClient.post<{ jobId: string }>(`${serviceMapLayerPath}/import-file`, data, true),
+    apiClient.post<ImportAccepted>(`${serviceMapLayerPath}/import-file`, data, true),
 
   /** GET /map/layers/:mapLayerCode/import-jobs */
   listImportJobs: (mapLayerCode: string) =>
@@ -90,5 +93,5 @@ export default {
 
   /** Backward-compatible name for the current import-file endpoint. */
   importGeoJson: (data: FormData) =>
-    apiClient.post<{ jobId: string }>(`${serviceMapLayerPath}/import-file`, data, true),
+    apiClient.post<ImportAccepted>(`${serviceMapLayerPath}/import-file`, data, true),
 }

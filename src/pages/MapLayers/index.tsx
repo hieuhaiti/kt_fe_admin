@@ -1,5 +1,5 @@
 import type { JSX } from 'react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { mapLayerService, useApiMutation, useApiQuery } from '@/service'
 // [check style] TEMP import
 import { checkStyleLog } from '@/lib/checkStyleDebug'
@@ -50,7 +50,9 @@ import { CloudOff, CloudUpload, Eye, EyeOff, Pen, Trash2 } from 'lucide-react'
 import PageLayout from '@/layout/pageLayout'
 import MapLayerDetailDialog from './MapLayerDetailDialog'
 import MapLayerFormDialog from './MapLayerFormDialog'
+import { readImportJobId } from './mapLayerImport'
 import { formatDate } from '@/lib/date'
+import { toast } from 'react-toastify'
 import { hasPerm } from '@/lib/permissions'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 
@@ -73,6 +75,7 @@ function getPagination(data: unknown): Partial<Pagination> {
 export default function MapLayerPage(): JSX.Element {
   const user = useAuthStore((s) => s.user)
   const canCreate = hasPerm(user, 'map_layers', 'create')
+  const canImport = hasPerm(user, 'map_layers', 'import')
   const canUpdate = hasPerm(user, 'map_layers', 'update')
   const canDelete = hasPerm(user, 'map_layers', 'delete')
   const canPublish = hasPerm(user, 'map_layers', 'publish')
@@ -129,6 +132,67 @@ export default function MapLayerPage(): JSX.Element {
       },
     },
     true
+  )
+
+  const [importJobId, setImportJobId] = useState<string | null>(null)
+  const importJobQuery = useApiQuery(
+    ['mapImportJob', importJobId],
+    () => mapLayerService.getImportJob(importJobId || ''),
+    { enabled: !!importJobId, refetchInterval: query => {
+      if (query.state.status === 'error') return false
+      const status = query.state.data?.data?.status
+      return !query.state.data || status === 'pending' || status === 'processing' ? 2000 : false
+    } }, false, false
+  )
+  const importJob = importJobQuery.data?.data
+  const importJobMalformed = importJobQuery.isSuccess && !['pending', 'processing', 'completed', 'failed', 'cancelled'].includes(importJob?.status || '')
+  const { refetch: refetchLayers } = dbQuery
+  const notifiedImport = useRef('')
+  useEffect(() => {
+    const status = importJob?.status
+    if (!importJobId || !status || !['completed', 'failed', 'cancelled'].includes(status)) return
+    const notificationKey = `${importJobId}:${status}`
+    if (notifiedImport.current === notificationKey) return
+    notifiedImport.current = notificationKey
+    void refetchLayers()
+    if (status === 'completed') toast.success('Đã nhập GeoJSON. Có thể công bố lớp từ danh sách.')
+    else if (status === 'failed') toast.error(`Nhập GeoJSON thất bại: ${importJob.error_log || 'Kiểm tra tệp và thử lại.'}`)
+    else toast.info('Tác vụ nhập GeoJSON đã bị hủy.')
+  }, [importJobId, importJob?.status, importJob?.error_log, refetchLayers])
+  const importMutation = useApiMutation(
+    ({ data, file }: { data: CreateMapLayerBody; file: File }) => {
+      const form = new FormData()
+      form.append('file', file)
+      for (const field of ['code', 'name_vi', 'table_name', 'category', 'layer_kind', 'layer_group', 'is_active', 'is_public'] as const) {
+        const value = data[field]
+        if (value !== null && value !== undefined) form.append(field, String(value))
+      }
+      form.append('source_format', 'geojson')
+      form.append('import_mode', 'overwrite')
+      form.append('new_layer', 'true')
+      form.append('srid_input', '4326')
+      form.append('auto_publish', 'false')
+      form.append('default_style', JSON.stringify(data.default_style ?? null))
+      form.append('legend_config', JSON.stringify(data.legend_config ?? null))
+      return mapLayerService.importFile(form)
+    },
+    { onSuccess: response => {
+      const accepted = response.data
+      const jobId = readImportJobId(accepted?.job_id)
+      if (!jobId) {
+        toast.error('Máy chủ chưa trả mã tác vụ nhập. Kiểm tra danh sách lớp trước khi gửi lại.')
+        return
+      }
+      setImportJobId(jobId)
+      setFormDialogOpen(false)
+      setSelectedLayerCode(null)
+      toast.info('Đã tiếp nhận tệp GeoJSON. Hệ thống đang xử lý, bạn có thể theo dõi tại danh sách lớp.')
+      dbQuery.refetch()
+    }, onError: error => {
+      if (!(error as { status?: number }).status) {
+        toast.error('Không gửi được tệp. Kiểm tra kết nối và danh sách lớp trước khi thử lại.')
+      }
+    } }, false
   )
 
   const updateMutation = useApiMutation(
@@ -226,7 +290,7 @@ export default function MapLayerPage(): JSX.Element {
       updateMutation.mutate({ code: selectedLayerCode, data })
       return
     }
-    createMutation.mutate(data)
+    if (canCreate) createMutation.mutate(data)
   }
 
   function handleDelete() {
@@ -243,6 +307,15 @@ export default function MapLayerPage(): JSX.Element {
 
   return (
     <PageLayout title="Quản lý lớp dữ liệu" description="Quản lý lớp dữ liệu bản đồ">
+      {importJobId && <div role="status" className="border-border bg-muted/20 mb-4 space-y-2 rounded-lg border p-4 text-sm">
+        <p>{importJobQuery.isError || importJobMalformed ? 'Không lấy được trạng thái nhập. Hãy kiểm tra lại trước khi nhập lần nữa.'
+          : importJob?.status === 'cancelled' ? 'Tác vụ nhập đã bị hủy.'
+          : importJob?.status === 'failed' ? `Nhập GeoJSON thất bại: ${importJob.error_log || 'Kiểm tra tệp và thử lại.'}`
+          : importJob?.status === 'completed' ? 'Đã nhập GeoJSON. Có thể công bố lớp từ danh sách.'
+          : `Đã tiếp nhận tệp. Đang xử lý${typeof importJob?.progress === 'number' ? ` (${importJob.progress}%)` : '...'}`}</p>
+        <Button id="refresh-layer-import" type="button" variant="outline" size="sm" onClick={() => { importJobQuery.refetch(); dbQuery.refetch() }}>Cập nhật trạng thái</Button>
+        {importJob?.status === 'completed' && <Button type="button" variant="ghost" size="sm" onClick={() => { dbQuery.refetch(); setImportJobId(null) }}>Đóng thông báo</Button>}
+      </div>}
       <ToolTableCustom
         searchValue={searchValue}
         setSearchValue={(value) => {
@@ -303,7 +376,7 @@ export default function MapLayerPage(): JSX.Element {
               </SelectContent>
             </Select>
 
-            {canCreate && (
+            {(canCreate || canImport) && (
               <Button variant="default" onClick={openAddDialog}>
                 Thêm lớp dữ liệu
               </Button>
@@ -413,7 +486,7 @@ export default function MapLayerPage(): JSX.Element {
                             size="sm"
                             disabled={
                               publishMutation.isPending ||
-                              (!layer.geoserver_layer && !layer.is_active)
+                              (!layer.geoserver_layer && (!layer.is_active || (layer.geometry_type === 'RASTER' && !layer.source_url?.trim())))
                             }
                             onClick={(e) => {
                               e.stopPropagation()
@@ -422,6 +495,8 @@ export default function MapLayerPage(): JSX.Element {
                             title={
                               layer.geoserver_layer
                                 ? 'Gỡ lớp khỏi dịch vụ bản đồ'
+                                : layer.geometry_type === 'RASTER' && !layer.source_url?.trim()
+                                  ? 'Cần tải GeoTIFF lên kho ảnh hoặc cấu hình nguồn dữ liệu trước khi công bố'
                                 : layer.is_active
                                   ? 'Công bố lớp lên dịch vụ bản đồ'
                                   : 'Cần kích hoạt lớp trước khi công bố'
@@ -467,7 +542,10 @@ export default function MapLayerPage(): JSX.Element {
         onOpenChange={setFormDialogOpen}
         layerCode={selectedLayerCode}
         onSubmit={handleFormSubmit}
-        isLoading={createMutation.isPending || updateMutation.isPending}
+        canCreate={canCreate}
+        canImport={canImport}
+        onImport={(data, file) => { if (canImport && !selectedLayerCode) importMutation.mutate({ data, file }) }}
+        isLoading={createMutation.isPending || updateMutation.isPending || importMutation.isPending}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

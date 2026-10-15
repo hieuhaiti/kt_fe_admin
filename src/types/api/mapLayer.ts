@@ -14,7 +14,7 @@ export type GeometryType = 'point' | 'line' | 'polygon' | GeometryTypePostman
 export type LayerKind = 'basemap' | 'overlay'
 export type SourceFormat = 'shapefile' | 'geojson' | 'kml' | 'geotiff' | 'filegdb'
 export type ImportMode = 'overwrite' | 'append'
-export type ImportJobStatus = 'pending' | 'processing' | 'completed' | 'failed'
+export type ImportJobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
 
 export interface MapLayerLegendEntry {
   label: string
@@ -190,14 +190,22 @@ export interface ImportGeoJsonInlineBody {
   }
 }
 
+export interface ImportAccepted {
+  job_id: string | number
+  code: string
+  status: 'pending' | 'processing'
+  sync: boolean
+}
+
 export interface ImportJob {
-  id: number
+  id: string | number
   job_id?: string
   layer_code?: string
   source_format?: SourceFormat
   status: ImportJobStatus
   progress?: number
   error_message?: string
+  error_log?: string | null
   createdAt?: string
   updatedAt?: string
 }

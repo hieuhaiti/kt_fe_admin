@@ -47,8 +47,8 @@ export const MAP_LAYER_CATEGORY_LABEL_VI: Record<string, string> = {
   // Modules chuyên đề (English slug)
   land_cover: 'Lớp phủ mặt đất',
   remote_sensing: 'Ảnh viễn thám',
-  fire_risk_district: 'Nguy cơ cháy rừng theo huyện',
-  forest_district: 'Phân loại lớp phủ',
+  // fire_risk_district: 'Nguy cơ cháy rừng theo huyện',
+  // forest_district: 'Phân loại lớp phủ',
   administrative: 'Ranh giới hành chính',
   hydrology: 'Thủy văn',
   transportation: 'Giao thông',
@@ -71,9 +71,9 @@ export const MAP_LAYER_CATEGORY_LABEL_VI: Record<string, string> = {
 // không phá dữ liệu đã tạo. Chỉ hiển thị label tiếng Việt.
 export const MAP_LAYER_CATEGORY_OPTIONS: { value: string; label: string }[] = [
   { value: 'land_cover', label: MAP_LAYER_CATEGORY_LABEL_VI.land_cover },
-  { value: 'fire_risk_district', label: MAP_LAYER_CATEGORY_LABEL_VI.fire_risk_district },
+  // { value: 'fire_risk_district', label: MAP_LAYER_CATEGORY_LABEL_VI.fire_risk_district },
   { value: 'remote_sensing', label: MAP_LAYER_CATEGORY_LABEL_VI.remote_sensing },
-  { value: 'forest_district', label: MAP_LAYER_CATEGORY_LABEL_VI.forest_district },
+  // { value: 'forest_district', label: MAP_LAYER_CATEGORY_LABEL_VI.forest_district },
   { value: 'hanh_chinh', label: MAP_LAYER_CATEGORY_LABEL_VI.hanh_chinh },
   { value: 'thuy_van', label: MAP_LAYER_CATEGORY_LABEL_VI.thuy_van },
   { value: 'giao_thong', label: MAP_LAYER_CATEGORY_LABEL_VI.giao_thong },

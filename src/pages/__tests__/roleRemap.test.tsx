@@ -14,7 +14,7 @@ vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn() }, ToastContainer: () => null,
 }))
 vi.mock('@/layout/mainLayout', () => ({ MainLayout: () => <Outlet /> }))
-vi.mock('@/pages/MapLayers/ImportGeoJson', () => ({ default: () => <h1>Import page</h1> }))
+vi.mock('@/pages/MapLayers', () => ({ default: () => <h1>Layer page</h1> }))
 
 function setRole(code: string, permissions: Record<string, Record<string, boolean>>) {
   useAuthStore.setState({
@@ -63,7 +63,7 @@ describe('import route remap', () => {
     setRole('so_nnmt', { map_layers: permissions })
     renderPage(<App />, '/map-layers/import-geojson')
     await waitFor(() => expect(screen.getByRole('heading', {
-      name: allowed ? 'Import page' : /Không có quyền truy cập/,
+      name: allowed ? 'Layer page' : /Không có quyền truy cập/,
     })).toBeInTheDocument())
   })
 })

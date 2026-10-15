@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import MapLayerFormDialog from '../MapLayerFormDialog'
 
 const { queryResult } = vi.hoisted(() => ({ queryResult: { data: undefined as unknown } }))
@@ -17,9 +18,10 @@ afterEach(() => {
 })
 
 describe('map layer form identifiers', () => {
-  it('preserves hyphens in code but generates a valid table_name', () => {
+  it('preserves hyphens in code but generates a valid table_name', async () => {
     const onSubmit = vi.fn()
     render(<MapLayerFormDialog open onOpenChange={vi.fn()} layerCode={null} onSubmit={onSubmit} />)
+    await userEvent.click(screen.getByRole('tab', { name: 'GeoTIFF' }))
     const input = screen.getByLabelText(/Tên lớp dữ liệu/)
     fireEvent.change(input, { target: { value: 'Biến động lớp phủ Kon Tum 1991-2023 tesst' } })
     const form = input.closest('form')
@@ -47,5 +49,23 @@ describe('map layer form identifiers', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       code: 'forest_1991-2023', table_name: 'existing_forest_table',
     }))
+  })
+  it('only saves metadata when a GeoJSON file is previewed while editing', async () => {
+    const onSubmit = vi.fn(), onImport = vi.fn()
+    queryResult.data = { data: {
+      code: 'forest', name_vi: 'Rừng Kon Tum', table_name: 'forest', geometry_type: 'POLYGON',
+      is_active: true, is_public: false,
+    } }
+    render(<MapLayerFormDialog open onOpenChange={vi.fn()} layerCode="forest" canImport onImport={onImport} onSubmit={onSubmit} />)
+    const text = JSON.stringify({ type: 'Point', coordinates: [108, 14] })
+    const file = new File([text], 'preview.geojson', { type: 'application/geo+json' })
+    Object.defineProperty(file, 'text', { value: async () => text })
+    const input = document.querySelector<HTMLInputElement>('input[type=file]')!
+    await userEvent.upload(input, file)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Lưu thông tin' }).hasAttribute('disabled')).toBe(false))
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu thông tin' }))
+    expect(onImport).not.toHaveBeenCalled()
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ code: 'forest', table_name: 'forest', geometry_type: 'POLYGON' }))
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('geometry_data')
   })
 })

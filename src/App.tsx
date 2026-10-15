@@ -26,7 +26,6 @@ const MapLayerPage = lazy(() => import('@/pages/MapLayers'))
 const LayerSeriesPage = lazy(() => import('@/pages/LayerSeries'))
 const MapLayerApisPage = lazy(() => import('@/pages/MapLayerApis'))
 const MapLayerApiPublicPage = lazy(() => import('@/pages/MapLayerApis/MapLayerApiPublicPage'))
-const ImportGeoJsonPage = lazy(() => import('@/pages/MapLayers/ImportGeoJson'))
 const MapImagePage = lazy(() => import('@/pages/MapImage'))
 const DocumentPage = lazy(() => import('@/pages/Document'))
 const FeedbackPage = lazy(() => import('@/pages/Feedback'))
@@ -114,7 +113,7 @@ function App() {
                 <Route path="/map-layers" element={<MapLayerPage />} />
               </Route>
               <Route element={<ProtectedRoute permission={{ resource: 'map_layers', action: 'import' }} />}>
-                <Route path="/map-layers/import-geojson" element={<ImportGeoJsonPage />} />
+                <Route path="/map-layers/import-geojson" element={<Navigate to="/map-layers" replace />} />
               </Route>
               <Route element={<ProtectedRoute permission={{ resource: 'map_layers', action: 'read' }} />}>
                 <Route path="/layer-series" element={<LayerSeriesPage />} />

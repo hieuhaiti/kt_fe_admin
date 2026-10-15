@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
-import { Code2, FileJson, List, Plus, Trash2 } from 'lucide-react'
+import { Code2, List, Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,9 @@ import {
 } from '@/components/ui/select'
 import { mapLayerService, useApiQuery } from '@/service'
 import GeoJsonMapPreview from '@/components/features/GeoJsonMapPreview'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import LayerFileUpload from './LayerFileUpload'
+import { createLayerIdentifiers, layerIdentifiersSchema } from './mapLayerImport'
 import type {
   ApiResponse,
   CreateMapLayerBody,
@@ -55,6 +58,9 @@ interface MapLayerFormDialogProps {
   layerCode: string | null
   onSubmit: (data: CreateMapLayerBody) => void
   isLoading?: boolean
+  canCreate?: boolean
+  canImport?: boolean
+  onImport?: (data: CreateMapLayerBody, file: File) => void
 }
 
 type MapLayerDetailData = MapLayer | { mapLayer?: MapLayer }
@@ -138,21 +144,6 @@ function extractPointCoordinates(raw: unknown): { lat: number; lng: number } | n
   return null
 }
 
-function toLayerCode(value: string): string {
-  const ascii = value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 54)
-
-  const code = ascii || `layer_${Date.now()}`
-  return /^[a-z_]/.test(code) ? code : `layer_${code}`
-}
-
 type FormGeometryKind = 'point' | 'line' | 'polygon' | 'raster'
 
 function toApiGeometryType(type: FormGeometryKind): CreateMapLayerBody['geometry_type'] {
@@ -201,8 +192,11 @@ export default function MapLayerFormDialog({
   layerCode,
   onSubmit,
   isLoading = false,
+  canCreate = true,
+  canImport = false,
+  onImport,
 }: MapLayerFormDialogProps) {
-  const [category, setCategory] = useState<string>('forest_district')
+  const [category, setCategory] = useState<string>('other')
   const [layerGroup, setLayerGroup] = useState<string>('')
   const [layerKind, setLayerKind] = useState<'basemap' | 'overlay'>('overlay')
   const [name, setName] = useState<string>('')
@@ -220,81 +214,10 @@ export default function MapLayerFormDialog({
   const [styleValues, setStyleValues] = useState<MapLayerDefaultStyle>({})
   const [styleJsonText, setStyleJsonText] = useState<string>('')
   const [selectedStyleKey, setSelectedStyleKey] = useState<string>('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  function isTiffFile(file: File): boolean {
-    const name = file.name.toLowerCase()
-    return /\.(tif|tiff)$/.test(name) || file.type === 'image/tiff'
-  }
-
-  async function detectTiffMagicBytes(file: File): Promise<boolean> {
-    const bytes = new Uint8Array(await file.slice(0, 4).arrayBuffer())
-    const le =
-      bytes[0] === 0x49 &&
-      bytes[1] === 0x49 &&
-      (bytes[2] === 0x2a || bytes[2] === 0x2b) &&
-      bytes[3] === 0x00
-    const be =
-      bytes[0] === 0x4d &&
-      bytes[1] === 0x4d &&
-      bytes[2] === 0x00 &&
-      (bytes[3] === 0x2a || bytes[3] === 0x2b)
-    return le || be
-  }
-
-  async function handleOpenGeometryFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-
-    if (isTiffFile(file)) {
-      const isTiff = await detectTiffMagicBytes(file)
-      if (!isTiff) {
-        toast.error('Tệp có đuôi .tif/.tiff nhưng không phải GeoTIFF hợp lệ')
-        return
-      }
-      setGeometryType('raster')
-      setRasterFileName(file.name)
-      setLatitude('')
-      setLongitude('')
-      setGeometryDataText('')
-      toast.success(
-        `Đã ghi nhận ${file.name} là lớp ảnh — cần nạp tệp qua Import Raster / Ingest GEE`
-      )
-      return
-    }
-
-    try {
-      const text = await file.text()
-      const parsed = JSON.parse(text)
-      const kind = inferGeometryKind(parsed)
-      if (!kind) {
-        toast.error('Tệp không chứa GeoJSON hợp lệ')
-        return
-      }
-      setGeometryType(kind)
-      setRasterFileName('')
-
-      if (kind === 'point') {
-        const point = extractPointCoordinates(parsed)
-        if (point) {
-          setLatitude(String(point.lat))
-          setLongitude(String(point.lng))
-          setGeometryDataText('')
-          toast.success(`Đã nạp điểm từ ${file.name}`)
-          return
-        }
-      }
-
-      setGeometryDataText(stringifyJson(parsed))
-      setLatitude('')
-      setLongitude('')
-      toast.success(`Đã nạp GeoJSON từ ${file.name}`)
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'lỗi đọc dữ liệu'
-      toast.error(`Tệp không phải GeoJSON/TIFF hợp lệ: ${message}`)
-    }
-  }
+  const [dataTab, setDataTab] = useState<'geotiff' | 'geojson'>('geojson')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [fileBlocked, setFileBlocked] = useState(false)
+  const [filePickerKey, setFilePickerKey] = useState(0)
 
   const layerQuery = useApiQuery(
     ['mapLayer', layerCode],
@@ -315,12 +238,17 @@ export default function MapLayerFormDialog({
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!open) return
+    setSelectedFile(null)
+    setFileBlocked(false)
+    setFilePickerKey(key => key + 1)
     if (!isEdit) {
-      setCategory('forest_district')
+      setCategory('other')
       setLayerGroup('')
       setLayerKind('overlay')
       setName('')
-      setGeometryType('polygon')
+      setGeometryType(canImport ? 'polygon' : 'raster')
+      setDataTab(canImport ? 'geojson' : 'geotiff')
+      setRasterFileName('')
       setIsActive('true')
       setIsPublic('false')
       setLatitude('')
@@ -337,11 +265,12 @@ export default function MapLayerFormDialog({
     }
 
     if (layer) {
-      setCategory(layer.category || 'forest_district')
+      setCategory(layer.category || 'other')
       setLayerGroup(layer.layer_group || '')
       setLayerKind(layer.layer_kind === 'basemap' ? 'basemap' : 'overlay')
       setName(layer.name_vi || layer.name || '')
       setGeometryType(toFormGeometryType(layer.geometry_type))
+      setDataTab(layer.geometry_type === 'RASTER' ? 'geotiff' : 'geojson')
       setIsActive(layer.is_active ? 'true' : 'false')
       setIsPublic(layer.is_public ? 'true' : 'false')
       const point = extractPointCoordinates(layer.geometry_data)
@@ -374,7 +303,7 @@ export default function MapLayerFormDialog({
       setStyleMode('list')
       setSelectedStyleKey('')
     }
-  }, [open, isEdit, layer])
+  }, [open, isEdit, layer, canImport])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleSwitchLegendMode(targetMode: 'list' | 'json') {
@@ -510,6 +439,15 @@ export default function MapLayerFormDialog({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (isLoading || fileBlocked) return
+    if (!isEdit && dataTab === 'geojson' && (!selectedFile || !onImport || !canImport)) {
+      toast.error(!canImport ? 'Bạn chưa có quyền nhập dữ liệu.' : 'Chọn tệp GeoJSON hợp lệ trước khi nhập.')
+      return
+    }
+    if (!isEdit && dataTab === 'geotiff' && !canCreate) {
+      toast.error('Bạn chưa có quyền tạo lớp dữ liệu.')
+      return
+    }
 
     // Dữ liệu hình học chỉ dùng để preview client; server không cần khi tạo/sửa
     // metadata layer (chỉ cần geometry_type). Nếu user có nhập → validate; không
@@ -629,7 +567,14 @@ export default function MapLayerFormDialog({
       return
     }
 
-    const code = isEdit && layer?.code ? layer.code : toLayerCode(name.trim())
+    const identifiers = isEdit && layer?.code
+      ? { code: layer.code, table_name: layer.table_name || '' }
+      : createLayerIdentifiers(name.trim())
+    if (!layerIdentifiersSchema.safeParse(identifiers).success) {
+      toast.error('Mã lớp hoặc tên bảng không hợp lệ. Kiểm tra lại thông tin lớp.')
+      return
+    }
+    const { code } = identifiers
     const trimmedLayerGroup = layerGroup.trim()
 
     // [check style] TEMP log
@@ -639,10 +584,10 @@ export default function MapLayerFormDialog({
       default_style,
     })
 
-    onSubmit({
+    const payload: CreateMapLayerBody = {
       code,
       name_vi: name.trim(),
-      table_name: isEdit && layer?.table_name ? layer.table_name : code.replace(/-/g, '_'),
+      table_name: identifiers.table_name,
       schema_name: isEdit ? layer?.schema_name || 'gis' : 'gis',
       category,
       layer_kind: layerKind,
@@ -654,7 +599,12 @@ export default function MapLayerFormDialog({
       is_editable: true,
       default_style,
       legend_config,
-    })
+    }
+    if (!isEdit && dataTab === 'geojson' && selectedFile && onImport) {
+      onImport(payload, selectedFile)
+    } else {
+      onSubmit(payload)
+    }
   }
 
   return (
@@ -668,6 +618,42 @@ export default function MapLayerFormDialog({
         </DialogDescription>
 
         <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
+          <Tabs value={dataTab} onValueChange={value => {
+            if (value !== 'geotiff' && value !== 'geojson') return
+            setDataTab(value)
+            setSelectedFile(null)
+            setFileBlocked(false)
+            setFilePickerKey(key => key + 1)
+            setRasterFileName('')
+            setLatitude('')
+            setLongitude('')
+            setGeometryDataText('')
+            if (!isEdit) setGeometryType(value === 'geotiff' ? 'raster' : 'polygon')
+          }}>
+            <TabsList className="grid w-full grid-cols-2" aria-label="Định dạng dữ liệu">
+              <TabsTrigger id="layer-tab-geotiff" value="geotiff" disabled={isLoading}>GeoTIFF</TabsTrigger>
+              <TabsTrigger id="layer-tab-geojson" value="geojson" disabled={isLoading}>GeoJSON</TabsTrigger>
+            </TabsList>
+            {(['geotiff', 'geojson'] as const).map(kind => (
+              <TabsContent key={kind} value={kind}>
+                <LayerFileUpload key={`${kind}-${filePickerKey}`} kind={kind} disabled={isLoading}
+                  previewOnly={isEdit} onValidationChange={setFileBlocked}
+                  onFileChange={(file, geojson) => {
+                    setSelectedFile(file)
+                    if (!isEdit && file) {
+                      setGeometryType(kind === 'geotiff' ? 'raster' : inferGeometryKind(geojson) || 'polygon')
+                      setRasterFileName(kind === 'geotiff' ? file.name : '')
+                    }
+                  }} />
+              </TabsContent>
+            ))}
+          </Tabs>
+          {!isEdit && dataTab === 'geojson' && !canImport && (
+            <p role="alert" className="text-destructive text-sm">Bạn chưa có quyền nhập dữ liệu GeoJSON.</p>
+          )}
+          {!isEdit && dataTab === 'geotiff' && !canCreate && (
+            <p role="alert" className="text-destructive text-sm">Bạn chưa có quyền tạo lớp dữ liệu.</p>
+          )}
           <div className="space-y-2">
             <Label>
               Nhóm lớp <span className="text-destructive">*</span>
@@ -730,7 +716,14 @@ export default function MapLayerFormDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nhập tên lớp dữ liệu"
+              maxLength={200}
             />
+            {!isEdit && name.trim() && (
+              <p className="text-muted-foreground break-all text-xs">
+                Mã lớp: {createLayerIdentifiers(name).code}<br />
+                Tên bảng: {createLayerIdentifiers(name).table_name}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -739,6 +732,7 @@ export default function MapLayerFormDialog({
             </Label>
             <Select
               value={geometryType}
+              disabled={!isEdit}
               onValueChange={(v) => setGeometryType(v as typeof geometryType)}
             >
               <SelectTrigger className="w-full">
@@ -1052,26 +1046,8 @@ export default function MapLayerFormDialog({
             )}
           </div>
 
-          <div className="space-y-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".geojson,.json,.tif,.tiff,application/geo+json,application/json,image/tiff"
-              className="hidden"
-              onChange={handleOpenGeometryFile}
-            />
-            <div className="flex items-center justify-between gap-2">
-              <Label>Dữ liệu hình học </Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <FileJson className="size-4" aria-hidden="true" />
-                Mở tệp GeoJSON / GeoTIFF
-              </Button>
-            </div>
+          {isEdit && <div className="space-y-2">
+            <p className="text-muted-foreground text-xs">Chỉ xem trước; lưu thông tin không ghi đè dữ liệu hình học.</p>
             {geometryType === 'raster' ? (
               <div className="border-muted bg-muted/20 space-y-1 rounded-md border p-3">
                 <p className="text-sm font-medium">Raster (GeoTIFF)</p>
@@ -1122,7 +1098,7 @@ export default function MapLayerFormDialog({
                 <GeoJsonMapPreview geojson={geometryPreview.geojson} />
               </div>
             )}
-          </div>
+          </div>}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button
@@ -1133,8 +1109,8 @@ export default function MapLayerFormDialog({
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Đang xử lý...' : isEdit ? 'Cập nhật' : 'Tạo mới'}
+            <Button id="save-map-layer" type="submit" disabled={isLoading || fileBlocked || (!isEdit && (dataTab === 'geojson' ? !selectedFile || !canImport : !canCreate))}>
+              {isLoading ? 'Đang xử lý...' : isEdit ? 'Lưu thông tin' : dataTab === 'geojson' ? 'Nhập GeoJSON' : 'Tạo lớp GeoTIFF'}
             </Button>
           </div>
         </form>

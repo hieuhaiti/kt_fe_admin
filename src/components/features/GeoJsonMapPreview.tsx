@@ -11,6 +11,7 @@ const BASEMAP_SOURCE_ID = 'osm-basemap'
 const BASEMAP_LAYER_ID = 'osm-basemap-layer'
 const FILL_LAYER_ID = 'preview-fill'
 const LINE_LAYER_ID = 'preview-line'
+const POINT_LAYER_ID = 'preview-points'
 
 const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = {
   type: 'FeatureCollection',
@@ -44,12 +45,12 @@ function getBoundsFromGeoJson(geojson: GeoJSON.GeoJSON): LngLatBoundsLike | null
         : [{ type: 'Feature', geometry: geojson, properties: {} } as GeoJSON.Feature]
 
   const points: Array<[number, number]> = []
+  const collectGeometry = (geometry: GeoJSON.Geometry) => {
+    if (geometry.type === 'GeometryCollection') geometry.geometries.forEach(collectGeometry)
+    else collectCoordinates(geometry.coordinates, points)
+  }
   features.forEach((feature) => {
-    if (!feature.geometry) return
-    const geom = feature.geometry as GeoJSON.Geometry
-    if (geom.type !== 'GeometryCollection') {
-      collectCoordinates(geom.coordinates, points)
-    }
+    if (feature.geometry) collectGeometry(feature.geometry)
   })
 
   if (!points.length) return null
@@ -72,58 +73,7 @@ function getBoundsFromGeoJson(geojson: GeoJSON.GeoJSON): LngLatBoundsLike | null
   ]
 }
 
-function extractPointCoordinates(geojson: GeoJSON.GeoJSON): Array<[number, number]> {
-  const features =
-    geojson.type === 'FeatureCollection'
-      ? geojson.features
-      : geojson.type === 'Feature'
-        ? [geojson]
-        : [{ type: 'Feature', geometry: geojson, properties: {} } as GeoJSON.Feature]
 
-  const points: Array<[number, number]> = []
-
-  features.forEach((feature) => {
-    if (!feature.geometry) return
-    if (feature.geometry.type === 'Point') {
-      const coordinates = feature.geometry.coordinates
-      if (Array.isArray(coordinates) && coordinates.length >= 2) {
-        points.push([Number(coordinates[0]), Number(coordinates[1])])
-      }
-    }
-    if (feature.geometry.type === 'MultiPoint') {
-      feature.geometry.coordinates.forEach((coordinates) => {
-        if (Array.isArray(coordinates) && coordinates.length >= 2) {
-          points.push([Number(coordinates[0]), Number(coordinates[1])])
-        }
-      })
-    }
-  })
-
-  return points.filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat))
-}
-
-function createPinElement(): HTMLDivElement {
-  const pin = document.createElement('div')
-  pin.style.width = '16px'
-  pin.style.height = '16px'
-  pin.style.background = '#1d4ed8'
-  pin.style.border = '1px solid #ffffff'
-  pin.style.borderRadius = '50% 50% 50% 0'
-  pin.style.boxShadow = '0 1px 4px rgba(0,0,0,0.35)'
-  pin.style.transform = 'rotate(-45deg)'
-
-  const dot = document.createElement('div')
-  dot.style.width = '5px'
-  dot.style.height = '5px'
-  dot.style.background = '#ffffff'
-  dot.style.borderRadius = '50%'
-  dot.style.position = 'absolute'
-  dot.style.left = '5px'
-  dot.style.top = '5px'
-
-  pin.appendChild(dot)
-  return pin
-}
 
 export default function GeoJsonMapPreview({
   geojson,
@@ -131,33 +81,12 @@ export default function GeoJsonMapPreview({
 }: GeoJsonMapPreviewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
-  const markersRef = useRef<maplibregl.Marker[]>([])
 
-  function clearPointMarkers() {
-    markersRef.current.forEach((marker) => marker.remove())
-    markersRef.current = []
-  }
-
-  function updatePointMarkers(map: maplibregl.Map, data: GeoJSON.GeoJSON | null) {
-    clearPointMarkers()
-    if (!data) return
-    const pointCoordinates = extractPointCoordinates(data)
-    pointCoordinates.forEach((lngLat) => {
-      const marker = new maplibregl.Marker({
-        element: createPinElement(),
-        anchor: 'bottom',
-      })
-        .setLngLat(lngLat)
-        .addTo(map)
-      markersRef.current.push(marker)
-    })
-  }
 
   function updatePreviewData(map: maplibregl.Map, data: GeoJSON.GeoJSON | null) {
     const source = map.getSource(SOURCE_ID) as GeoJSONSource | undefined
     if (!source) return
     source.setData(data ?? EMPTY_FEATURE_COLLECTION)
-    updatePointMarkers(map, data)
     if (!data) return
     const bounds = getBoundsFromGeoJson(data)
     if (bounds) {
@@ -221,13 +150,24 @@ export default function GeoJsonMapPreview({
         },
       })
 
+      map.addLayer({
+        id: POINT_LAYER_ID,
+        type: 'circle',
+        source: SOURCE_ID,
+        filter: ['==', '$type', 'Point'],
+        paint: {
+          'circle-radius': 6,
+          'circle-color': '#1d4ed8',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1,
+        },
+      })
       updatePreviewData(map, geojson)
     })
 
     mapRef.current = map
 
     return () => {
-      clearPointMarkers()
       map.remove()
       mapRef.current = null
     }
