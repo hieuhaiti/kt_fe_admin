@@ -213,7 +213,6 @@ export default function MapLayerFormDialog({
   const [latitude, setLatitude] = useState<string>('')
   const [longitude, setLongitude] = useState<string>('')
   const [geometryDataText, setGeometryDataText] = useState<string>('')
-  const [propertiesText, setPropertiesText] = useState<string>('')
   const [legendMode, setLegendMode] = useState<'list' | 'json'>('list')
   const [legendEntries, setLegendEntries] = useState<MapLayerLegendEntry[]>([])
   const [legendJsonText, setLegendJsonText] = useState<string>('')
@@ -327,7 +326,6 @@ export default function MapLayerFormDialog({
       setLatitude('')
       setLongitude('')
       setGeometryDataText('')
-      setPropertiesText('')
       setLegendEntries([])
       setLegendJsonText('')
       setLegendMode('list')
@@ -356,7 +354,6 @@ export default function MapLayerFormDialog({
         setLongitude('')
         setGeometryDataText(stringifyJson(layer.geometry_data))
       }
-      setPropertiesText(stringifyJson(layer.properties))
 
       const existingLegend = layer.legend_config || layer.legend
       if (
@@ -530,22 +527,6 @@ export default function MapLayerFormDialog({
       }
     }
 
-    let properties: Record<string, unknown> | undefined
-    if (propertiesText.trim()) {
-      try {
-        const parsed: unknown = JSON.parse(propertiesText.trim())
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          properties = parsed as Record<string, unknown>
-        } else {
-          toast.error('Thuộc tính phải là đối tượng JSON hợp lệ')
-          return
-        }
-      } catch {
-        toast.error('Thuộc tính phải ở định dạng JSON hợp lệ')
-        return
-      }
-    }
-
     let entriesToProcess: MapLayerLegendEntry[] = []
     if (legendMode === 'json') {
       if (legendJsonText.trim()) {
@@ -634,7 +615,6 @@ export default function MapLayerFormDialog({
       layer_group: layerGroup.trim(),
       name: name.trim(),
       geometry_type: geometryType,
-      properties: properties ?? null,
       is_active: isActive === 'true',
       is_public: isPublic === 'true',
     })
@@ -1142,17 +1122,6 @@ export default function MapLayerFormDialog({
                 <GeoJsonMapPreview geojson={geometryPreview.geojson} />
               </div>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="properties">Thuộc tính (JSON, tùy chọn)</Label>
-            <Textarea
-              id="properties"
-              rows={6}
-              value={propertiesText}
-              onChange={(e) => setPropertiesText(e.target.value)}
-              placeholder='{"source":"survey","year":2026}'
-            />
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
