@@ -6,6 +6,7 @@ import { toast } from 'react-toastify'
 import { renderWithProviders } from '@/test/renderWithProviders'
 import { useAuthStore } from '@/stores/common/useAuthStore'
 import { mapLayerService } from '@/service'
+import apiClient from '@/service/common/apiClient'
 import MapLayerPage from '../index'
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }))
 vi.mock('@/components/features/GeoJsonMapPreview', () => ({ default: () => <div data-testid="file-preview" /> }))
@@ -59,4 +60,55 @@ it('prevents publishing a raster with no source', async () => {
   renderWithProviders(<MemoryRouter><MapLayerPage /></MemoryRouter>)
   const publish = await screen.findByTitle('Cần tải GeoTIFF lên kho ảnh hoặc cấu hình nguồn dữ liệu trước khi công bố')
   expect(publish).toBeDisabled()
+})
+
+async function selectRaster() {
+  renderWithProviders(<MemoryRouter><MapLayerPage /></MemoryRouter>)
+  await userEvent.click(screen.getByRole('button', { name: /Thêm lớp dữ liệu/ }))
+  await userEvent.click(screen.getByRole('tab', { name: 'GeoTIFF' }))
+  fireEvent.change(screen.getByLabelText(/Tên lớp dữ liệu/), { target: { value: 'Rừng Kon Tum 2026' } })
+  const file = new File(['TIFF'], 'kontum.tif', { type: 'image/tiff' })
+  Object.defineProperty(file, 'slice', { value: () => ({ arrayBuffer: async () => new Uint8Array([0x49, 0x49, 0x2a, 0]).buffer }) })
+  await userEvent.upload(document.querySelector<HTMLInputElement>('input[type=file]')!, file)
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Tải GeoTIFF và tạo lớp' })).not.toBeDisabled())
+  return file
+}
+it('sends actual TIFF multipart, closes on persisted success, and does not publish', async () => {
+  const post = vi.spyOn(apiClient, 'post').mockResolvedValue({ message: 'Created', status: 201, data: { code: 'rung_kon_tum_2026', geometry_type: 'RASTER', source_url: 'file:///data/unique.tif' } })
+  const publish = vi.spyOn(mapLayerService, 'publish')
+  const file = await selectRaster()
+  await userEvent.click(screen.getByRole('button', { name: 'Tải GeoTIFF và tạo lớp' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  const [url, body, multipart] = post.mock.calls[0]
+  expect(url).toMatch(/map\/layers$/)
+  expect(body).toBeInstanceOf(FormData)
+  const form = body as FormData
+  expect(form.get('raster_file')).toBe(file)
+  expect(form.get('geometry_type')).toBe('RASTER')
+  expect(form.get('is_public')).toBe('false')
+  expect(form.has('source_url')).toBe(false)
+  expect(multipart).toBe(true)
+  expect(toast.success).toHaveBeenCalledTimes(1)
+  expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('Đã tải GeoTIFF'))
+  expect(publish).not.toHaveBeenCalled()
+})
+it('keeps the dialog and selected file after upload failure without reporting success', async () => {
+  vi.spyOn(apiClient, 'post').mockRejectedValue(new Error('connection lost'))
+  await selectRaster()
+  await userEvent.click(screen.getByRole('button', { name: 'Tải GeoTIFF và tạo lớp' }))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Kiểm tra kết nối')))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(screen.getByText('kontum.tif')).toBeInTheDocument()
+  expect(toast.success).not.toHaveBeenCalled()
+})
+it('does not create an empty raster layer without a file', async () => {
+  const create = vi.spyOn(mapLayerService, 'create')
+  renderWithProviders(<MemoryRouter><MapLayerPage /></MemoryRouter>)
+  await userEvent.click(screen.getByRole('button', { name: /Thêm lớp dữ liệu/ }))
+  await userEvent.click(screen.getByRole('tab', { name: 'GeoTIFF' }))
+  const name = screen.getByLabelText(/Tên lớp dữ liệu/)
+  fireEvent.change(name, { target: { value: 'Empty raster' } })
+  expect(screen.getByRole('button', { name: 'Tải GeoTIFF và tạo lớp' })).toBeDisabled()
+  fireEvent.submit(name.closest('form')!)
+  expect(create).not.toHaveBeenCalled()
 })

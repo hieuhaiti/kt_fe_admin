@@ -56,7 +56,7 @@ interface MapLayerFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   layerCode: string | null
-  onSubmit: (data: CreateMapLayerBody) => void
+  onSubmit: (data: CreateMapLayerBody, rasterFile?: File) => void
   isLoading?: boolean
   canCreate?: boolean
   canImport?: boolean
@@ -444,8 +444,8 @@ export default function MapLayerFormDialog({
       toast.error(!canImport ? 'Bạn chưa có quyền nhập dữ liệu.' : 'Chọn tệp GeoJSON hợp lệ trước khi nhập.')
       return
     }
-    if (!isEdit && dataTab === 'geotiff' && !canCreate) {
-      toast.error('Bạn chưa có quyền tạo lớp dữ liệu.')
+    if (!isEdit && dataTab === 'geotiff' && (!canCreate || !selectedFile)) {
+      toast.error(!canCreate ? 'Bạn chưa có quyền tạo lớp dữ liệu.' : 'Chọn tệp GeoTIFF hợp lệ trước khi tải lên.')
       return
     }
 
@@ -602,6 +602,8 @@ export default function MapLayerFormDialog({
     }
     if (!isEdit && dataTab === 'geojson' && selectedFile && onImport) {
       onImport(payload, selectedFile)
+    } else if (!isEdit && dataTab === 'geotiff' && selectedFile) {
+      onSubmit(payload, selectedFile)
     } else {
       onSubmit(payload)
     }
@@ -1109,8 +1111,8 @@ export default function MapLayerFormDialog({
             >
               Hủy
             </Button>
-            <Button id="save-map-layer" type="submit" disabled={isLoading || fileBlocked || (!isEdit && (dataTab === 'geojson' ? !selectedFile || !canImport : !canCreate))}>
-              {isLoading ? 'Đang xử lý...' : isEdit ? 'Lưu thông tin' : dataTab === 'geojson' ? 'Nhập GeoJSON' : 'Tạo lớp GeoTIFF'}
+            <Button id="save-map-layer" type="submit" disabled={isLoading || fileBlocked || (!isEdit && (!selectedFile || (dataTab === 'geojson' ? !canImport : !canCreate)))}>
+              {isLoading ? (!isEdit && dataTab === 'geotiff' ? 'Đang tải GeoTIFF...' : 'Đang xử lý...') : isEdit ? 'Lưu thông tin' : dataTab === 'geojson' ? 'Nhập GeoJSON' : 'Tải GeoTIFF và tạo lớp'}
             </Button>
           </div>
         </form>

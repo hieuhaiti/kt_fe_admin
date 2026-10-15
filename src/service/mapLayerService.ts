@@ -29,8 +29,18 @@ export default {
   getById: (idOrCode: number | string) =>
     apiClient.get<MapLayer>(`${serviceMapLayerPath}/${idOrCode}`),
 
-  /** POST /map/layers */
-  create: (data: CreateMapLayerBody) => apiClient.post<MapLayer>(serviceMapLayerPath, data),
+  /** POST /map/layers; optional GeoTIFF is persisted before the 201 response. */
+  create: (data: CreateMapLayerBody, rasterFile?: File) => {
+    if (!rasterFile) return apiClient.post<MapLayer>(serviceMapLayerPath, data)
+    const form = new FormData()
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined && value !== null) {
+        form.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value))
+      }
+    }
+    form.append('raster_file', rasterFile)
+    return apiClient.post<MapLayer>(serviceMapLayerPath, form, true)
+  },
 
   /** PATCH /map/layers/:mapLayerCode */
   patch: (mapLayerCode: string, data: PatchMapLayerBody) =>

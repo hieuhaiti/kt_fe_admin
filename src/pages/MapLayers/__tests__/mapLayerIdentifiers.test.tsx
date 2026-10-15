@@ -22,6 +22,10 @@ describe('map layer form identifiers', () => {
     const onSubmit = vi.fn()
     render(<MapLayerFormDialog open onOpenChange={vi.fn()} layerCode={null} onSubmit={onSubmit} />)
     await userEvent.click(screen.getByRole('tab', { name: 'GeoTIFF' }))
+    const file = new File(['TIFF'], 'forest.tif', { type: 'image/tiff' })
+    Object.defineProperty(file, 'slice', { value: () => ({ arrayBuffer: async () => new Uint8Array([0x49, 0x49, 0x2a, 0]).buffer }) })
+    await userEvent.upload(document.querySelector<HTMLInputElement>('input[type=file]')!, file)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Tải GeoTIFF và tạo lớp' })).not.toBeDisabled())
     const input = screen.getByLabelText(/Tên lớp dữ liệu/)
     fireEvent.change(input, { target: { value: 'Biến động lớp phủ Kon Tum 1991-2023 tesst' } })
     const form = input.closest('form')
@@ -30,7 +34,7 @@ describe('map layer form identifiers', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       code: 'bien_dong_lop_phu_kon_tum_1991-2023_tesst',
       table_name: 'bien_dong_lop_phu_kon_tum_1991_2023_tesst',
-    }))
+    }), file)
   })
 
   it('keeps an existing layer code and physical table_name unchanged when editing', () => {

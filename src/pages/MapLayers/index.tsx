@@ -119,9 +119,10 @@ export default function MapLayerPage(): JSX.Element {
   const [layerToPublish, setLayerToPublish] = useState<MapLayer | null>(null)
 
   const createMutation = useApiMutation(
-    (payload: CreateMapLayerBody) => mapLayerService.create(payload),
+    ({ data, rasterFile }: { data: CreateMapLayerBody; rasterFile?: File }) => mapLayerService.create(data, rasterFile),
     {
-      onSuccess: (res) => {
+      onSuccess: (res, variables) => {
+        toast.success(variables.rasterFile ? 'Đã tải GeoTIFF và tạo lớp. Bạn có thể công bố từ danh sách.' : res.message)
         // [check style] TEMP log
         checkStyleLog('mutation.create.success', {
           response: res,
@@ -130,8 +131,11 @@ export default function MapLayerPage(): JSX.Element {
         setFormDialogOpen(false)
         setSelectedLayerCode(null)
       },
+      onError: error => {
+        if (!(error as { status?: number }).status) toast.error('Chưa tải được GeoTIFF. Kiểm tra kết nối và danh sách lớp trước khi thử lại.')
+      },
     },
-    true
+    false
   )
 
   const [importJobId, setImportJobId] = useState<string | null>(null)
@@ -279,7 +283,7 @@ export default function MapLayerPage(): JSX.Element {
     setFormDialogOpen(true)
   }
 
-  function handleFormSubmit(data: CreateMapLayerBody) {
+  function handleFormSubmit(data: CreateMapLayerBody, rasterFile?: File) {
     // [check style] TEMP log
     checkStyleLog('page.submit.dispatch', {
       selectedLayerCode,
@@ -290,7 +294,7 @@ export default function MapLayerPage(): JSX.Element {
       updateMutation.mutate({ code: selectedLayerCode, data })
       return
     }
-    if (canCreate) createMutation.mutate(data)
+    if (canCreate) createMutation.mutate({ data, rasterFile })
   }
 
   function handleDelete() {
