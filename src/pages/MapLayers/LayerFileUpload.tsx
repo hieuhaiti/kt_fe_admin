@@ -104,8 +104,8 @@ export default function LayerFileUpload({ kind, disabled, previewOnly, onFileCha
       {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
       <p className="text-muted-foreground text-xs">
         {previewOnly ? 'Chỉ xem trước. Lưu thông tin không thay thế dữ liệu của lớp.'
-          : kind === 'geojson' ? 'Dùng WGS 84 (EPSG:4326). Bỏ tệp đã chọn trước khi chọn tệp khác.'
-          : 'Tệp sẽ được tải lên khi tạo lớp; hệ thống tự lưu nguồn ảnh. Bỏ tệp đã chọn trước khi chọn tệp khác.'}
+          : kind === 'geojson' ? 'Dùng WGS 84 (EPSG:4326).'
+          : ''}
       </p>
       {geojson && <div className="overflow-hidden rounded-lg border"><GeoJsonMapPreview geojson={geojson} /></div>}
     </div>

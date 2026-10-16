@@ -720,12 +720,6 @@ export default function MapLayerFormDialog({
               placeholder="Nhập tên lớp dữ liệu"
               maxLength={200}
             />
-            {!isEdit && name.trim() && (
-              <p className="text-muted-foreground break-all text-xs">
-                Mã lớp: {createLayerIdentifiers(name).code}<br />
-                Tên bảng: {createLayerIdentifiers(name).table_name}
-              </p>
-            )}
           </div>
 
           <div className="space-y-2">
