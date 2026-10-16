@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bộ ảnh thực thi tài liệu WebGIS Kon Tum</title>
+<style>
+body { margin: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #1e293b; }
+header { position: sticky; top: 0; background: white; padding: 12px 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; gap: 16px; align-items: center; z-index: 100; }
+select { padding: 8px 14px; font-size: 14px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; }
+#name { font-weight: 600; font-size: 15px; color: #0f172a; }
+.tabs { display: flex; gap: 8px; margin-left: auto; }
+.tab-btn { padding: 6px 14px; font-size: 13px; font-weight: 500; border: 1px solid #cbd5e1; border-radius: 6px; background: #f1f5f9; cursor: pointer; }
+.tab-btn.active { background: #0f172a; color: white; border-color: #0f172a; }
+.view-panel { padding: 24px; }
+.single-view { display: flex; justify-content: center; }
+.single-view img { display: block; max-width: 95%; max-height: 85vh; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+.grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; }
+.card { background: white; border-radius: 8px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+.card h4 { margin: 0 0 8px 0; font-size: 13px; color: #334155; word-break: break-all; }
+.card img { width: 100%; height: auto; border-radius: 4px; border: 1px solid #cbd5e1; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <label for="sel" style="font-size:14px;font-weight:600;">Xem chi tiết:</label>
+  <select id="sel"></select>
+  <span id="name"></span>
+  <div class="tabs">
+    <button class="tab-btn active" id="btnSingle" onclick="setMode('single')">Xem từng ảnh</button>
+    <button class="tab-btn" id="btnGrid" onclick="setMode('grid')">Lưới toàn bộ (15 ảnh)</button>
+  </div>
+</header>
+<div class="view-panel">
+  <div id="singlePanel" class="single-view">
+    <img id="image" alt="Bằng chứng kiểm thử">
+  </div>
+  <div id="gridPanel" class="grid-view" style="display:none;"></div>
+</div>
+<script>
+const names = ["fire-risk.png", "geojson-created.png", "geojson-delete-confirm.png", "geojson-deleted.png", "geojson-edit-before.png", "geojson-edit-filled.png", "geojson-form.png", "geojson-inactive.png", "geojson-updated.png", "geotiff-created.png", "geotiff-error-state.png", "geotiff-form.png", "time-series.png", "webgis-after-cleanup.png", "webgis-after-import.png"];
+const s = document.getElementById('sel');
+const grid = document.getElementById('gridPanel');
+for (const n of names) {
+  const o = new Option(n, n);
+  s.add(o);
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<h4>${n}</h4><img src="${n}" loading="lazy" onclick="selectAndShow('${n}')">`;
+  grid.appendChild(card);
+}
+function show(n) {
+  s.value = n;
+  document.getElementById('image').src = n;
+  document.getElementById('name').textContent = n;
+}
+function selectAndShow(n) {
+  show(n);
+  setMode('single');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function setMode(m) {
+  document.getElementById('singlePanel').style.display = m === 'single' ? 'flex' : 'none';
+  document.getElementById('gridPanel').style.display = m === 'grid' ? 'grid' : 'none';
+  document.getElementById('btnSingle').classList.toggle('active', m === 'single');
+  document.getElementById('btnGrid').classList.toggle('active', m === 'grid');
+}
+s.onchange = () => show(s.value);
+window.reviewImage = show;
+show(names[0]);
+</script>
+</body>
+</html>
