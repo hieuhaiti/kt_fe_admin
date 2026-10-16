@@ -36,6 +36,57 @@ describe('shared layer file picker', () => {
     expect(onFileChange).toHaveBeenLastCalledWith(null, null)
     expect(screen.queryByTestId('preview')).toBeNull()
   })
+  it('submits the converted WGS84 file, not the original projected file', async () => {
+    const onImport = vi.fn()
+    const { container } = render(<MapLayerFormDialog open onOpenChange={vi.fn()} layerCode={null} canImport onImport={onImport} onSubmit={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText(/Tên lớp dữ liệu/), { target: { value: 'Rừng UTM' } })
+    const input = { ...collection, crs: { properties: { name: 'EPSG:32648' } }, features: [
+      { type: 'Feature', id: 7, properties: { name: 'Kon Tum' }, geometry: { type: 'Point', coordinates: [500000, 1500000, 12] } },
+    ] }
+    const file = makeFile(JSON.stringify(input))
+    await userEvent.upload(fileInput(container.ownerDocument.body), file)
+    await screen.findByText(/Đã chuyển EPSG:32648/)
+    await userEvent.click(screen.getByRole('button', { name: 'Nhập GeoJSON' }))
+    expect(onImport).toHaveBeenCalledOnce()
+    const [metadata, uploadedFile] = onImport.mock.calls[0]
+    expect(metadata.epsg_code).toBe(4326)
+    expect(uploadedFile).not.toBe(file)
+    expect(uploadedFile.name).toBe(file.name)
+    const text = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = reject
+      reader.readAsText(uploadedFile)
+    })
+    const output = JSON.parse(text)
+    expect(output).not.toHaveProperty('crs')
+    expect(output.features[0].geometry.coordinates[0]).toBeCloseTo(105, 8)
+    expect(output.features[0].geometry.coordinates[1]).toBeCloseTo(13.568451278, 7)
+    expect(output.features[0].geometry.coordinates[2]).toBe(12)
+    expect(output.features[0].properties).toEqual(input.features[0].properties)
+  })
+  it('automatically detects undeclared UTM coordinates without a CRS selector', async () => {
+    const onFileChange = vi.fn(), onValidationChange = vi.fn()
+    const { container } = render(<LayerFileUpload kind="geojson" onFileChange={onFileChange} onValidationChange={onValidationChange} />)
+    const file = makeFile(JSON.stringify({ type: 'Point', coordinates: [500000, 1500000] }))
+    await userEvent.upload(fileInput(container), file)
+    await screen.findByText(/Đã chuyển EPSG:32648/)
+    expect(screen.queryByRole('combobox')).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(onValidationChange).toHaveBeenLastCalledWith(false)
+    expect(onFileChange.mock.calls.at(-1)?.[1].coordinates[0]).toBeCloseTo(105, 8)
+    await userEvent.click(screen.getByRole('button', { name: 'Bỏ tệp đã chọn' }))
+    expect(screen.queryByText(/Đã chuyển EPSG:32648/)).toBeNull()
+    expect(onFileChange).toHaveBeenLastCalledWith(null, null)
+    await userEvent.upload(fileInput(container), makeFile(JSON.stringify({ type: 'Point', coordinates: [500000, 1500000], crs: { properties: { name: 'EPSG:3405' } } })))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Chỉ hỗ trợ/)
+    expect(onValidationChange).toHaveBeenLastCalledWith(true)
+    expect(onFileChange).toHaveBeenLastCalledWith(null, null)
+  })
+  it.each([false, true])('shows the GeoTIFF CRS guidance with previewOnly=%s', previewOnly => {
+    render(<LayerFileUpload kind="geotiff" previewOnly={previewOnly} onFileChange={vi.fn()} onValidationChange={vi.fn()} />)
+    expect(screen.getByText('GeoTIFF cần dùng hệ tọa độ UTM 48N (EPSG:32648).')).toBeTruthy()
+  })
   it.each(['{', JSON.stringify({ type: 'FeatureCollection', features: [] })])('blocks invalid GeoJSON: %s', async text => {
     const onFileChange = vi.fn(), onValidationChange = vi.fn()
     const { container } = render(<LayerFileUpload kind="geojson" onFileChange={onFileChange} onValidationChange={onValidationChange} />)

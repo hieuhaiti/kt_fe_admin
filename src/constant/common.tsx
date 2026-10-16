@@ -27,16 +27,9 @@ export const navConfig: NavItem[] = [
   // ── GIS ──
   {
     icon: <Map />,
-    name: 'Lớp bản đồ',
+    name: 'Quản lý lớp dữ liệu',
     path: '/map-layers',
     permission: { resource: 'map_layers', action: 'read' },
-    subItems: [
-      {
-        name: 'Quản lý lớp dữ liệu',
-        path: '/map-layers',
-        permission: { resource: 'map_layers', action: 'read' },
-      },
-    ],
   },
   {
     icon: <History />,

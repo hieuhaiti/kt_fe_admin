@@ -6,7 +6,7 @@ import {
   FileUploadItem, FileUploadItemMetadata, FileUploadItemDelete,
 } from '@/components/ui/file-upload'
 import GeoJsonMapPreview from '@/components/features/GeoJsonMapPreview'
-import { validateGeoJson } from './mapLayerImport'
+import { normalizeGeoJson } from './mapLayerImport'
 
 type Props = {
   kind: 'geotiff' | 'geojson'
@@ -21,11 +21,13 @@ export default function LayerFileUpload({ kind, disabled, previewOnly, onFileCha
   const [geojson, setGeojson] = useState<GeoJSON.GeoJSON | null>(null)
   const [error, setError] = useState('')
   const [reading, setReading] = useState(false)
+  const [converted, setConverted] = useState(false)
   const generation = useRef(0)
   useEffect(() => () => { generation.current += 1 }, [])
 
   async function selectFiles(next: File[]) {
     const current = ++generation.current
+    setConverted(false)
     setFiles(next)
     setGeojson(null)
     setError('')
@@ -40,13 +42,22 @@ export default function LayerFileUpload({ kind, disabled, previewOnly, onFileCha
     onValidationChange(true)
     try {
       let parsed: GeoJSON.GeoJSON | null = null
+      let uploadFile = file
+      let didConvert = false
       if (file.size === 0) throw new Error('Tệp rỗng. Hãy chọn tệp có dữ liệu.')
       if (kind === 'geojson') {
         if (!/\.(geojson|json)$/i.test(file.name)) throw new Error('Chọn tệp .geojson hoặc .json.')
         let raw: unknown
         try { raw = JSON.parse((await file.text()).replace(/^\uFEFF/, '')) }
         catch { throw new Error('Không đọc được JSON. Hãy kiểm tra nội dung tệp.') }
-        parsed = validateGeoJson(raw)
+        const normalized = normalizeGeoJson(raw)
+        parsed = normalized.geojson
+        didConvert = normalized.sourceEpsg === 32648
+        if (didConvert) {
+          uploadFile = new File([JSON.stringify(parsed)], file.name, {
+            type: 'application/geo+json', lastModified: file.lastModified,
+          })
+        }
       } else {
         if (!/\.(tif|tiff)$/i.test(file.name)) throw new Error('Chọn tệp .tif hoặc .tiff.')
         const bytes = new Uint8Array(await file.slice(0, 4).arrayBuffer())
@@ -56,7 +67,8 @@ export default function LayerFileUpload({ kind, disabled, previewOnly, onFileCha
       }
       if (current !== generation.current) return
       setGeojson(parsed)
-      onFileChange(file, parsed)
+      setConverted(didConvert)
+      onFileChange(uploadFile, parsed)
       onValidationChange(false)
     } catch (cause) {
       if (current !== generation.current) return
@@ -77,6 +89,7 @@ export default function LayerFileUpload({ kind, disabled, previewOnly, onFileCha
           generation.current += 1
           setFiles([])
           setGeojson(null)
+          setConverted(false)
           setReading(false)
           setError(message.startsWith('Maximum') ? 'Chỉ chọn một tệp. Hãy chọn lại tệp cần nhập.' : message)
           onFileChange(null, null)
@@ -100,13 +113,16 @@ export default function LayerFileUpload({ kind, disabled, previewOnly, onFileCha
           ))}
         </FileUploadList>
       </FileUpload>
-      {reading && <p role="status" className="text-muted-foreground text-sm">Đang kiểm tra tệp...</p>}
+      {reading && <p role="status" className="text-muted-foreground text-sm">Đang đọc và kiểm tra tệp...</p>}
       {error && <p role="alert" className="text-destructive text-sm">{error}</p>}
+      {converted && <p role="status" className="text-muted-foreground text-xs">Đã chuyển EPSG:32648 sang EPSG:4326 để hiển thị trên bản đồ. Tệp gốc được giữ nguyên.</p>}
       <p className="text-muted-foreground text-xs">
-        {previewOnly ? 'Chỉ xem trước. Lưu thông tin không thay thế dữ liệu của lớp.'
-          : kind === 'geojson' ? 'Dùng WGS 84 (EPSG:4326).'
-          : ''}
+        {kind === 'geotiff' ? 'GeoTIFF cần dùng hệ tọa độ UTM 48N (EPSG:32648).'
+          : 'Hỗ trợ WGS 84 (EPSG:4326) và UTM 48N (EPSG:32648), tự nhận diện khi đọc tệp. Nếu tệp chưa khai báo hệ tọa độ, tọa độ mét trong phạm vi UTM sẽ được hiểu là UTM 48N. Hãy khai báo đúng hệ tọa độ trong tệp để tránh hiển thị sai vị trí.'}
       </p>
+      {previewOnly && (
+        <p className="text-muted-foreground text-xs">Tệp này chỉ dùng để xem trước. Lưu thông tin lớp không thay thế dữ liệu hiện có.</p>
+      )}
       {geojson && <div className="overflow-hidden rounded-lg border"><GeoJsonMapPreview geojson={geojson} /></div>}
     </div>
   )
